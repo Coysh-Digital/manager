@@ -1,0 +1,128 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Tests and analysis
+    runs-on: ubuntu-latest
+
+    services:
+      # Postgres, not SQLite. The audit log depends on a trigger and on revoked table privileges,
+      # so testing against another engine would test something other than what ships.
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: db_test
+          POSTGRES_USER: db
+          POSTGRES_PASSWORD: db
+        options: >-
+          --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+        ports: ['5432:5432']
+
+      # Exercised for real. Faking it would hide the fail-closed behaviour that replay protection
+      # turns on.
+      redis:
+        image: redis:8-alpine
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
+        ports: ['6379:6379']
+
+    env:
+      DB_HOST: 127.0.0.1
+      DB_DATABASE: db_test
+      DB_USERNAME: db
+      DB_PASSWORD: db
+      REDIS_HOST: 127.0.0.1
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_pgsql, intl, zip, sodium, redis
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Prepare environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Code style
+        run: vendor/bin/pint --test
+
+      - name: Static analysis
+        run: vendor/bin/phpstan analyse --memory-limit=1G --no-progress
+
+      # Run first and reported separately, so a security regression is never buried in ordinary
+      # test output.
+      - name: Security invariants
+        run: vendor/bin/pest --testsuite=Invariants
+
+      - name: Full test suite
+        run: vendor/bin/pest
+
+  supply-chain:
+    name: Supply chain
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: sodium
+          coverage: none
+
+      - run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Dependency advisories
+        run: composer audit --locked
+
+      - name: Secret scanning
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Software bill of materials
+        run: |
+          composer require --dev --no-interaction cyclonedx/cyclonedx-php-composer
+          vendor/bin/cyclonedx-php-composer make-sbom --output-file=sbom.json --output-format=JSON
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.json
+
+  image:
+    name: Container image
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        run: docker build -f deploy/docker/Dockerfile -t manager:ci .
+
+      - name: Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: manager:ci
+          format: table
+          # Fails on anything fixable at high severity. Unfixed findings are reported but do not
+          # block, since there is nothing a deploy can do about them.
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'

@@ -1,0 +1,117 @@
+# Manager Self-Hosted.
+#
+# The supported deployment. Bring it up with a .env alongside this file:
+#
+#   cp .env.example .env      # then edit it; the container refuses to start on defaults
+#   docker compose up -d
+#   docker compose exec app php artisan manager:doctor
+#
+# Postgres and Redis are included so a small installation works out of the box. Both are ordinary
+# services with ordinary connection strings, so pointing at managed equivalents is a matter of
+# changing DB_HOST and REDIS_HOST and removing the service — there is nothing here that assumes
+# they are local.
+#
+# Object storage lives in a separate overlay, off by default, because it is only needed from Phase 3
+# and an unused service is still a service to patch:
+#
+#   docker compose -f compose.yaml -f compose.minio.yaml up -d
+#
+# It is a separate file rather than a profile because Compose interpolates every service in a file
+# regardless of profiles, so a required variable in an unused service still breaks the whole thing.
+
+name: manager
+
+x-app: &app
+  build:
+    context: ../..
+    dockerfile: deploy/docker/Dockerfile
+    additional_contexts:
+      # The shared protocol package, until it is published to Packagist.
+      protocol: ../../../protocol
+    args:
+      MANAGER_VERSION: ${MANAGER_VERSION:-dev}
+  image: manager:${MANAGER_VERSION:-dev}
+  env_file: .env
+  restart: unless-stopped
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  # Read-only root filesystem: the application writes only to storage and to the paths below, so
+  # anything else attempting to write is a bug or an intrusion.
+  read_only: true
+  # The only writable paths. nginx and php-fpm are configured to keep everything they write under
+  # /tmp, so the rest of the filesystem stays read-only.
+  tmpfs:
+    - /tmp:mode=1777
+    - /var/lib/nginx/logs:mode=1777
+  volumes:
+    - storage:/app/storage
+    - cache:/app/bootstrap/cache
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  app:
+    <<: *app
+    command: ["web"]
+    ports:
+      # Bound to localhost. Put a reverse proxy in front and terminate TLS there — see
+      # docs/reverse-proxy.md. Exposing this directly would serve the control plane over plain HTTP.
+      - "127.0.0.1:8080:8080"
+
+  worker:
+    <<: *app
+    command: ["worker"]
+    ports: []
+    # The web container runs migrations; a worker starting mid-migration must not race it.
+    environment:
+      MANAGER_RUN_MIGRATIONS: "false"
+
+  scheduler:
+    <<: *app
+    command: ["scheduler"]
+    ports: []
+    environment:
+      MANAGER_RUN_MIGRATIONS: "false"
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-manager}
+      POSTGRES_USER: ${DB_USERNAME:-manager}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set}
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-manager} -d ${DB_DATABASE:-manager}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    security_opt:
+      - no-new-privileges:true
+
+  redis:
+    image: redis:8-alpine
+    restart: unless-stopped
+    # Persistence on, unlike the local development setup. Losing the nonce store mid-flight would
+    # not be a security failure — replay protection fails closed — but it would stop every connector
+    # reporting until it came back.
+    command: ["redis-server", "--appendonly", "yes", "--save", "60", "1000"]
+    volumes:
+      - redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  postgres:
+  redis:
+  storage:
+  cache:

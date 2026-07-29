@@ -1,58 +1,87 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Manager
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A control plane for a fleet of Craft CMS installations. Answers "what version is it, is it patched,
+did the backup run" without logging into ten control panels.
 
-## About Laravel
+Two editions from one core: **Manager Cloud**, hosted by Coysh Digital, and **Manager Self-Hosted**,
+which runs on your own infrastructure. This repository is the core, and it is what Self-Hosted ships.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## What it holds, and what it does not
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+Manager never holds an administrator password, an SSH credential or a managed site's database
+password. There is nowhere in its schema to put one, and a test walks the live schema on every run
+to keep that true.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+Connectors generate their own keypair on the site and send only the public half, so a stolen copy of
+this database confers no ability to impersonate any site.
 
-## Learning Laravel
+## Getting started
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+- [Installation](docs/install.md)
+- [Environment reference](docs/env.md)
+- [Reverse proxy](docs/reverse-proxy.md)
+- [Upgrading](docs/upgrade.md) and [rolling back](docs/rollback.md)
+- [Backups](docs/backup.md)
+- [Security model and runbooks](docs/security.md)
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+cd deploy/docker
+cp ../../.env.example .env     # then edit it; the container refuses to start on defaults
+docker compose up -d
+docker compose exec app php artisan manager:keys:generate
+docker compose exec app php artisan manager:doctor
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+## Local development
 
-## Contributing
+Uses ddev, with Postgres and Redis matching what the shipped Compose deployment runs.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+```bash
+ddev start
+ddev artisan migrate
+ddev artisan manager:doctor
+```
 
-## Code of Conduct
+Assets are built on the host and the compiled output is committed, so deploying is a git pull and a
+migrate with no Node on the server:
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```bash
+npm install
+npm run build     # commit public/build
+```
 
-## Security Vulnerabilities
+### Tests
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```bash
+ddev exec vendor/bin/pest --testsuite=Invariants   # the security suite
+ddev exec vendor/bin/pest
+ddev exec vendor/bin/pint --test
+ddev exec vendor/bin/phpstan analyse
+```
 
-## License
+Tests run against Postgres rather than SQLite, and against a real Redis. The audit log depends on a
+trigger and on revoked table privileges, and replay protection depends on an atomic store — testing
+either against a substitute would be testing something other than what ships.
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+`tests/Invariants/` holds one file per numbered requirement in the specification, so a reviewer can
+map the suite to the document.
+
+## Commands
+
+| Command | Purpose |
+|---|---|
+| `manager:doctor` | Check configuration and security. Run after installing or upgrading. |
+| `manager:audit:verify` | Verify the audit chain. Run after any restore. |
+| `manager:keys:generate` | Mint the platform signing keypair. |
+
+## Related repositories
+
+| | |
+|---|---|
+| `craft-manager-connector` | The Craft 5 plugin installed on managed sites. Public, for review. |
+| `manager-protocol` | The wire contract shared by both. Public, zero runtime dependencies. |
+| `manager-cloud` | Cloud-only services: managed keys, billing, provisioning. |
+
+## Security
+
+See [SECURITY.md](SECURITY.md). Report vulnerabilities to security@coysh.digital.

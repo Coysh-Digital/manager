@@ -1,0 +1,24 @@
+# Optional S3-compatible object storage, for installations without an external endpoint.
+#
+#   docker compose -f compose.yaml -f compose.minio.yaml up -d
+#
+# Needed from Phase 3, when backups land. Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY in .env
+# first — MinIO would otherwise start on its own well-known defaults.
+services:
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${AWS_ACCESS_KEY_ID:?set AWS_ACCESS_KEY_ID before enabling MinIO}
+      MINIO_ROOT_PASSWORD: ${AWS_SECRET_ACCESS_KEY:?set AWS_SECRET_ACCESS_KEY before enabling MinIO}
+    volumes:
+      - minio:/data
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  minio:

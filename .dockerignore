@@ -1,0 +1,39 @@
+# What must never reach the image.
+#
+# .env first and for the obvious reason: the image is shared, and the environment is not. Secrets are
+# supplied at run time.
+.env
+.env.*
+!.env.example
+
+# Generated with development dependencies present, so a copy of it makes the image try to boot
+# providers that are not installed.
+bootstrap/cache/*.php
+
+# Rebuilt inside the image.
+vendor/
+
+# Assets are built on the host and public/build is committed, so the toolchain itself is not needed.
+node_modules/
+
+# History, and anything that could carry a credential in it.
+.git/
+.github/
+
+# Local state.
+storage/logs/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/*.sqlite*
+.phpunit.cache/
+.phpunit.result.cache
+
+# Development environment and tooling.
+.ddev/
+tests/
+deploy/docker/.env
+docs/
+
+.DS_Store
+*.log
