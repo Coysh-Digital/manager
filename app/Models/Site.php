@@ -105,6 +105,14 @@ class Site extends Model
     }
 
     /**
+     * @return HasMany<EnrolmentCode, $this>
+     */
+    public function enrolmentCodes(): HasMany
+    {
+        return $this->hasMany(EnrolmentCode::class);
+    }
+
+    /**
      * @return HasMany<InventoryReport, $this>
      */
     public function inventoryReports(): HasMany

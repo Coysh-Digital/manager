@@ -84,6 +84,7 @@ Route::middleware(['auth', 'organisation'])->group(function (): void {
             ->name('sites.connector.confirm');
         Route::post('sites/{site}/connector/revoke', [CapabilityController::class, 'revokeConnector'])
             ->name('sites.connector.revoke');
+        Route::delete('sites/{site}', [SiteController::class, 'destroy'])->name('sites.destroy');
 
         Route::post('account/two-factor/start', [AccountController::class, 'startTotp'])->name('account.totp.start');
         Route::post('account/two-factor/confirm', [AccountController::class, 'confirmTotp'])->name('account.totp.confirm');

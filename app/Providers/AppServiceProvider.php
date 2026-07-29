@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Contracts\KeyService;
 use App\Support\CorrelationId;
+use App\Support\SelfHosted\DerivedKeyService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
@@ -18,6 +20,10 @@ class AppServiceProvider extends ServiceProvider
     {
         // One identifier per request, shared by logs, audit events and connector responses.
         $this->app->singleton(CorrelationId::class);
+
+        // Cloud-specific concerns sit behind interfaces, with the self-hosted implementation bound
+        // here. manager-cloud rebinds them; nothing in the core knows which edition it is running.
+        $this->app->singleton(KeyService::class, DerivedKeyService::class);
     }
 
     /**

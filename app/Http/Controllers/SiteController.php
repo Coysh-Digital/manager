@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Domain\Site\SiteRemovalService;
 use App\Models\AuditEvent;
 use App\Models\Connector;
+use App\Models\Membership;
 use App\Models\Organisation;
 use App\Models\Site;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 /**
@@ -67,6 +70,35 @@ final class SiteController
                 ->limit(8)
                 ->get(),
         ]);
+    }
+
+    /**
+     * Remove a site.
+     *
+     * Behind a recent-authentication check, and it revokes the connector in the same transaction —
+     * see SiteRemovalService for why that matters.
+     */
+    public function destroy(Request $request, Site $site, SiteRemovalService $removal): RedirectResponse
+    {
+        $this->authoriseSite($site);
+
+        abort_unless(app(Membership::class)->canAdminister(), 403);
+
+        $validated = $request->validate([
+            // Typing the domain is the confirmation. A dialog people click through is not one.
+            'confirm_domain' => ['required', 'string'],
+            'reason' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        if (strcasecmp(trim($validated['confirm_domain']), $site->expected_domain) !== 0) {
+            return back()->withErrors(['confirm_domain' => 'That does not match this site\'s domain.']);
+        }
+
+        $removal->remove($site, $request->user(), $validated['reason'] ?? null);
+
+        return redirect()
+            ->route('sites.index')
+            ->with('status', "{$site->name} has been removed and its connector revoked.");
     }
 
     /**

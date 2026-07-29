@@ -1,0 +1,51 @@
+# Invariant coverage
+
+One file per numbered requirement in the specification's *Security invariants* section, so a
+reviewer can map the suite to the document rather than taking a summary's word for it.
+
+```bash
+vendor/bin/pest --testsuite=Invariants
+```
+
+CI runs this as its own step, before the full suite, so a security regression is never buried in
+ordinary test output.
+
+| # | Invariant | Where |
+|---|---|---|
+| 1 | Never require a Craft administrator password | `NoStoredCredentialsTest` |
+| 2 | Never require SSH credentials | `NoStoredCredentialsTest` |
+| 3 | Never store a website's database password | `NoStoredCredentialsTest` |
+| 4 | Connector exposes no inbound management endpoint | `NoRemoteExecutionTest`, plus `bin/verify-invariants.php` in the connector repository |
+| 5 | Connections initiated outbound by the connector | As above |
+| 6 | Monitoring access read-only by default | `PairingTest`, `NoRemoteExecutionTest` |
+| 7 | Backup access requires explicit permission | **Phase 3.** `DataMinimisationTest` covers the half that exists: `backups:create` is never granted at pairing |
+| 8 | No arbitrary PHP, shell, console or SQL execution | `NoRemoteExecutionTest`, plus `bin/verify-invariants.php` in the connector repository |
+| 9 | Remote jobs use a fixed allowlist of versioned types | **Phase 2.** `NoRemoteExecutionTest` asserts no execution surface exists yet, which is the useful test while none does |
+| 10 | Every remote job authenticated, authorised, validated, audited | **Phase 2.** As above |
+| 11 | A compromised site cannot expose another site's credentials | `TenantIsolationTest` |
+| 12 | A compromised organisation cannot expose another | `TenantIsolationTest`, `PairingTest` |
+| 13 | Secrets never in logs, exceptions, analytics or exports | `AuditLogIntegrityTest`, `AccountSecurityTest`, `DataMinimisationTest` |
+| 14 | Removing a site immediately revokes its credentials | `NoRemoteExecutionTest` |
+| 15 | Security-sensitive actions fail closed | `ConnectorSignatureTest`, `SelfHostedHardeningTest` |
+| 16 | Retries must not cause an action to run twice | `ConnectorSignatureTest` |
+| 17 | Connector and platform updates use verifiable artifacts | **Not yet covered.** Needs signed tags and release checksums in place first; CI builds the SBOM and scans the image today |
+| 18 | No application content or user records collected for monitoring | `DataMinimisationTest` |
+
+## What is deliberately not covered yet
+
+Invariants 7, 9, 10 and 17 depend on features that do not exist in Phase 1. Writing tests that
+appear to cover them would be worse than the gap: a green suite that proves nothing is how a
+regression gets through.
+
+Where the absence of a feature is itself testable, it is tested — `NoRemoteExecutionTest` fails the
+moment somebody adds a route that could run something on a managed site without going through a job
+registry.
+
+## Also worth reading
+
+- `AccountSecurityTest` — the platform account is the other way in. A stolen password must not be
+  enough, and a password reset must not bypass the second factor.
+- `SelfHostedHardeningTest` — that the diagnostics actually notice a misconfiguration, rather than
+  merely existing.
+- The protocol package's own suite, which asserts byte-compatibility of the canonical signing string
+  against committed fixtures.
