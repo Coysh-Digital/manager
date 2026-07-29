@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Contracts\KeyService;
+use App\Models\Organisation;
+use App\Models\Site;
 use App\Support\CorrelationId;
 use App\Support\SelfHosted\DerivedKeyService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -44,5 +47,25 @@ class AppServiceProvider extends ServiceProvider
         if (str_starts_with((string) config('app.url'), 'https://')) {
             URL::forceScheme('https');
         }
+
+        // Counts for the sidebar. A composer rather than something threaded through every
+        // controller, and scoped to the partial so the queries only run when the sidebar renders.
+        View::composer('layouts.partials.sidebar', function ($view): void {
+            if (! app()->bound(Organisation::class)) {
+                return;
+            }
+
+            $organisation = app(Organisation::class);
+
+            $sites = Site::query()
+                ->where('organisation_id', $organisation->id)
+                ->active();
+
+            $view->with([
+                'siteCount' => $view->getData()['siteCount'] ?? $sites->clone()->count(),
+                'updateCount' => $sites->clone()->sum('available_updates'),
+                'securityUpdates' => $sites->clone()->where('has_security_release', true)->exists(),
+            ]);
+        });
     }
 }

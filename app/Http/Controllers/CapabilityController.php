@@ -19,9 +19,9 @@ use Illuminate\Http\Request;
 /**
  * What Manager is permitted to do on a site, and the record of how it got that way.
  *
- * Phase 1 offers revocation but not granting. Only `inventory:read` exists, it is granted at
- * pairing, and re-granting it from the interface would imply the rest of the capability set is
- * available when it is not. Granting arrives with the capabilities that need it.
+ * Only read-only capabilities can be granted here. Anything that modifies a site, or reads its
+ * content, needs its own confirmation flow — `backups:create` reads the full database including user
+ * records, and a toggle alongside the read switches would understate that considerably.
  */
 final class CapabilityController
 {
@@ -48,7 +48,8 @@ final class CapabilityController
                 'grant' => $grants->get($capability),
                 'granted' => $grants->get($capability)?->isGranted() ?? false,
                 'readOnly' => Protocol::isReadOnlyCapability($capability),
-                'implemented' => in_array($capability, CapabilityService::pairingDefaults(), true),
+                'implemented' => in_array($capability, CapabilityService::grantableFromInterface(), true),
+                'grantable' => in_array($capability, CapabilityService::grantableFromInterface(), true),
             ]),
 
             'history' => CapabilityEvent::query()
@@ -84,6 +85,33 @@ final class CapabilityController
         );
 
         return back()->with('status', "Revoked {$validated['capability']}. The site can no longer perform it.");
+    }
+
+    /**
+     * Grant a capability.
+     *
+     * Behind a recent-authentication check, and restricted to read-only capabilities. The route
+     * validates against the grantable list rather than the full registry, so a crafted request
+     * cannot reach a capability that has no confirmation flow yet.
+     */
+    public function grant(Request $request, Site $site): RedirectResponse
+    {
+        $this->authoriseSite($site);
+        $this->authoriseAdministrator();
+
+        $validated = $request->validate([
+            'capability' => ['required', 'string', 'in:'.implode(',', CapabilityService::grantableFromInterface())],
+            'reason' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $this->capabilities->grant(
+            site: $site,
+            capability: $validated['capability'],
+            actor: $request->user(),
+            reason: $validated['reason'] ?? null,
+        );
+
+        return back()->with('status', "Granted {$validated['capability']}.");
     }
 
     /**

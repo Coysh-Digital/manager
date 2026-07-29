@@ -31,6 +31,26 @@
             @endisset
         </a>
 
+        <a href="{{ route('updates.index') }}"
+           @class([
+               'flex items-center justify-between rounded-md px-2.5 py-[7px] text-[13.5px] font-medium no-underline',
+               'bg-pale text-primary' => request()->routeIs('updates.*'),
+               'text-text-2 hover:bg-row-hover hover:text-text' => ! request()->routeIs('updates.*'),
+           ])>
+            <span>Updates</span>
+            @isset($updateCount)
+                @if ($updateCount > 0)
+                    {{-- A security release anywhere in the fleet gets the amber treatment, because it
+                         is the one number on this screen that should interrupt somebody. --}}
+                    <span @class([
+                        'font-mono text-[11px]',
+                        'rounded px-1.5 py-px border border-amber-line bg-amber-bg text-amber' => $securityUpdates ?? false,
+                        'text-text-3' => ! ($securityUpdates ?? false),
+                    ])>{{ $updateCount }}</span>
+                @endif
+            @endisset
+        </a>
+
         <div class="px-2.5 pb-2 pt-[18px] font-mono text-[10px] uppercase tracking-[0.08em] text-text-3">Access</div>
 
         <a href="{{ route('activity.index') }}"

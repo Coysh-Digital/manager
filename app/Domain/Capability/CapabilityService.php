@@ -47,6 +47,26 @@ final class CapabilityService
     }
 
     /**
+     * Capabilities an administrator may grant from the interface.
+     *
+     * Read-only, every one. Anything that modifies a site, or reads its content, is absent
+     * deliberately: `backups:create` reads the full database including user records, so it needs a
+     * separate confirmation flow that Phase 3 introduces alongside the backup pipeline itself.
+     *
+     * A capability appearing here also has to be *implemented* — offering a switch for something the
+     * connector cannot do would be a lie told by an interface.
+     *
+     * @return list<string>
+     */
+    public static function grantableFromInterface(): array
+    {
+        return [
+            'inventory:read',
+            'updates:read',
+        ];
+    }
+
+    /**
      * Grant the default read-only set to a freshly paired site.
      *
      * @return list<string>
@@ -83,6 +103,14 @@ final class CapabilityService
     public function grant(Site $site, string $capability, User $actor, ?string $reason = null): void
     {
         $this->assertKnown($capability);
+
+        // Belt and braces over the route's own validation. Nothing that modifies a site can be
+        // granted through this path, however it is called.
+        if (! Protocol::isReadOnlyCapability($capability)) {
+            throw new UnknownCapabilityException(
+                "'{$capability}' modifies the site and cannot be granted here. It needs its own confirmation flow."
+            );
+        }
 
         $this->apply($site, $capability, CapabilityGrant::STATE_GRANTED, $actor, null, $reason);
     }

@@ -12,6 +12,7 @@ use App\Http\Controllers\CapabilityController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\SetupController;
 use App\Http\Controllers\SiteController;
+use App\Http\Controllers\UpdateController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -61,6 +62,8 @@ Route::middleware(['auth', 'organisation'])->group(function (): void {
     Route::get('sites/{site}', [SiteController::class, 'show'])->name('sites.show');
     Route::get('sites/{site}/capabilities', [CapabilityController::class, 'show'])->name('sites.capabilities');
 
+    Route::get('updates', [UpdateController::class, 'index'])->name('updates.index');
+
     Route::get('activity', [ActivityController::class, 'index'])->name('activity.index');
 
     Route::get('account', [AccountController::class, 'show'])->name('account.show');
@@ -78,6 +81,8 @@ Route::middleware(['auth', 'organisation'])->group(function (): void {
      | session left open on an unlocked machine must not be enough.
      */
     Route::middleware('password.confirm')->group(function (): void {
+        Route::post('sites/{site}/capabilities/grant', [CapabilityController::class, 'grant'])
+            ->name('sites.capabilities.grant');
         Route::post('sites/{site}/capabilities/revoke', [CapabilityController::class, 'revoke'])
             ->name('sites.capabilities.revoke');
         Route::post('sites/{site}/connector/confirm', [CapabilityController::class, 'confirmConnector'])
@@ -85,6 +90,10 @@ Route::middleware(['auth', 'organisation'])->group(function (): void {
         Route::post('sites/{site}/connector/revoke', [CapabilityController::class, 'revokeConnector'])
             ->name('sites.connector.revoke');
         Route::delete('sites/{site}', [SiteController::class, 'destroy'])->name('sites.destroy');
+
+        // Enqueues a job rather than reaching into the site: the platform cannot contact a
+        // connector, so this waits for the site to come and ask.
+        Route::post('updates/{site}/refresh', [UpdateController::class, 'refresh'])->name('updates.refresh');
 
         Route::post('account/two-factor/start', [AccountController::class, 'startTotp'])->name('account.totp.start');
         Route::post('account/two-factor/confirm', [AccountController::class, 'confirmTotp'])->name('account.totp.confirm');

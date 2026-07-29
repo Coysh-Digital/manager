@@ -19,9 +19,9 @@ ordinary test output.
 | 5 | Connections initiated outbound by the connector | As above |
 | 6 | Monitoring access read-only by default | `PairingTest`, `NoRemoteExecutionTest` |
 | 7 | Backup access requires explicit permission | **Phase 3.** `DataMinimisationTest` covers the half that exists: `backups:create` is never granted at pairing |
-| 8 | No arbitrary PHP, shell, console or SQL execution | `NoRemoteExecutionTest`, plus `bin/verify-invariants.php` in the connector repository |
-| 9 | Remote jobs use a fixed allowlist of versioned types | **Phase 2.** `NoRemoteExecutionTest` asserts no execution surface exists yet, which is the useful test while none does |
-| 10 | Every remote job authenticated, authorised, validated, audited | **Phase 2.** As above |
+| 8 | No arbitrary PHP, shell, console or SQL execution | `NoRemoteExecutionTest`, `RemoteJobRegistryTest`, plus `bin/verify-invariants.php` in the connector repository |
+| 9 | Remote jobs use a fixed allowlist of versioned types | `RemoteJobRegistryTest` |
+| 10 | Every remote job authenticated, authorised, validated, audited | `RemoteJobRegistryTest` |
 | 11 | A compromised site cannot expose another site's credentials | `TenantIsolationTest` |
 | 12 | A compromised organisation cannot expose another | `TenantIsolationTest`, `PairingTest` |
 | 13 | Secrets never in logs, exceptions, analytics or exports | `AuditLogIntegrityTest`, `AccountSecurityTest`, `DataMinimisationTest` |
@@ -33,9 +33,15 @@ ordinary test output.
 
 ## What is deliberately not covered yet
 
-Invariants 7, 9, 10 and 17 depend on features that do not exist in Phase 1. Writing tests that
-appear to cover them would be worse than the gap: a green suite that proves nothing is how a
-regression gets through.
+Invariants 7 and 17 depend on features that do not exist yet — the backup pipeline and signed release
+artifacts. Writing tests that appear to cover them would be worse than the gap: a green suite that
+proves nothing is how a regression gets through.
+
+Invariants 9 and 10 were in this list until the job registry landed. They are now covered by
+`RemoteJobRegistryTest`, which is worth reading for how the four words in invariant 10 —
+authenticated, authorised, validated, audited — are tested separately. A job that were authenticated
+and audited but not re-authorised at claim time would satisfy a careless reading and still let a
+revoked capability run work.
 
 Where the absence of a feature is itself testable, it is tested — `NoRemoteExecutionTest` fails the
 moment somebody adds a route that could run something on a managed site without going through a job
@@ -47,5 +53,7 @@ registry.
   enough, and a password reset must not bypass the second factor.
 - `SelfHostedHardeningTest` — that the diagnostics actually notice a misconfiguration, rather than
   merely existing.
+- `RemoteJobRegistryTest` — the job registry, including that no job type or parameter name can name a
+  command, a path, a query or a URL.
 - The protocol package's own suite, which asserts byte-compatibility of the canonical signing string
   against committed fixtures.

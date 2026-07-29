@@ -71,8 +71,14 @@
                                     <span class="rounded-[5px] border border-danger-line bg-danger-bg px-1.5 py-0.5 font-mono text-[11px] text-danger">Modifies the site</span>
                                 @endif
 
-                                @unless ($capability['implemented'])
-                                    <span class="rounded-[5px] border border-info-line bg-info-bg px-1.5 py-0.5 font-mono text-[11px] text-info">Not yet available</span>
+                                @unless ($capability['grantable'])
+                                    {{-- Not offered as a switch. Either the connector cannot do it
+                                         yet, or it modifies the site and needs its own confirmation
+                                         flow — a toggle beside the read switches would understate
+                                         what granting it means. --}}
+                                    <span class="rounded-[5px] border border-info-line bg-info-bg px-1.5 py-0.5 font-mono text-[11px] text-info">
+                                        {{ $capability['readOnly'] ? 'Not yet available' : 'Needs separate confirmation' }}
+                                    </span>
                                 @endunless
                             </div>
 
@@ -87,6 +93,15 @@
                                 <button type="submit"
                                         class="h-8 whitespace-nowrap rounded-[7px] border border-border-2 bg-surface px-3 text-[12.5px] text-text hover:bg-row-hover">
                                     Revoke
+                                </button>
+                            </form>
+                        @elseif ($capability['grantable'] && $connector)
+                            <form method="POST" action="{{ route('sites.capabilities.grant', $site) }}">
+                                @csrf
+                                <input type="hidden" name="capability" value="{{ $capability['name'] }}">
+                                <button type="submit"
+                                        class="h-8 whitespace-nowrap rounded-[7px] border border-primary bg-primary px-3 text-[12.5px] font-medium text-primary-fg hover:bg-primary-hover">
+                                    Grant
                                 </button>
                             </form>
                         @endif
