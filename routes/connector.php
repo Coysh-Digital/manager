@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Connector\HeartbeatController;
+use App\Http\Controllers\Connector\PairController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -23,6 +24,13 @@ use Illuminate\Support\Facades\Route;
 | separately.
 |
 */
+
+// Rate limited hard, and by source network only: there is no site identity to key on until
+// pairing succeeds. Enrolment codes carry 256 bits of entropy, so this is defence in depth rather
+// than the primary protection against guessing.
+Route::post('pair', PairController::class)
+    ->middleware('throttle:10,15')
+    ->name('pair');
 
 Route::middleware('connector.signed')->group(function (): void {
     Route::post('heartbeat', HeartbeatController::class)->name('heartbeat');
