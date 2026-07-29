@@ -113,6 +113,22 @@ return [
 
     /*
     |---------------------------------------------------------------------------------------------
+    | Trusted proxies
+    |---------------------------------------------------------------------------------------------
+    |
+    | Mirrored here as well as being read in bootstrap/app.php so that `manager:doctor` can report
+    | on it. Reading env() from application code would return null once the config is cached, and a
+    | check that silently passes on a production install is worse than no check.
+    |
+    | Never "*": trusting every proxy lets any caller set X-Forwarded-For, which defeats the
+    | per-network rate limits and the source addresses recorded in the audit log.
+    |
+    */
+
+    'trusted_proxies' => env('MANAGER_TRUSTED_PROXIES', ''),
+
+    /*
+    |---------------------------------------------------------------------------------------------
     | Diagnostics
     |---------------------------------------------------------------------------------------------
     |

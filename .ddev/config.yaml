@@ -42,7 +42,7 @@ hooks:
         setenv DB_USERNAME db
         setenv DB_PASSWORD db
         setenv REDIS_CLIENT predis
-        setenv REDIS_HOST redis
+        setenv REDIS_HOST manager-redis
         setenv REDIS_PORT 6379
         setenv CACHE_STORE redis
         setenv QUEUE_CONNECTION redis

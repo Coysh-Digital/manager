@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Http\Middleware;
 
 use App\Domain\Connector\NonceStore;
-use App\Domain\Connector\NonceStoreUnavailableException;
 use App\Models\Connector;
 use App\Models\Site;
 use App\Support\CorrelationId;
@@ -18,6 +17,7 @@ use Illuminate\Cache\RateLimiter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 /**
  * Authenticates a connector by Ed25519 signature.
@@ -60,8 +60,16 @@ final class VerifyConnectorSignature
 
     public function handle(Request $request, Closure $next): Response
     {
-        if ($this->tooManyFrom($request->ip())) {
-            return $this->throttled();
+        // The rate limiter is backed by the same shared store as replay protection, so it fails at
+        // the same time. Treated as unavailable rather than allowed to throw: the decision is
+        // identical either way, but this returns a correlation identifier and a status a connector
+        // can act on, instead of a 500 that tells it nothing.
+        try {
+            if ($this->tooManyFrom($request->ip())) {
+                return $this->throttled();
+            }
+        } catch (Throwable $e) {
+            return $this->storeUnavailable($e, 'rate limiter unavailable');
         }
 
         $body = $request->getContent();
@@ -106,21 +114,16 @@ final class VerifyConnectorSignature
             return $this->reject('signature verification failed');
         }
 
-        if ($this->tooManyFromSite($siteId)) {
-            return $this->throttled();
-        }
-
         try {
-            $fresh = $this->nonceStore->claim($siteId, $nonce);
-        } catch (NonceStoreUnavailableException $e) {
-            Log::critical('Connector request rejected: replay protection unavailable.', [
-                'correlation_id' => $this->correlationId->get(),
-                'exception' => $e->getMessage(),
-            ]);
+            if ($this->tooManyFromSite($siteId)) {
+                return $this->throttled();
+            }
 
+            $fresh = $this->nonceStore->claim($siteId, $nonce);
+        } catch (Throwable $e) {
             // Fails closed. Without a working replay check, accepting this request would mean
             // accepting replays of it.
-            return $this->reject('replay protection unavailable', 503);
+            return $this->storeUnavailable($e, 'replay protection unavailable');
         }
 
         if (! $fresh) {
@@ -196,6 +199,23 @@ final class VerifyConnectorSignature
     private function throttled(): Response
     {
         return $this->reject('too many requests', 429);
+    }
+
+    /**
+     * The shared store backing rate limiting and replay protection is unreachable.
+     *
+     * A 503 rather than a 401: this is the platform's problem, not the connector's, and the
+     * distinction tells a connector to retry later instead of alerting somebody about credentials
+     * that are in fact fine.
+     */
+    private function storeUnavailable(Throwable $e, string $reason): Response
+    {
+        Log::critical('Connector request rejected: '.$reason.'.', [
+            'correlation_id' => $this->correlationId->get(),
+            'exception' => $e->getMessage(),
+        ]);
+
+        return $this->reject($reason, 503);
     }
 
     /**

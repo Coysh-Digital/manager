@@ -171,7 +171,12 @@ return [
     |
     */
 
-    'secure' => env('SESSION_SECURE_COOKIE'),
+    /*
+     | Secure by default whenever the canonical URL is HTTPS, rather than defaulting to false and
+     | relying on somebody remembering the variable. A session cookie for a control plane must
+     | never cross the network in the clear; `manager:doctor` confirms the outcome either way.
+     */
+    'secure' => env('SESSION_SECURE_COOKIE', str_starts_with((string) env('APP_URL', ''), 'https://')),
 
     /*
     |--------------------------------------------------------------------------

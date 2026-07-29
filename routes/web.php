@@ -9,6 +9,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\TwoFactorChallengeController;
 use App\Http\Controllers\CapabilityController;
+use App\Http\Controllers\HealthController;
 use App\Http\Controllers\SetupController;
 use App\Http\Controllers\SiteController;
 use Illuminate\Support\Facades\Route;
@@ -22,6 +23,13 @@ use Illuminate\Support\Facades\Route;
 | flow, which disables itself permanently once an owner exists.
 |
 */
+
+/*
+ | Readiness, for orchestrators. Liveness is Laravel's own /up, which answers "is PHP running";
+ | this answers "can this instance serve a request". Unauthenticated by necessity — a load balancer
+ | has no credentials — so it names which check failed and nothing else.
+ */
+Route::get('ready', [HealthController::class, 'ready'])->name('health.ready');
 
 // First run only. The middleware makes the route stop resolving once an owner account exists, so
 // it is closed rather than merely hidden.
