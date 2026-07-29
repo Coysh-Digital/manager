@@ -1,0 +1,50 @@
+name: manager
+type: laravel
+docroot: public
+php_version: "8.4"
+webserver_type: nginx-fpm
+xdebug_enabled: false
+nodejs_version: "22"
+corepack_enable: false
+composer_version: "2"
+
+# Postgres and Redis here mirror what the shipped Docker Compose deployment runs, so local
+# behaviour matches what a self-hosted customer gets.
+database:
+  type: postgres
+  version: "17"
+
+# Mutagen stays on here. It is deliberately off in the Craft testbed, where the connector is
+# symlinked in from outside the project root.
+mutagen_enabled: true
+
+use_dns_when_possible: true
+router_http_port: "80"
+router_https_port: "443"
+
+hooks:
+  post-start:
+    - exec: |
+        cd /var/www/html
+        [ -f .env ] || cp .env.example .env
+        setenv() {
+          if grep -qE "^#?[[:space:]]*$1=" .env; then
+            sed -i -E "s|^#?[[:space:]]*$1=.*|$1=$2|" .env
+          else
+            printf '%s=%s\n' "$1" "$2" >> .env
+          fi
+        }
+        setenv APP_URL https://manager.ddev.site
+        setenv DB_CONNECTION pgsql
+        setenv DB_HOST db
+        setenv DB_PORT 5432
+        setenv DB_DATABASE db
+        setenv DB_USERNAME db
+        setenv DB_PASSWORD db
+        setenv REDIS_CLIENT predis
+        setenv REDIS_HOST redis
+        setenv REDIS_PORT 6379
+        setenv CACHE_STORE redis
+        setenv QUEUE_CONNECTION redis
+        setenv SESSION_DRIVER database
+        grep -q "^APP_KEY=base64:" .env || php artisan key:generate --ansi

@@ -1,0 +1,20 @@
+# Redis for cache, queues and the connector replay-nonce store.
+#
+# Written by hand rather than pulled in as a ddev add-on: the official add-on requires a newer ddev
+# than this machine runs, and a dozen lines of compose has no version constraint to trip over.
+#
+# Persistence is deliberately off. Locally this holds nonces and cache entries, both of which are
+# meant to be ephemeral, and it makes the fail-closed test easy to run:
+#
+#   ddev exec -s redis redis-cli shutdown nosave   # signature verification must now reject
+services:
+  redis:
+    container_name: ddev-${DDEV_SITENAME}-redis
+    image: redis:8-alpine
+    restart: "no"
+    command: ["redis-server", "--appendonly", "no", "--save", ""]
+    expose:
+      - "6379"
+    labels:
+      com.ddev.site-name: ${DDEV_SITENAME}
+      com.ddev.approot: $DDEV_APPROOT
