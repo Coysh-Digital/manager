@@ -60,11 +60,23 @@ it('exposes only reporting endpoints to connectors', function (): void {
     sort($connectorRoutes);
 
     // The entire surface a connector can reach. Adding to this list is a deliberate act, and this
-    // test is where it has to be justified.
+    // test is where it has to be justified:
+    //
+    //   pair            the one unsigned route, authenticated by a single-use enrolment code
+    //   heartbeat       liveness, no capability, no data
+    //   inventory       operational metadata, requires inventory:read
+    //   updates         update availability, requires updates:read
+    //   jobs/claim      asks what to do; the response is signed because it carries instructions
+    //   jobs/*/result   reports how a job went; validated against the job's result schema
+    //
+    // Note what is not here: nothing the platform can push, and nothing that takes a command.
     expect($connectorRoutes)->toBe([
         'api/connector/v1/heartbeat',
         'api/connector/v1/inventory',
+        'api/connector/v1/jobs/claim',
+        'api/connector/v1/jobs/{job}/result',
         'api/connector/v1/pair',
+        'api/connector/v1/updates',
     ]);
 });
 

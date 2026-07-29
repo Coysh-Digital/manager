@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Connector\HeartbeatController;
 use App\Http\Controllers\Connector\InventoryController;
+use App\Http\Controllers\Connector\JobClaimController;
+use App\Http\Controllers\Connector\JobResultController;
 use App\Http\Controllers\Connector\PairController;
+use App\Http\Controllers\Connector\UpdatesController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -41,4 +44,21 @@ Route::middleware('connector.signed')->group(function (): void {
     Route::post('inventory', InventoryController::class)
         ->middleware('capability:inventory:read')
         ->name('inventory');
+
+    Route::post('updates', UpdatesController::class)
+        ->middleware('capability:updates:read')
+        ->name('updates');
+
+    /*
+     | Jobs.
+     |
+     | Claiming needs no capability of its own: every job names the capability it requires, and that
+     | is checked when the job is queued and again when it is claimed. A capability gate here would
+     | be a third, weaker check in front of two precise ones.
+     |
+     | The claim response is signed, because it carries instructions. The result response is not,
+     | because it carries only an acknowledgement.
+     */
+    Route::post('jobs/claim', JobClaimController::class)->name('jobs.claim');
+    Route::post('jobs/{job}/result', JobResultController::class)->name('jobs.result');
 });
