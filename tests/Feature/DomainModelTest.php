@@ -8,6 +8,7 @@ use App\Models\Membership;
 use App\Models\Organisation;
 use App\Models\Site;
 use App\Models\User;
+use Illuminate\Database\Eloquent\MassAssignmentException;
 use Illuminate\Database\QueryException;
 
 it('gives every externally visible model an unguessable identifier', function (string $class): void {
@@ -92,7 +93,11 @@ it('refuses to mass-assign security attributes', function (string $attribute, mi
 
     // Request input must never be able to confirm a second factor, rewrite an account's public
     // identifier, or backdate the recent-authentication check that gates sensitive actions.
-    $user->update([$attribute => $value]);
+    //
+    // It throws rather than quietly dropping the attribute: a security field that silently fails
+    // to save leaves an account looking protected when it is not, which is worse than an error.
+    expect(fn () => $user->update([$attribute => $value]))
+        ->toThrow(MassAssignmentException::class);
 
     expect($user->fresh()->getAttribute($attribute))->not->toEqual($value);
 })->with([

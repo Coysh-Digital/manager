@@ -38,12 +38,19 @@ return new class extends Migration
 
             // user | connector | system
             $table->string('actor_type')->default('user');
-            $table->foreignId('actor_id')->nullable()->constrained('users')->nullOnDelete();
 
-            // Labels are denormalised on purpose. An audit line must still read correctly once the
-            // user or site it refers to has been removed.
+            // Deliberately *not* foreign keys.
+            //
+            // A cascade or a null-on-delete would have to UPDATE this table when a user or site is
+            // removed, and the append-only trigger below rightly forbids that. Referential
+            // integrity is the wrong model for an immutable historical record anyway: these
+            // columns say who acted and on what at the time, not who exists now.
+            //
+            // The labels beside them are what keep a line legible once the row it referred to is
+            // gone.
+            $table->unsignedBigInteger('actor_id')->nullable();
             $table->string('actor_label')->nullable();
-            $table->foreignId('site_id')->nullable()->constrained()->nullOnDelete();
+            $table->unsignedBigInteger('site_id')->nullable();
             $table->string('site_label')->nullable();
 
             // Dotted and stable, e.g. "site.paired", "capability.revoked", "backup.downloaded".
