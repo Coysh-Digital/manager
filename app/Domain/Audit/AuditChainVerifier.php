@@ -45,11 +45,15 @@ final class AuditChainVerifier
                         $problems[] = "Event #{$event->id} does not follow its predecessor.";
                     }
 
-                    $recomputed = AuditRecorder::hashFor($event->getAttributes() + [
+                    // array_merge, not "+". The union operator keeps the left-hand value for any
+                    // duplicate key, which would leave before/after as the raw JSON strings from
+                    // the database rather than the decoded arrays that were hashed on the way in —
+                    // and every event carrying a payload would be reported as altered.
+                    $recomputed = AuditRecorder::hashFor(array_merge($event->getAttributes(), [
                         'before' => $event->before,
                         'after' => $event->after,
                         'created_at' => $event->created_at,
-                    ]);
+                    ]));
 
                     if (! hash_equals($event->hash, $recomputed)) {
                         $problems[] = "Event #{$event->id} has been altered since it was written.";

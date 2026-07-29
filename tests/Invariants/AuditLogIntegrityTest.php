@@ -58,8 +58,20 @@ it('gives platform-level events a chain of their own', function (): void {
 });
 
 it('verifies an untouched chain', function (): void {
+    $site = Site::factory()->for($this->organisation)->create();
+
     foreach (range(1, 5) as $i) {
-        $this->recorder->record(action: "event.{$i}", organisation: $this->organisation);
+        // Deliberately varied: events with payloads, events with a site and actor, and events
+        // with neither. An earlier version of the verifier passed this test only because every
+        // event had null payloads, and hashed the raw JSON string for any event that did not —
+        // so a chain of real events reported itself as tampered with.
+        $this->recorder->record(
+            action: "event.{$i}",
+            organisation: $this->organisation,
+            site: $i % 2 === 0 ? $site : null,
+            before: $i % 2 === 0 ? ['state' => 'granted', 'nested' => ['a' => 1]] : null,
+            after: $i % 2 === 0 ? ['state' => 'revoked', 'list' => [1, 2, 3]] : null,
+        );
     }
 
     $result = app(AuditChainVerifier::class)->verify($this->organisation->id);
@@ -68,6 +80,19 @@ it('verifies an untouched chain', function (): void {
         ->and($result->eventsChecked)->toBe(5)
         ->and($result->problems)->toBe([]);
 });
+
+it('verifies a chain built from mixed payload shapes', function (array $before, array $after): void {
+    $this->recorder->record(action: 'shape', organisation: $this->organisation, before: $before, after: $after);
+
+    expect(app(AuditChainVerifier::class)->verify($this->organisation->id)->problems)->toBe([]);
+})->with([
+    'nested maps' => [['a' => ['b' => ['c' => 1]]], ['a' => ['b' => ['c' => 2]]]],
+    'lists' => [['items' => [1, 2, 3]], ['items' => [3, 2, 1]]],
+    'mixed types' => [['n' => 1, 's' => 'x', 'b' => true], ['n' => 2, 's' => 'y', 'b' => false]],
+    'empty' => [[], []],
+    'unicode' => [['name' => 'Coysh Digitál'], ['name' => 'Coysh Digital']],
+    'slashes' => [['url' => 'https://example.org/a/b'], ['url' => 'https://example.org/c']],
+]);
 
 it('refuses to update or delete through the model', function (): void {
     $event = $this->recorder->record(action: 'test.event', organisation: $this->organisation);

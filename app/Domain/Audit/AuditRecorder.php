@@ -120,11 +120,16 @@ final class AuditRecorder
      */
     public static function hashFor(array $attributes): string
     {
+        // Integer columns are normalised explicitly. A database driver that hands back "1" where it
+        // once gave 1 would otherwise change the hash of untouched history, and a verifier that
+        // cries tampering after a driver upgrade is worse than no verifier at all.
+        $asInt = static fn (mixed $value): ?int => $value === null ? null : (int) $value;
+
         $material = [
-            'organisation_id' => $attributes['organisation_id'] ?? null,
-            'seq' => $attributes['seq'],
+            'organisation_id' => $asInt($attributes['organisation_id'] ?? null),
+            'seq' => $asInt($attributes['seq']),
             'actor_type' => $attributes['actor_type'] ?? null,
-            'actor_id' => $attributes['actor_id'] ?? null,
+            'actor_id' => $asInt($attributes['actor_id'] ?? null),
             'actor_label' => $attributes['actor_label'] ?? null,
             'site_id' => $attributes['site_id'] ?? null,
             'site_label' => $attributes['site_label'] ?? null,
