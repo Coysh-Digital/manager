@@ -1,9 +1,192 @@
 @import 'tailwindcss';
 
+/*
+ * Fonts are self-hosted rather than pulled from a CDN. A control plane's content security policy
+ * forbids third-party origins, and a font request is still a request that leaks who is looking at
+ * what, and when.
+ */
+@import '@fontsource/ibm-plex-sans/400.css';
+@import '@fontsource/ibm-plex-sans/500.css';
+@import '@fontsource/ibm-plex-sans/600.css';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/500.css';
+
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 
-@theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+/*
+ * ==================================================================================================
+ * Theme tokens
+ * ==================================================================================================
+ *
+ * Every colour in the interface resolves through one of these. Nothing in a Blade template names a
+ * literal colour, which is what makes light and dark one switch rather than a parallel set of
+ * templates to keep in step.
+ *
+ * The accent is a red in the Craft CMS brand family. Craft's own is #E5422B; the light value here
+ * is a shade deeper so body-size text clears AA on white. Red rather than green is also the safer
+ * choice for this particular interface: on a dashboard whose whole job is signalling health, a
+ * green accent competes with the green "healthy" status. With red as the accent, green means one
+ * thing only.
+ *
+ * Status colours never carry meaning on hue alone — every badge keeps its glyph.
+ */
+
+:root,
+:root[data-theme='light'] {
+    --bg: #f7f5f2;
+    --surface: #ffffff;
+    --surface-2: #fbf9f7;
+    --nav: #fcfaf8;
+    --border: #e5e1db;
+    --border-2: #d2cdc6;
+    --text: #1c1917;
+    --text-2: #5d5854;
+    --text-3: #8a847f;
+
+    --primary: #c9331c;
+    --primary-hover: #a82814;
+    --primary-fg: #ffffff;
+    --pale: #fcebe6;
+    --pale-line: #f0c9bf;
+
+    --ok: #15734f;
+    --ok-bg: #e7f3ee;
+    --ok-line: #c5e0d5;
+    --red: #9e1733;
+    --red-bg: #fae9ec;
+    --red-line: #e9c7d0;
+    --amber: #8a5a00;
+    --amber-bg: #fbf1df;
+    --amber-line: #ebd8ae;
+    --info: #1b5a9e;
+    --info-bg: #eaf1fa;
+    --info-line: #cbdcf0;
+    --grey: #6e6863;
+    --grey-bg: #efece7;
+
+    --row-hover: #fbf9f7;
+    --shadow: 0 1px 2px rgba(28, 25, 23, 0.05), 0 1px 1px rgba(28, 25, 23, 0.03);
+    --overlay: rgba(28, 25, 23, 0.45);
+}
+
+:root[data-theme='dark'] {
+    --bg: #12100f;
+    --surface: #1a1716;
+    --surface-2: #201c1b;
+    --nav: #151211;
+    --border: #2c2725;
+    --border-2: #3b3431;
+    --text: #efebe8;
+    --text-2: #a79f9b;
+    --text-3: #857d79;
+
+    --primary: #ee5836;
+    --primary-hover: #f57154;
+    --primary-fg: #1a0b07;
+    --pale: #2c1711;
+    --pale-line: #4c2a20;
+
+    --ok: #4fc894;
+    --ok-bg: #12291f;
+    --ok-line: #1e4535;
+    --red: #f5849c;
+    --red-bg: #2c161b;
+    --red-line: #4a2530;
+    --amber: #e0a64c;
+    --amber-bg: #2a2116;
+    --amber-line: #453421;
+    --info: #7fb2e8;
+    --info-bg: #14232f;
+    --info-line: #23384a;
+    --grey: #8f8884;
+    --grey-bg: #221e1d;
+
+    --row-hover: #201c1b;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+    --overlay: rgba(0, 0, 0, 0.6);
+}
+
+/* Surface the tokens to Tailwind so utilities such as bg-surface and text-text-2 resolve. */
+@theme inline {
+    --font-sans: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+    --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+    --color-bg: var(--bg);
+    --color-surface: var(--surface);
+    --color-surface-2: var(--surface-2);
+    --color-nav: var(--nav);
+    --color-border: var(--border);
+    --color-border-2: var(--border-2);
+    --color-text: var(--text);
+    --color-text-2: var(--text-2);
+    --color-text-3: var(--text-3);
+
+    --color-primary: var(--primary);
+    --color-primary-hover: var(--primary-hover);
+    --color-primary-fg: var(--primary-fg);
+    --color-pale: var(--pale);
+    --color-pale-line: var(--pale-line);
+
+    --color-ok: var(--ok);
+    --color-ok-bg: var(--ok-bg);
+    --color-ok-line: var(--ok-line);
+    --color-danger: var(--red);
+    --color-danger-bg: var(--red-bg);
+    --color-danger-line: var(--red-line);
+    --color-amber: var(--amber);
+    --color-amber-bg: var(--amber-bg);
+    --color-amber-line: var(--amber-line);
+    --color-info: var(--info);
+    --color-info-bg: var(--info-bg);
+    --color-info-line: var(--info-line);
+    --color-grey: var(--grey);
+    --color-grey-bg: var(--grey-bg);
+
+    --color-row-hover: var(--row-hover);
+}
+
+@layer base {
+    html {
+        color-scheme: light;
+    }
+
+    html[data-theme='dark'] {
+        color-scheme: dark;
+    }
+
+    body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--font-sans);
+        font-size: 14px;
+        -webkit-font-smoothing: antialiased;
+    }
+
+    /* Keyboard focus stays visible everywhere. A control plane gets operated under pressure. */
+    :focus-visible {
+        outline: 2px solid var(--primary);
+        outline-offset: 2px;
+    }
+
+    ::selection {
+        background: var(--pale);
+        color: var(--text);
+    }
+}
+
+@layer components {
+    /*
+     * The fleet table is the screen people leave open, so its heading has to survive scrolling.
+     */
+    .table-sticky thead th {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: var(--surface-2);
+    }
+
+    .tabular {
+        font-variant-numeric: tabular-nums;
+    }
 }

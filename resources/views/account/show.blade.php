@@ -1,0 +1,145 @@
+@extends('layouts.app')
+
+@section('title', 'Account and security · Manager')
+@section('crumb', 'Account and security')
+
+@section('content')
+    <div class="mx-auto max-w-[820px]">
+        <div class="mb-5 flex flex-col gap-1.5">
+            <h1 class="text-[22px] font-semibold tracking-[-0.015em]">Account and security</h1>
+            <p class="text-[13px] text-text-2">{{ $user->name }} · {{ $user->email }} · {{ $organisation->name }}</p>
+        </div>
+
+        @if ($errors->any())
+            <div class="mb-4 rounded-lg border border-danger-line bg-danger-bg px-3.5 py-2.5 text-[12.5px] text-danger">
+                {{ $errors->first() }}
+            </div>
+        @endif
+
+        {{-- Shown once, on the way past. There is no way to retrieve them again by design. --}}
+        @if ($freshRecoveryCodes)
+            <div class="mb-4 rounded-[10px] border border-amber-line bg-amber-bg p-4">
+                <p class="mb-2 text-[13.5px] font-medium text-text">Save these recovery codes now</p>
+                <p class="mb-3 text-[13px] text-text-2">
+                    Each works once, and they are the only way back in if you lose your authenticator.
+                    They will not be shown again — generating a new set replaces them.
+                </p>
+                <div class="grid grid-cols-2 gap-1.5 rounded-lg border border-amber-line bg-surface p-3 font-mono text-[13px] tracking-[0.05em] sm:grid-cols-3">
+                    @foreach ($freshRecoveryCodes as $code)
+                        <span>{{ $code }}</span>
+                    @endforeach
+                </div>
+            </div>
+        @endif
+
+        <div class="mb-3.5 overflow-hidden rounded-[10px] border border-border bg-surface shadow-[var(--shadow)]">
+            <div class="flex items-center justify-between border-b border-border px-4 py-3">
+                <span class="text-[13.5px] font-medium">Two-factor authentication</span>
+                @if ($user->hasConfirmedTotp())
+                    <x-status-badge tone="ok" label="On" />
+                @else
+                    <x-status-badge tone="warn" label="Off" />
+                @endif
+            </div>
+
+            <div class="p-4">
+                @if ($user->hasConfirmedTotp())
+                    <p class="mb-3 text-[13px] text-text-2">
+                        Enabled {{ $user->totp_confirmed_at->diffForHumans() }}.
+                        You have <strong>{{ $recoveryCodesRemaining }}</strong>
+                        unused {{ Str::plural('recovery code', $recoveryCodesRemaining) }}.
+                    </p>
+
+                    <div class="flex flex-wrap gap-2">
+                        <form method="POST" action="{{ route('account.recovery-codes') }}">
+                            @csrf
+                            <button type="submit" class="h-8 rounded-[7px] border border-border-2 bg-surface px-3 text-[12.5px] text-text hover:bg-row-hover">
+                                Generate new recovery codes
+                            </button>
+                        </form>
+
+                        @unless ($organisation->mfa_required)
+                            <form method="POST" action="{{ route('account.totp.disable') }}"
+                                  onsubmit="return confirm('Turn off two-factor authentication? Your recovery codes will be deleted too.');">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="h-8 rounded-[7px] border border-danger-line bg-danger-bg px-3 text-[12.5px] font-medium text-danger hover:border-danger">
+                                    Turn off
+                                </button>
+                            </form>
+                        @endunless
+                    </div>
+
+                    @if ($organisation->mfa_required)
+                        <p class="mt-3 text-[12.5px] text-text-3">
+                            This organisation requires two-factor authentication, so it cannot be turned off.
+                        </p>
+                    @endif
+                @elseif ($pendingSecret)
+                    <p class="mb-3 text-[13px] text-text-2">
+                        Scan this with your authenticator app, then enter the six-digit code it shows.
+                        Nothing is saved until a valid code proves your device has the secret.
+                    </p>
+
+                    <div class="mb-4 flex flex-wrap items-start gap-5">
+                        <div class="rounded-lg border border-border bg-white p-2">{!! $pendingQrCode !!}</div>
+                        <div class="flex flex-col gap-1.5">
+                            <span class="font-mono text-[10px] uppercase tracking-[0.07em] text-text-3">Or enter by hand</span>
+                            <code class="font-mono text-[13px] tracking-[0.08em]">{{ $pendingManualEntry }}</code>
+                        </div>
+                    </div>
+
+                    <form method="POST" action="{{ route('account.totp.confirm') }}" class="flex items-end gap-2">
+                        @csrf
+                        <label class="flex flex-col gap-1.5">
+                            <span class="text-[12.5px] font-medium">Six-digit code</span>
+                            <input type="text" name="code" required autocomplete="one-time-code" inputmode="numeric"
+                                   class="h-[34px] w-[140px] rounded-[7px] border border-border-2 bg-surface-2 px-2.5 font-mono text-[13px] tracking-[0.15em]">
+                        </label>
+                        <button type="submit" class="h-[34px] rounded-[7px] border border-primary bg-primary px-3.5 text-[13px] font-medium text-primary-fg hover:bg-primary-hover">
+                            Confirm
+                        </button>
+                    </form>
+                @else
+                    <p class="mb-3 text-[13px] text-text-2">
+                        A password alone protects a control plane that can read every site you manage.
+                        Add an authenticator app.
+                    </p>
+                    <form method="POST" action="{{ route('account.totp.start') }}">
+                        @csrf
+                        <button type="submit" class="h-8 rounded-[7px] border border-primary bg-primary px-3 text-[12.5px] font-medium text-primary-fg hover:bg-primary-hover">
+                            Set up two-factor authentication
+                        </button>
+                    </form>
+                @endif
+            </div>
+        </div>
+
+        <div class="overflow-hidden rounded-[10px] border border-border bg-surface shadow-[var(--shadow)]">
+            <div class="border-b border-border px-4 py-3 text-[13.5px] font-medium">Where you are signed in</div>
+
+            @foreach ($sessions as $session)
+                <div class="flex items-center justify-between gap-4 border-b border-border px-4 py-3 text-[12.5px] last:border-b-0">
+                    <div class="flex min-w-0 flex-col gap-0.5">
+                        <span class="truncate">{{ $session->user_agent ?: 'Unknown device' }}</span>
+                        <span class="font-mono text-[11.5px] text-text-3">
+                            {{ $session->ip_address ?? 'unknown address' }} · active {{ $session->last_active->diffForHumans() }}
+                        </span>
+                    </div>
+
+                    @if ($session->is_current)
+                        <x-status-badge tone="info" label="This device" />
+                    @else
+                        <form method="POST" action="{{ route('account.sessions.revoke', $session->id) }}">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="h-8 whitespace-nowrap rounded-[7px] border border-border-2 bg-surface px-3 text-[12.5px] text-text hover:bg-row-hover">
+                                Sign out
+                            </button>
+                        </form>
+                    @endif
+                </div>
+            @endforeach
+        </div>
+    </div>
+@endsection

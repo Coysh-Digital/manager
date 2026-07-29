@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Http\Middleware\EnsureSetupIsAvailable;
 use App\Http\Middleware\RequiresCapability;
+use App\Http\Middleware\ResolveOrganisation;
 use App\Http\Middleware\VerifyConnectorSignature;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -28,7 +30,12 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'connector.signed' => VerifyConnectorSignature::class,
             'capability' => RequiresCapability::class,
+            'organisation' => ResolveOrganisation::class,
+            'setup.available' => EnsureSetupIsAvailable::class,
         ]);
+
+        // Sensitive actions require the password to have been proved recently.
+        $middleware->redirectGuestsTo(fn () => route('login'));
 
         // Trusted proxies are configured explicitly, never with a wildcard. Trusting every proxy
         // would let any caller set X-Forwarded-For and defeat the per-network rate limits along

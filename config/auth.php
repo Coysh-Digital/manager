@@ -114,6 +114,11 @@ return [
     |
     */
 
-    'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
+    /*
+     | Driven by the Manager setting rather than Laravel's three-hour default. Three hours is a
+     | reasonable window for a shopping site; for a control plane that can read every managed
+     | installation, fifteen minutes is closer to right.
+     */
+    'password_timeout' => (int) env('MANAGER_RECENT_AUTH_MINUTES', 15) * 60,
 
 ];
