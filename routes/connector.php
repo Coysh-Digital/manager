@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Connector\HeartbeatController;
+use App\Http\Controllers\Connector\InventoryController;
 use App\Http\Controllers\Connector\PairController;
 use Illuminate\Support\Facades\Route;
 
@@ -33,5 +34,11 @@ Route::post('pair', PairController::class)
     ->name('pair');
 
 Route::middleware('connector.signed')->group(function (): void {
+    // Liveness only. Needs no capability: it carries no site data, and reporting anything beyond
+    // "still here" would be collection without a stated purpose.
     Route::post('heartbeat', HeartbeatController::class)->name('heartbeat');
+
+    Route::post('inventory', InventoryController::class)
+        ->middleware('capability:inventory:read')
+        ->name('inventory');
 });
