@@ -90,13 +90,14 @@ end-to-end encryption.
 
 | Variable | Default | Notes |
 |---|---|---|
-| `MANAGER_BACKUP_PUBLIC_KEY` | empty | X25519 public key, published to connectors so they can seal each artifact's key to it. Separate from the signing keypair: one keypair used for both signing and encryption weakens both. Generate with `manager:backups:keygen`. |
-| `MANAGER_BACKUP_SECRET_KEY` | empty | The other half. **Whoever holds this can read every stored backup.** Back it up somewhere other than beside the backups; losing it makes every stored artifact permanently unreadable, and there is deliberately no recovery path. |
+| `MANAGER_BACKUP_PUBLIC_KEY` | empty | **Legacy.** Backups are now encrypted to keys the organisation holds, not to this platform — see [Recovery keys](/recovery-keys). This keypair exists only to read artifacts taken before that change, and is not used for new ones. A fresh installation does not need it. |
+| `MANAGER_BACKUP_SECRET_KEY` | empty | **Legacy.** The other half. Whoever holds it can read backups taken *before* recovery keys existed, which is exactly why that arrangement was replaced. If you have no legacy artifacts, do not set it. |
 | `MANAGER_BACKUP_DISK` | `backups` | Which filesystem disk artifacts are written to. |
 | `MANAGER_BACKUP_DRIVER` | `local` | `local` or `s3`. The local default works but is a poor place for the only copy of a customer's database. |
 | `MANAGER_BACKUP_S3_BUCKET` | empty | With `MANAGER_BACKUP_S3_KEY`, `_SECRET`, `_REGION`, `_ENDPOINT` and `_PATH_STYLE`. Scope the credentials to this bucket alone: a key with access to the backup store has access to every managed site's database. |
 | `MANAGER_BACKUP_MAX_BYTES` | `2147483648` | Largest artifact accepted. A policy statement rather than a buffer size — nothing is held in memory. |
 | `MANAGER_BACKUP_UPLOAD_WINDOW` | `3600` | Seconds a declared artifact may wait for its bytes before being written off. |
+| `MANAGER_BACKUP_QUOTA_BYTES` | unset | Total bytes one organisation may hold across every site. Unset means no limit — an operator who has not asked for one should not discover one. Worth setting where several sites share a volume: one site filling it takes backups down for all of them. |
 
 ## Object storage
 

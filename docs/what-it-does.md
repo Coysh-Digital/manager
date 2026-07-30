@@ -27,8 +27,8 @@ severity, and they resolve themselves when the site is fixed.
 **Reports system state.** Queue depth, failed jobs, pending migrations, environment classification.
 Counts only — never the contents of a queued job, which can carry anything.
 
-**Takes database backups**, if you grant that separately per site. Encrypted on the site before they
-leave it. See [backup.md](backup.md).
+**Takes database backups**, if you grant that separately per site. Encrypted on the site, to keys you
+hold, before they leave it — Manager stores something it cannot read. See [Backups](/backups).
 
 **Tells somebody.** Findings can go to an email address or a webhook, so a security release on a client
 site reaches you without anybody opening a dashboard.
@@ -43,7 +43,7 @@ site reaches you without anybody opening a dashboard.
 capability for any of these — the code to do them is not in the connector, and a script in that
 repository fails the build if it appears.
 
-**It does not restore backups.** See [backup.md](backup.md) for why that waits for its own threat model
+**It does not restore backups.** See [Restoring a backup](/restoring) for why that waits for its own threat model
 rather than being added quietly.
 
 ## Why it does not update anything

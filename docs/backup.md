@@ -6,7 +6,9 @@ Two different things are called backups here, and conflating them causes trouble
 installation, and covered below.
 
 **Site backups** are backups Manager takes *of managed Craft installations*, governed by the
-`backups:create` capability. They are covered in [Site backups](#site-backups) below.
+`backups:create` capability. Those have their own page now — see [Backups](/backups) — because they
+work very differently: a site encrypts its own database to keys you hold, and Manager stores something
+it cannot open. This page is only about Manager's own data.
 
 ## What is in the platform database
 
@@ -63,131 +65,27 @@ read them, and delete them on a schedule rather than accumulating them indefinit
 
 **Test a restore.** An untested backup is a hypothesis.
 
-
 # Site backups
 
-Backups of managed Craft installations. Off by default, per site, and granted through a confirmation
-flow rather than a switch.
+Backups of managed Craft installations have their own page: **[Backups](/backups)**.
 
-## What has to be true before one can be taken
+They changed substantially. They used to be encrypted to a keypair *this platform* held, which meant
+anybody with the platform's backup secret key and its storage could read every backup it held — and
+the documentation said so.
 
-1. A backup encryption keypair exists: `php artisan manager:backups:keygen`. Without it no backup is
-   attempted at all — a connector with no key to seal to refuses rather than uploading a database in
-   the clear. `manager:doctor` reports this.
-2. A backup destination is configured. The default is a local disk, which works but is a poor place
-   for the only copy of a customer's database; see [Where artifacts are stored](#where-artifacts-are-stored).
-3. The site has been granted `backups:create` from its Capabilities screen. This asks for the site's
-   name typed out, an acknowledgement of what a backup contains, and a reason, all of which are
-   recorded. It is never granted when a site is paired.
+They are now encrypted to keys the organisation generates on its own machines. This platform stores,
+verifies, serves and deletes something it cannot open, and has nowhere in its schema to put a recovery
+private key.
 
-## What actually happens
+That is a big enough change that keeping a summary here would eventually contradict the real page, so
+this section is a signpost rather than a second copy:
 
-1. Manager queues a `backup.create` job. It carries **no parameters** — in particular nothing naming
-   where the artifact should go.
-2. The connector claims it on its next check-in, and asks Craft to back up its own database using the
-   connection the site already has. There is no shell command, and nothing Manager could influence
-   about how the dump is taken.
-3. The connector generates a fresh encryption key, encrypts the dump as a chunked authenticated
-   stream, and seals the key to the platform's public key. It holds only the public half, so it
-   cannot reopen what it sealed.
-4. It declares the artifact — sizes, checksums, sealed key — then uploads the bytes to the platform
-   it is paired with. The destination is the URL stored at pairing; no job payload can change it.
-5. The platform hashes the bytes as they arrive and commits the artifact only if the hash matches
-   what was declared and signed. Anything else is discarded.
-6. The plaintext dump on the site is deleted, whether the upload succeeded or not.
+- **[Backups](/backups)** — how they work, the states, retention, and where the guarantees stop
+- **[Recovery keys](/recovery-keys)** — generating one, proving it, and the pinning step people skip
+- **[Restoring a backup](/restoring)** — getting your data back out with `manager-restore`
 
-## This is not end-to-end encryption
-
-Said plainly because the phrase gets used loosely. Artifacts are encrypted before they leave the
-site, which protects them in transit and at rest in storage — a stolen bucket yields nothing. But
-**this platform holds the key that opens them.** Anyone with `MANAGER_BACKUP_SECRET_KEY` and access
-to the artifact store can read every backup.
-
-That is a deliberate trade: a key only the customer held would mean a backup nobody could restore
-after the one person who wrote the key down left. What it means in practice is that the Manager
-installation should be treated as being as sensitive as the sites it manages, because in effect it is.
-
-## Where artifacts are stored
-
-Configured by `MANAGER_BACKUP_DISK` and the `backups` disk in `config/filesystems.php`. The default
-is a local directory outside the web root and outside anything served over HTTP.
-
-For anything beyond a single site, point it at an S3-compatible bucket:
-
-```dotenv
-MANAGER_BACKUP_DRIVER=s3
-MANAGER_BACKUP_S3_BUCKET=manager-backups
-MANAGER_BACKUP_S3_REGION=eu-west-2
-MANAGER_BACKUP_S3_KEY=…
-MANAGER_BACKUP_S3_SECRET=…
-```
-
-Use credentials scoped to that bucket and nothing else. A key with access to the backup store is a
-key with access to every managed site's database.
-
-Uploads are staged to a temporary file on the platform before being committed to storage, so the
-platform needs free disk space of roughly the largest artifact you expect. Streaming straight into
-the bucket would leave unverified artifacts there whenever an upload failed part way.
-
-## Retention
-
-Two settings per organisation, and both apply:
-
-- `backup_retention_days` (default 30) — how long an artifact is kept.
-- `backup_keep_count` (default 3) — how many are kept regardless of age.
-
-Whichever keeps an artifact alive wins. Expiry alone would leave a site that has been quiet for a
-month with nothing; a count alone would keep a departed client's database forever.
-
-`manager:backups:prune` runs nightly from the scheduler. It deletes expired artifacts and destroys
-their keys — the row survives so the audit log still shows the artifact existed, but the key does
-not, so anything left in storage after a partly failed deletion is unreadable. Use `--dry-run` to see
-what it would do.
-
-An artifact's expiry is set when it is stored, from the policy in force at that moment. Changing the
-retention setting affects future backups and does not retroactively re-date existing ones.
-
-## Retrieving a backup
-
-```bash
-docker compose exec app php artisan manager:backups:fetch <identifier> /path/to/backup.sql
-```
-
-This streams the artifact, decrypts it, and verifies it against the checksum recorded when the backup
-was taken. If verification fails nothing is written, because a partially written file that looks like
-a backup is worse than no file at all.
-
-There is no download button in the interface, deliberately. Decrypting a multi-gigabyte artifact
-through a web request means holding a worker against a timeout it will probably lose, and possibly
-leaving a truncated file that cannot be told apart from a complete one.
-
-The decrypted file is the site's entire database in plain text, including user accounts and password
-hashes. Delete it when you are done.
-
-## Restore is not implemented
-
-Manager will not restore a backup into a site, and this is not an oversight or a missing feature to
-be added quietly in a patch release.
-
-Restoring a production database is destructive and irreversible. Doing it safely needs a threat model
-for a compromised platform issuing a restore, a confirmation flow that makes the target unmistakable,
-a defined behaviour when a restore fails half way, and a tested recovery path from that state. None
-of that follows from being able to take a backup, and a restore button that mostly worked would be
-more dangerous than no button.
-
-Until then, retrieve the artifact with the command above and restore it with the tooling you would
-use for any other dump — `mysql` or `psql` — on a host you have chosen deliberately.
-
-## Rotating the encryption key
-
-Destructive, unlike rotating the signing key. Every existing artifact was encrypted to a key wrapped
-for the current pair, and a new pair will not open them. `manager:backups:keygen` refuses when
-artifacts exist and reports how many would be lost; `--force` overrides it.
-
-If you need to rotate without losing history, fetch the artifacts you want to keep first, rotate, and
-treat the retrieved files as ordinary encrypted-at-rest backups from that point on.
-
-## Test a restore
-
-An untested backup is a hypothesis. Fetch one, load it into a scratch database, and check that Craft
-boots against it. Do it before you need it.
+::: warning Backups taken before recovery keys existed
+Those were sealed to this platform's own key and remain readable by it. Adding a recovery key does not
+change that retroactively. They are labelled as legacy on the Backups screen, and
+`php artisan manager:backups:fetch` is still how you retrieve one.
+:::
