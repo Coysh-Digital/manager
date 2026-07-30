@@ -95,6 +95,16 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # The compiled assets are committed, because the shipped image carries no Node toolchain. That
+      # only works if they match the source, so this asserts it: a change to CSS or JS without a
+      # rebuild fails here rather than shipping an image whose pages render against stale assets.
+      - name: Compiled assets match the source
+        run: |
+          npm ci
+          npm run build
+          git diff --exit-code -- public/build \
+            || { echo "public/build is out of date. Run 'npm run build' and commit the result."; exit 1; }
+
       - name: Software bill of materials
         run: |
           composer require --dev --no-interaction cyclonedx/cyclonedx-php-composer
