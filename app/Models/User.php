@@ -14,6 +14,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
+use Laragear\WebAuthn\Contracts\WebAuthnAuthenticatable;
+use Laragear\WebAuthn\WebAuthnAuthentication;
 
 /**
  * A platform account.
@@ -29,7 +31,7 @@ use Illuminate\Support\Carbon;
  */
 #[Fillable(['name', 'email', 'password'])]
 #[Hidden(['password', 'remember_token', 'totp_secret'])]
-class User extends Authenticatable implements MustVerifyEmail
+class User extends Authenticatable implements MustVerifyEmail, WebAuthnAuthenticatable
 {
     use HasExternalId;
 
@@ -37,6 +39,7 @@ class User extends Authenticatable implements MustVerifyEmail
     use HasFactory;
 
     use Notifiable;
+    use WebAuthnAuthentication;
 
     /**
      * @return array<string, string>
@@ -92,6 +95,26 @@ class User extends Authenticatable implements MustVerifyEmail
     public function hasConfirmedTotp(): bool
     {
         return $this->totp_secret !== null && $this->totp_confirmed_at !== null;
+    }
+
+    /**
+     * How many passkeys this account can actually authenticate with.
+     */
+    public function enabledPasskeyCount(): int
+    {
+        return $this->webAuthnCredentials()->whereEnabled()->count();
+    }
+
+    /**
+     * Whether this account holds any second factor at all.
+     *
+     * A passkey counts. It is phishing-resistant and bound to this origin, which makes it at least as
+     * strong a second factor as a code read off a screen — so requiring TOTP specifically would be
+     * asking for the weaker of the two.
+     */
+    public function hasSecondFactor(): bool
+    {
+        return $this->hasConfirmedTotp() || $this->enabledPasskeyCount() > 0;
     }
 
     /**

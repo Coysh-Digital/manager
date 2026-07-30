@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Middleware\EnsureSecondFactorWhenRequired;
 use App\Http\Middleware\EnsureSetupIsAvailable;
 use App\Http\Middleware\RequiresCapability;
 use App\Http\Middleware\ResolveOrganisation;
@@ -32,6 +33,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'capability' => RequiresCapability::class,
             'organisation' => ResolveOrganisation::class,
             'setup.available' => EnsureSetupIsAvailable::class,
+            'second-factor' => EnsureSecondFactorWhenRequired::class,
         ]);
 
         // Sensitive actions require the password to have been proved recently.

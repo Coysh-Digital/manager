@@ -31,11 +31,18 @@ final class TwoFactorChallengeController
 
     public function show(Request $request): View|RedirectResponse
     {
-        if ($this->pendingUser($request) === null) {
+        $user = $this->pendingUser($request);
+
+        if ($user === null) {
             return redirect()->route('login');
         }
 
-        return view('auth.two-factor');
+        return view('auth.two-factor', [
+            // Whether to offer the passkey button at all. Showing it to somebody with no passkey
+            // registered would be a button that can only fail.
+            'hasPasskeys' => $user->enabledPasskeyCount() > 0,
+            'hasTotp' => $user->hasConfirmedTotp(),
+        ]);
     }
 
     public function store(Request $request): RedirectResponse
@@ -62,7 +69,9 @@ final class TwoFactorChallengeController
 
         // One field takes either a six-digit code or a recovery code. Asking someone whose phone
         // has just died to first find the right form is a bad moment to add a step.
-        $accepted = RecoveryCodeService::looksLikeRecoveryCode($validated['code'])
+        $usedRecoveryCode = RecoveryCodeService::looksLikeRecoveryCode($validated['code']);
+
+        $accepted = $usedRecoveryCode
             ? $this->recoveryCodes->consume($user, $validated['code'])
             : $this->totp->verify((string) $user->totp_secret, $validated['code']);
 
@@ -86,7 +95,12 @@ final class TwoFactorChallengeController
 
         $remember = (bool) ($request->session()->get('auth.challenge.remember') ?? false);
 
-        return LoginController::completeLogin($request, $user, $remember);
+        return LoginController::completeLogin(
+            $request,
+            $user,
+            $remember,
+            $usedRecoveryCode ? 'recovery_code' : 'totp',
+        );
     }
 
     /**

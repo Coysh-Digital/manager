@@ -6,11 +6,13 @@ use App\Http\Controllers\AccountController;
 use App\Http\Controllers\ActivityController;
 use App\Http\Controllers\Auth\ConfirmPasswordController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\PasskeyChallengeController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\TwoFactorChallengeController;
 use App\Http\Controllers\CapabilityController;
 use App\Http\Controllers\FindingController;
 use App\Http\Controllers\HealthController;
+use App\Http\Controllers\PasskeyController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SetupController;
 use App\Http\Controllers\SiteController;
@@ -53,11 +55,16 @@ Route::middleware('guest')->group(function (): void {
     // Reached only with a pending challenge in the session. Nobody is authenticated at this point.
     Route::get('two-factor', [TwoFactorChallengeController::class, 'show'])->name('two-factor.challenge');
     Route::post('two-factor', [TwoFactorChallengeController::class, 'store'])->name('two-factor.store');
+
+    // The same challenge, satisfied with a passkey instead of a typed code. Scoped to the pending
+    // user, and gated so another account's passkey cannot close this challenge.
+    Route::post('two-factor/passkey/options', [PasskeyChallengeController::class, 'options'])->name('two-factor.passkey.options');
+    Route::post('two-factor/passkey', [PasskeyChallengeController::class, 'store'])->name('two-factor.passkey.store');
 });
 
 Route::post('logout', [LoginController::class, 'destroy'])->middleware('auth')->name('logout');
 
-Route::middleware(['auth', 'organisation'])->group(function (): void {
+Route::middleware(['auth', 'organisation', 'second-factor'])->group(function (): void {
     Route::redirect('/', '/sites');
 
     Route::get('sites', [SiteController::class, 'index'])->name('sites.index');
@@ -112,6 +119,10 @@ Route::middleware(['auth', 'organisation'])->group(function (): void {
         Route::post('account/two-factor/confirm', [AccountController::class, 'confirmTotp'])->name('account.totp.confirm');
         Route::delete('account/two-factor', [AccountController::class, 'disableTotp'])->name('account.totp.disable');
         Route::post('account/recovery-codes', [AccountController::class, 'regenerateRecoveryCodes'])->name('account.recovery-codes');
+
+        Route::post('account/passkeys/options', [PasskeyController::class, 'options'])->name('passkeys.options');
+        Route::post('account/passkeys', [PasskeyController::class, 'store'])->name('passkeys.store');
+        Route::delete('account/passkeys/{id}', [PasskeyController::class, 'destroy'])->name('passkeys.destroy');
         Route::delete('account/sessions/{id}', [AccountController::class, 'revokeSession'])->name('account.sessions.revoke');
     });
 });

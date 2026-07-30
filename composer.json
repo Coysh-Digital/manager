@@ -12,6 +12,7 @@
         "php": "^8.3",
         "bacon/bacon-qr-code": "^3.1",
         "coysh-digital/manager-protocol": "@dev",
+        "laragear/webauthn": "^5.0",
         "laravel/framework": "^13.8",
         "laravel/horizon": "^5.48",
         "laravel/tinker": "^3.0",

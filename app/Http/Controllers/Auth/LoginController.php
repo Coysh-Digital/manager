@@ -70,7 +70,7 @@ final class LoginController
 
         RateLimiter::clear($this->throttleKey($request, $credentials['email']));
 
-        if ($user->hasConfirmedTotp()) {
+        if ($user->hasSecondFactor()) {
             // Not logged in yet. Only the intent to log in is remembered.
             $request->session()->put('auth.challenge', [
                 'user_id' => $user->id,
@@ -87,16 +87,31 @@ final class LoginController
     /**
      * Finish a login once every required factor is satisfied.
      */
-    public static function completeLogin(Request $request, User $user, bool $remember): RedirectResponse
+    public static function completeLogin(Request $request, User $user, bool $remember, string $factor = 'password'): RedirectResponse
     {
         Auth::login($user, $remember);
 
         // A fresh identifier on privilege change, so a session fixed before login is worthless.
         $request->session()->regenerate();
+
+        self::finaliseSession($request, $user, $factor);
+
+        return redirect()->intended(route('sites.index'));
+    }
+
+    /**
+     * The bookkeeping every successful login shares, whichever factor closed it.
+     *
+     * Extracted because the passkey path logs the user in through the WebAuthn guard rather than
+     * through Auth::login, and two copies of this would eventually disagree about something that
+     * matters — the recent-authentication timestamp most of all.
+     */
+    public static function finaliseSession(Request $request, User $user, string $factor): void
+    {
         $request->session()->forget('auth.challenge');
 
         // Both the recent-authentication gate and the account's own record of when it last proved
-        // a password.
+        // who it was.
         $request->session()->put('auth.password_confirmed_at', now()->timestamp);
         $user->forceFill(['last_authenticated_at' => now()])->save();
 
@@ -105,9 +120,10 @@ final class LoginController
             actor: $user,
             targetType: 'user',
             targetId: $user->external_id,
+            // Which factor closed the login. Worth recording: "signed in with a passkey" and "signed
+            // in with a recovery code" call for very different responses when reviewing an incident.
+            after: ['factor' => $factor],
         );
-
-        return redirect()->intended(route('sites.index'));
     }
 
     public function destroy(Request $request): RedirectResponse

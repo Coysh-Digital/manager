@@ -193,11 +193,15 @@ it('shows only this organisation on the activity log', function (): void {
         ->assertDontSee('other.thing');
 });
 
-it('renders the account page and offers to enrol a second factor', function (): void {
+it('renders the account page and offers both kinds of second factor', function (): void {
     $this->actingAs($this->user)
         ->get('/account')
         ->assertOk()
-        ->assertSee('Two-factor authentication')
+        // Named separately, because "two-factor authentication" covering both an authenticator app
+        // and a passkey makes it unclear which one the buttons act on.
+        ->assertSee('Authenticator app')
+        ->assertSee('Passkeys')
+        ->assertSee('Add a passkey')
         ->assertSee('Set up two-factor authentication');
 });
 

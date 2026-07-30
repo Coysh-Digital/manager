@@ -34,7 +34,7 @@
 
         <div class="mb-3.5 overflow-hidden rounded-[10px] border border-border bg-surface shadow-[var(--shadow)]">
             <div class="flex items-center justify-between border-b border-border px-4 py-3">
-                <span class="text-[13.5px] font-medium">Two-factor authentication</span>
+                <span class="text-[13.5px] font-medium">Authenticator app</span>
                 @if ($user->hasConfirmedTotp())
                     <x-status-badge tone="ok" label="On" />
                 @else
@@ -112,6 +112,66 @@
                         </button>
                     </form>
                 @endif
+            </div>
+        </div>
+
+        <div class="mb-3.5 overflow-hidden rounded-[10px] border border-border bg-surface shadow-[var(--shadow)]">
+            <div class="flex items-center justify-between border-b border-border px-4 py-3">
+                <span class="text-[13.5px] font-medium">Passkeys</span>
+                @if ($passkeys->isNotEmpty())
+                    <x-status-badge tone="ok" :label="$passkeys->count().' registered'" />
+                @endif
+            </div>
+
+            <div class="p-4">
+                <p class="mb-3 text-[13px] text-text-2">
+                    A passkey is bound to this site's address, so it cannot be used on a convincing
+                    copy of it — which a typed code can. It counts as your second factor.
+                </p>
+
+                @forelse ($passkeys as $passkey)
+                    <div class="flex items-center justify-between gap-4 border-t border-border py-3 text-[12.5px] first:border-t-0">
+                        <div class="flex min-w-0 flex-col gap-0.5">
+                            <span class="font-medium">{{ $passkey->alias ?: 'Passkey' }}</span>
+                            <span class="font-mono text-[11.5px] text-text-3">
+                                added {{ $passkey->created_at?->diffForHumans() ?? 'recently' }}
+                                @if ($passkey->disabled_at)
+                                    · disabled
+                                @endif
+                            </span>
+                        </div>
+
+                        <form method="POST" action="{{ route('passkeys.destroy', $passkey->id) }}"
+                              onsubmit="return confirm('Remove this passkey?');">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit"
+                                    class="h-8 whitespace-nowrap rounded-[7px] border border-border-2 bg-surface px-3 text-[12.5px] text-text hover:bg-row-hover">
+                                Remove
+                            </button>
+                        </form>
+                    </div>
+                @empty
+                    <p class="mb-3 text-[12.5px] text-text-3">No passkeys registered yet.</p>
+                @endforelse
+
+                <div class="mt-3 flex flex-wrap items-end gap-2 border-t border-border pt-3">
+                    <label class="flex flex-col gap-1.5">
+                        <span class="text-[12.5px] font-medium">Name this device</span>
+                        <input type="text" data-passkey-name maxlength="60" placeholder="Work laptop"
+                               class="h-8 w-[200px] rounded-[7px] border border-border-2 bg-surface-2 px-2.5 text-[12.5px] placeholder:text-text-3">
+                    </label>
+
+                    <button type="button"
+                            data-passkey-register
+                            data-options-url="{{ route('passkeys.options') }}"
+                            data-register-url="{{ route('passkeys.store') }}"
+                            class="h-8 rounded-[7px] border border-primary bg-primary px-3 text-[12.5px] font-medium text-primary-fg hover:bg-primary-hover disabled:opacity-60">
+                        Add a passkey
+                    </button>
+                </div>
+
+                <p data-passkey-message class="mt-2 text-[12.5px] text-text-2 data-[state=error]:text-danger"></p>
             </div>
         </div>
 

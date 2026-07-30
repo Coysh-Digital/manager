@@ -9,6 +9,8 @@
  * there is no flash of the wrong theme. This file only handles changing it afterwards.
  */
 
+import './passkeys.js';
+
 const STORAGE_KEY = 'manager.theme';
 
 function resolve(preference) {

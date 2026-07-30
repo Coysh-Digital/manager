@@ -41,6 +41,10 @@ final class AccountController
             'recoveryCodesRemaining' => $user->unusedRecoveryCodeCount(),
             'sessions' => $this->sessions($request),
 
+            // Listed from the source of truth rather than counted, so the screen can name each device
+            // and say when it was added.
+            'passkeys' => $user->webAuthnCredentials()->orderByDesc('created_at')->get(),
+
             // Held in the session between starting enrolment and confirming it. It is not written
             // to the user until a valid code proves the authenticator actually has it.
             'pendingSecret' => $request->session()->get('totp.pending'),
