@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Connector;
 
+use App\Domain\Backup\BackupKeypair;
 use App\Domain\Connector\PlatformKeypair;
 use App\Domain\Connector\ResponseSigner;
 use App\Domain\Job\JobService;
@@ -30,6 +31,7 @@ final class JobClaimController
         JobService $jobs,
         ResponseSigner $signer,
         PlatformKeypair $keypair,
+        BackupKeypair $backups,
     ): JsonResponse {
         /** @var Site $site */
         $site = $request->attributes->get('manager.site');
@@ -58,6 +60,12 @@ final class JobClaimController
                 // Echoed so a connector can confirm it is still talking to the platform it paired
                 // with, without keeping a separate record to compare against.
                 'platform_public_key' => $keypair->publicKey(),
+
+                // The artifact encryption key, carried for the same reason the capability list is:
+                // it is security-sensitive configuration, and a connector that only learned it at
+                // pairing would have no way to follow a rotation. Adopted only from this signed
+                // response, never from a job payload.
+                'backup_public_key' => $backups->isConfigured() ? $backups->publicKey() : null,
             ],
             siteExternalId: $site->external_id,
             requestNonce: (string) $request->attributes->get('manager.nonce'),

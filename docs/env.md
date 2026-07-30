@@ -82,10 +82,25 @@ one-time setup flow.
 
 Standard Laravel `MAIL_*` variables. Used for password resets and verification.
 
+## Site backups
+
+Off until a keypair exists. See [backup.md](backup.md) for what a backup contains and why this is not
+end-to-end encryption.
+
+| Variable | Default | Notes |
+|---|---|---|
+| `MANAGER_BACKUP_PUBLIC_KEY` | empty | X25519 public key, published to connectors so they can seal each artifact's key to it. Separate from the signing keypair: one keypair used for both signing and encryption weakens both. Generate with `manager:backups:keygen`. |
+| `MANAGER_BACKUP_SECRET_KEY` | empty | The other half. **Whoever holds this can read every stored backup.** Back it up somewhere other than beside the backups; losing it makes every stored artifact permanently unreadable, and there is deliberately no recovery path. |
+| `MANAGER_BACKUP_DISK` | `backups` | Which filesystem disk artifacts are written to. |
+| `MANAGER_BACKUP_DRIVER` | `local` | `local` or `s3`. The local default works but is a poor place for the only copy of a customer's database. |
+| `MANAGER_BACKUP_S3_BUCKET` | empty | With `MANAGER_BACKUP_S3_KEY`, `_SECRET`, `_REGION`, `_ENDPOINT` and `_PATH_STYLE`. Scope the credentials to this bucket alone: a key with access to the backup store has access to every managed site's database. |
+| `MANAGER_BACKUP_MAX_BYTES` | `2147483648` | Largest artifact accepted. A policy statement rather than a buffer size — nothing is held in memory. |
+| `MANAGER_BACKUP_UPLOAD_WINDOW` | `3600` | Seconds a declared artifact may wait for its bytes before being written off. |
+
 ## Object storage
 
-Standard `AWS_*` variables, including `AWS_ENDPOINT` for any S3-compatible service. Needed from
-Phase 3, when backups land.
+Standard `AWS_*` variables, including `AWS_ENDPOINT` for any S3-compatible service, for anything other
+than backups. Backups have their own credentials above, deliberately.
 
 ## Optional diagnostics
 

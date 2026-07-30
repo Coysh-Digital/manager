@@ -25,3 +25,10 @@ Schedule::command('manager:jobs:expire')
 Schedule::command('manager:audit:verify')
     ->dailyAt('03:00')
     ->withoutOverlapping();
+
+// Retention. A backup kept indefinitely is personal data kept indefinitely, so this is not optional
+// and its default is not "forever". Runs after the audit check so a day's deletions are recorded in a
+// chain that has just been verified.
+Schedule::command('manager:backups:prune')
+    ->dailyAt('03:30')
+    ->withoutOverlapping();

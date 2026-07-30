@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Domain\Health;
 
+use App\Domain\Backup\BackupKeypair;
+use App\Domain\Backup\BackupService;
 use App\Domain\Connector\PlatformKeypair;
+use App\Models\CapabilityGrant;
 use App\Models\User;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -23,7 +26,11 @@ use Throwable;
  */
 final class Diagnostics
 {
-    public function __construct(private readonly PlatformKeypair $keypair) {}
+    public function __construct(
+        private readonly PlatformKeypair $keypair,
+        private readonly BackupKeypair $backupKeypair,
+        private readonly BackupService $backups,
+    ) {}
 
     /**
      * Every check, in the order an operator would want to read them.
@@ -284,6 +291,7 @@ final class Diagnostics
 
         $checks[] = $this->auditTriggers();
         $checks[] = $this->databaseRole();
+        $checks[] = $this->backupEncryption();
 
         $checks[] = config('session.secure') || ! str_starts_with((string) config('app.url'), 'https://')
             ? Check::pass('Session cookie', config('session.secure') ? 'Marked secure.' : 'Not secure, matching a non-HTTPS URL.')
@@ -298,6 +306,41 @@ final class Diagnostics
             : Check::pass('Optional diagnostics', 'Disabled, which is the default.');
 
         return $checks;
+    }
+
+    /**
+     * Whether backups can actually be taken, and whether they can be read back.
+     *
+     * Reported as a failure only when a site has been granted the permission, because a platform nobody
+     * has asked to take backups does not need a backup key. A warning otherwise, so the gap is visible
+     * before somebody grants the permission rather than after the first job fails.
+     */
+    private function backupEncryption(): Check
+    {
+        $granted = CapabilityGrant::query()
+            ->where('capability', 'backups:create')
+            ->where('state', CapabilityGrant::STATE_GRANTED)
+            ->count();
+
+        if (! $this->backupKeypair->isConfigured()) {
+            $detail = $granted > 0
+                ? "Not configured, and {$granted} ".($granted === 1 ? 'site has' : 'sites have')
+                    .' permission to back up. No backup will be taken until it is: a connector without a '
+                    .'key refuses rather than uploading a database in the clear.'
+                : 'Not configured. No site has permission to back up yet, so nothing is failing.';
+
+            return $granted > 0
+                ? Check::fail('Backup encryption key', $detail, 'Run: php artisan manager:backups:keygen')
+                : Check::warn('Backup encryption key', $detail, 'Run: php artisan manager:backups:keygen before granting backups:create');
+        }
+
+        // Configured. Say plainly what it means rather than leaving somebody to infer end-to-end
+        // encryption from the word "encrypted".
+        return Check::pass(
+            'Backup encryption key',
+            'Configured, storing to '.$this->backups->describeStorage()
+            .'. Whoever holds this key can read every stored backup, so it is not end-to-end encrypted.',
+        );
     }
 
     private function auditTriggers(): Check

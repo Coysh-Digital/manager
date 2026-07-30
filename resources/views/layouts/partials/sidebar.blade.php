@@ -69,6 +69,15 @@
             @endisset
         </a>
 
+        <a href="{{ route('backups.index') }}"
+           @class([
+               'flex items-center rounded-md px-2.5 py-[7px] text-[13.5px] font-medium no-underline',
+               'bg-pale text-primary' => request()->routeIs('backups.*'),
+               'text-text-2 hover:bg-row-hover hover:text-text' => ! request()->routeIs('backups.*'),
+           ])>
+            Backups
+        </a>
+
         <div class="px-2.5 pb-2 pt-[18px] font-mono text-[10px] uppercase tracking-[0.08em] text-text-3">Access</div>
 
         <a href="{{ route('activity.index') }}"

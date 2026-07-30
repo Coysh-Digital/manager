@@ -9,6 +9,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\PasskeyChallengeController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\TwoFactorChallengeController;
+use App\Http\Controllers\BackupController;
 use App\Http\Controllers\CapabilityController;
 use App\Http\Controllers\FindingController;
 use App\Http\Controllers\HealthController;
@@ -76,6 +77,8 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
 
     Route::get('findings', [FindingController::class, 'index'])->name('findings.index');
 
+    Route::get('backups', [BackupController::class, 'index'])->name('backups.index');
+
     Route::get('activity', [ActivityController::class, 'index'])->name('activity.index');
 
     Route::get('settings', [SettingsController::class, 'show'])->name('settings.show');
@@ -95,6 +98,11 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
      | session left open on an unlocked machine must not be enough.
      */
     Route::middleware('password.confirm')->group(function (): void {
+        // Requesting a backup and deleting one both need recent authentication: one asks a production
+        // site for a copy of its database, the other destroys one irrecoverably.
+        Route::post('backups/sites/{site}', [BackupController::class, 'store'])->name('backups.store');
+        Route::delete('backups/{artifact}', [BackupController::class, 'destroy'])->name('backups.destroy');
+
         Route::post('sites/{site}/capabilities/grant-confirmed', [CapabilityController::class, 'grantConfirmed'])
             ->name('capabilities.grant-confirmed');
         Route::post('sites/{site}/capabilities/grant', [CapabilityController::class, 'grant'])

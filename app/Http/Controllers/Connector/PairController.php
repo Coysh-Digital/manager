@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Connector;
 
+use App\Domain\Backup\BackupKeypair;
 use App\Domain\Connector\PlatformKeypair;
 use App\Domain\Connector\ResponseSigner;
 use App\Domain\Pairing\PairingRejected;
@@ -32,6 +33,7 @@ final class PairController
         PairingService $pairing,
         ResponseSigner $signer,
         PlatformKeypair $keypair,
+        BackupKeypair $backups,
         CorrelationId $correlationId,
     ): JsonResponse {
         $validated = $this->validate($request);
@@ -65,6 +67,11 @@ final class PairController
             payload: [
                 'site_id' => $result->site->external_id,
                 'platform_public_key' => $keypair->publicKey(),
+
+                // The encryption key artifacts get sealed to. Separate from the signing key above,
+                // and null when backups are not configured — a connector that is told nothing seals
+                // nothing rather than guessing.
+                'backup_public_key' => $backups->isConfigured() ? $backups->publicKey() : null,
 
                 // The platform decides these; the connector cannot ask for more. A pairing held
                 // for confirmation gets none at all until a person approves it.

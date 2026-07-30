@@ -18,7 +18,7 @@ ordinary test output.
 | 4 | Connector exposes no inbound management endpoint | `NoRemoteExecutionTest`, plus `bin/verify-invariants.php` in the connector repository |
 | 5 | Connections initiated outbound by the connector | As above |
 | 6 | Monitoring access read-only by default | `PairingTest`, `NoRemoteExecutionTest` |
-| 7 | Backup access requires explicit permission | `BackupPermissionTest`, `DataMinimisationTest` |
+| 7 | Backup access requires explicit permission | `BackupPermissionTest`, `BackupPipelineTest`, `DataMinimisationTest` |
 | 8 | No arbitrary PHP, shell, console or SQL execution | `NoRemoteExecutionTest`, `RemoteJobRegistryTest`, plus `bin/verify-invariants.php` in the connector repository |
 | 9 | Remote jobs use a fixed allowlist of versioned types | `RemoteJobRegistryTest` |
 | 10 | Every remote job authenticated, authorised, validated, audited | `RemoteJobRegistryTest` |
@@ -27,7 +27,7 @@ ordinary test output.
 | 13 | Secrets never in logs, exceptions, analytics or exports | `AuditLogIntegrityTest`, `AccountSecurityTest`, `DataMinimisationTest`, `OutboundDestinationTest` |
 | 14 | Removing a site immediately revokes its credentials | `NoRemoteExecutionTest` |
 | 15 | Security-sensitive actions fail closed | `ConnectorSignatureTest`, `SelfHostedHardeningTest` |
-| 16 | Retries must not cause an action to run twice | `ConnectorSignatureTest` |
+| 16 | Retries must not cause an action to run twice | `ConnectorSignatureTest`, `BackupPipelineTest` |
 | 17 | Connector and platform updates use verifiable artifacts | **Not yet covered.** Needs signed tags and release checksums in place first; CI builds the SBOM and scans the image today |
 | 18 | No application content or user records collected for monitoring | `DataMinimisationTest` |
 
@@ -69,5 +69,9 @@ registry.
 - `BackupPermissionTest` — why "explicit permission" needs four separate assertions rather than one.
   A checkbox among the read-only switches would satisfy a careless reading of invariant 7 and miss
   that granting it authorises a copy of every user record on a production site.
+- `BackupPipelineTest` — the artifact pipeline with real libsodium rather than doubles, because a
+  broken artifact format is only discovered when somebody needs a backup. Worth reading for how the
+  upload is authenticated before any of the body is read, and for the division of labour between the
+  signature (who sent this) and the checksum (did it survive the journey).
 - The protocol package's own suite, which asserts byte-compatibility of the canonical signing string
   against committed fixtures.
