@@ -107,6 +107,44 @@
                         @endif
                     </div>
 
+                    @if ($capability['confirmable'] && ! $capability['granted'] && $connector)
+                        {{-- Deliberately not a switch. Granting this authorises a copy of every user
+                             record on the site, so it asks for the site's name, an acknowledgement and
+                             a reason — and says what it will do before it asks. --}}
+                        <form method="POST" action="{{ route('capabilities.grant-confirmed', $site) }}"
+                              class="flex flex-col gap-3 border-b border-border bg-surface-2 p-4">
+                            @csrf
+                            <input type="hidden" name="capability" value="{{ $capability['name'] }}">
+
+                            <label class="flex items-start gap-2.5 text-[12.5px] leading-relaxed text-text-2">
+                                <input type="checkbox" name="acknowledge" value="1" required
+                                       class="mt-0.5 flex-none accent-[var(--primary)]">
+                                <span>{{ $capability['acknowledgement'] }}</span>
+                            </label>
+
+                            <div class="flex flex-wrap items-end gap-2">
+                                <label class="flex flex-col gap-1.5">
+                                    <span class="text-[12.5px] font-medium">Type the site's name</span>
+                                    <input type="text" name="confirm_site" required autocomplete="off"
+                                           placeholder="{{ $site->name }}"
+                                           class="h-[34px] w-[200px] rounded-[7px] border border-border-2 bg-surface px-2.5 text-[12.5px] placeholder:text-text-3">
+                                </label>
+
+                                <label class="flex flex-col gap-1.5">
+                                    <span class="text-[12.5px] font-medium">Why</span>
+                                    <input type="text" name="reason" required maxlength="255"
+                                           placeholder="Nightly backups before the platform migration"
+                                           class="h-[34px] w-[300px] rounded-[7px] border border-border-2 bg-surface px-2.5 text-[12.5px] placeholder:text-text-3">
+                                </label>
+
+                                <button type="submit"
+                                        class="h-[34px] whitespace-nowrap rounded-[7px] border border-primary bg-primary px-3 text-[12.5px] font-medium text-primary-fg hover:bg-primary-hover">
+                                    Grant {{ $capability['name'] }}
+                                </button>
+                            </div>
+                        </form>
+                    @endif
+
                     @if ($capability['grant'])
                         <div class="grid grid-cols-1 gap-px bg-border sm:grid-cols-3">
                             <div class="flex flex-col gap-1 bg-surface-2 px-4 py-2.5">

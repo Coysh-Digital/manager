@@ -28,6 +28,14 @@ final class NotificationEvent
     public const CONNECTOR_REVOKED = 'connector.revoked';
 
     /**
+     * A capability that needed explicit confirmation was granted.
+     *
+     * Separate from any read-only grant, because the thing worth hearing about is not "permissions
+     * changed" but "somebody authorised a copy of a customer database".
+     */
+    public const CAPABILITY_CONFIRMED = 'capability.confirmed';
+
+    /**
      * Everything a destination can subscribe to.
      *
      * @return array<string, string>
@@ -38,6 +46,7 @@ final class NotificationEvent
             self::FINDING_OPENED => 'A serious finding is raised',
             self::SITE_SILENT => 'A site stops reporting',
             self::CONNECTOR_REVOKED => 'A connector is revoked',
+            self::CAPABILITY_CONFIRMED => 'A permission needing confirmation is granted, such as backups',
         ];
     }
 

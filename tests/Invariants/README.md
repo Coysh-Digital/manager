@@ -18,7 +18,7 @@ ordinary test output.
 | 4 | Connector exposes no inbound management endpoint | `NoRemoteExecutionTest`, plus `bin/verify-invariants.php` in the connector repository |
 | 5 | Connections initiated outbound by the connector | As above |
 | 6 | Monitoring access read-only by default | `PairingTest`, `NoRemoteExecutionTest` |
-| 7 | Backup access requires explicit permission | **Phase 3.** `DataMinimisationTest` covers the half that exists: `backups:create` is never granted at pairing |
+| 7 | Backup access requires explicit permission | `BackupPermissionTest`, `DataMinimisationTest` |
 | 8 | No arbitrary PHP, shell, console or SQL execution | `NoRemoteExecutionTest`, `RemoteJobRegistryTest`, plus `bin/verify-invariants.php` in the connector repository |
 | 9 | Remote jobs use a fixed allowlist of versioned types | `RemoteJobRegistryTest` |
 | 10 | Every remote job authenticated, authorised, validated, audited | `RemoteJobRegistryTest` |
@@ -38,9 +38,12 @@ the threat model rather than a configuration detail.
 
 ## What is deliberately not covered yet
 
-Invariants 7 and 17 depend on features that do not exist yet — the backup pipeline and signed release
-artifacts. Writing tests that appear to cover them would be worse than the gap: a green suite that
-proves nothing is how a regression gets through.
+Invariant 17 depends on signed release artifacts, which do not exist yet. Writing a test that appeared
+to cover it would be worse than the gap: a green suite that proves nothing is how a regression gets
+through.
+
+Invariant 7 was in that category until the backup permission landed. It is now covered by
+`BackupPermissionTest`, and the pipeline it guards is covered by `BackupPipelineTest`.
 
 Invariants 9 and 10 were in this list until the job registry landed. They are now covered by
 `RemoteJobRegistryTest`, which is worth reading for how the four words in invariant 10 —
@@ -63,5 +66,8 @@ registry.
 - `OutboundDestinationTest` — server-side request forgery through notification destinations, including
   that a hostname is re-checked on every send and the connection pinned to the address that was
   checked, so DNS cannot change between the two.
+- `BackupPermissionTest` — why "explicit permission" needs four separate assertions rather than one.
+  A checkbox among the read-only switches would satisfy a careless reading of invariant 7 and miss
+  that granting it authorises a copy of every user record on a production site.
 - The protocol package's own suite, which asserts byte-compatibility of the canonical signing string
   against committed fixtures.

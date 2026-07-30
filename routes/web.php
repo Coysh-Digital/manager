@@ -95,6 +95,8 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
      | session left open on an unlocked machine must not be enough.
      */
     Route::middleware('password.confirm')->group(function (): void {
+        Route::post('sites/{site}/capabilities/grant-confirmed', [CapabilityController::class, 'grantConfirmed'])
+            ->name('capabilities.grant-confirmed');
         Route::post('sites/{site}/capabilities/grant', [CapabilityController::class, 'grant'])
             ->name('sites.capabilities.grant');
         Route::post('sites/{site}/capabilities/revoke', [CapabilityController::class, 'revoke'])

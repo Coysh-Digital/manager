@@ -51,8 +51,16 @@ final class CapabilityController
                 'grant' => $grants->get($capability),
                 'granted' => $grants->get($capability)?->isGranted() ?? false,
                 'readOnly' => Protocol::isReadOnlyCapability($capability),
-                'implemented' => in_array($capability, CapabilityService::grantableFromInterface(), true),
+                'implemented' => in_array($capability, CapabilityService::grantableFromInterface(), true)
+                    || in_array($capability, CapabilityService::confirmable(), true),
                 'grantable' => in_array($capability, CapabilityService::grantableFromInterface(), true),
+
+                // Grantable, but never with a switch. The screen has to render these differently or
+                // the distinction the specification asks for exists only in the code.
+                'confirmable' => in_array($capability, CapabilityService::confirmable(), true),
+                'acknowledgement' => in_array($capability, CapabilityService::confirmable(), true)
+                    ? CapabilityService::acknowledgementFor($capability)
+                    : null,
             ]),
 
             'history' => CapabilityEvent::query()
@@ -115,6 +123,61 @@ final class CapabilityController
         );
 
         return back()->with('status', "Granted {$validated['capability']}.");
+    }
+
+    /**
+     * Grant a capability that needs more than a switch.
+     *
+     * Invariant 7. Separate from {@see self::grant()} in every respect that matters: its own route, its
+     * own validation, its own service method, and three things the ordinary path does not ask for — the
+     * site's name typed out, the acknowledgement ticked, and a reason recorded.
+     *
+     * The site name is not security theatre here. The failure being designed out is an administrator
+     * with twelve tabs open granting a database-wide read on the wrong one.
+     */
+    public function grantConfirmed(Request $request, Site $site): RedirectResponse
+    {
+        $this->authoriseSite($site);
+        $this->authoriseAdministrator();
+
+        $validated = $request->validate([
+            'capability' => ['required', 'string', 'in:'.implode(',', CapabilityService::confirmable())],
+            'confirm_site' => ['required', 'string'],
+            'acknowledge' => ['accepted'],
+            'reason' => ['required', 'string', 'min:3', 'max:255'],
+        ]);
+
+        if (strcasecmp(trim($validated['confirm_site']), $site->name) !== 0) {
+            return back()->withErrors(['confirm_site' => 'That does not match this site\'s name.']);
+        }
+
+        $this->capabilities->grantConfirmed(
+            site: $site,
+            capability: $validated['capability'],
+            actor: $request->user(),
+            reason: $validated['reason'],
+        );
+
+        // Notified, because granting a permission to read an entire customer database is exactly the
+        // sort of change somebody other than the person making it should hear about.
+        $this->notifier->dispatch(new NotificationEvent(
+            type: NotificationEvent::CAPABILITY_CONFIRMED,
+            subject: "{$validated['capability']} granted for {$site->name}",
+            summary: 'This permission allows Manager to take a copy of the site\'s entire database, '
+                .'including user accounts and any personal information it holds. If you did not expect '
+                .'this, revoke it and treat the account that granted it as suspect.',
+            site: $site,
+            context: [
+                'capability' => $validated['capability'],
+                'granted_by' => $request->user()->name ?: $request->user()->email,
+            ],
+        ));
+
+        return back()->with(
+            'warning',
+            "Granted {$validated['capability']}. Backups of this site will contain personal data; "
+            .'check the retention setting before the first one runs.',
+        );
     }
 
     /**
