@@ -87,8 +87,12 @@ jobs:
 
       - run: composer install --no-interaction --no-progress --prefer-dist
 
+      # Advisories fail the build. Abandonment is reported but does not, because the two are
+      # different claims: an advisory says a dependency is known to be exploitable, whereas
+      # abandonment says nobody has promised to fix the next one. The second is a reason to plan a
+      # migration, not a reason to block a deploy of code that has not changed.
       - name: Dependency advisories
-        run: composer audit --locked
+        run: composer audit --locked --abandoned=report
 
       - name: Secret scanning
         uses: gitleaks/gitleaks-action@v2

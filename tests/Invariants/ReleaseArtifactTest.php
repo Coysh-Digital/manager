@@ -41,7 +41,20 @@ beforeEach(function (): void {
 
     // An annotated tag on the current HEAD. Annotated rather than lightweight because that is what a
     // release uses, and because tag.gpgsign refuses a lightweight one anyway.
-    runRelease(['git', 'tag', '-a', $this->tag, '-m', 'invariant test', '--no-sign']);
+    //
+    // The identity is supplied explicitly: an annotated tag records a tagger, and a CI runner has no
+    // git identity configured, so `git tag -a` there fails with "Committer identity unknown". Left
+    // implicit, that failure surfaces as six unrelated-looking assertion failures further down —
+    // missing archives, missing manifests — rather than as the one thing that actually went wrong.
+    $tagged = runRelease([
+        'git',
+        '-c', 'user.name=Manager Invariants',
+        '-c', 'user.email=invariants@manager.example.org',
+        'tag', '-a', $this->tag, '-m', 'invariant test', '--no-sign',
+    ]);
+
+    // Asserted rather than assumed, so a tag that could not be created says so here.
+    expect($tagged['ok'])->toBeTrue($tagged['output']);
 });
 
 afterEach(function (): void {

@@ -14,8 +14,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
-use Laragear\WebAuthn\Contracts\WebAuthnAuthenticatable;
-use Laragear\WebAuthn\WebAuthnAuthentication;
+use Laravel\Passkeys\Contracts\PasskeyUser;
+use Laravel\Passkeys\PasskeyAuthenticatable;
 
 /**
  * A platform account.
@@ -31,7 +31,7 @@ use Laragear\WebAuthn\WebAuthnAuthentication;
  */
 #[Fillable(['name', 'email', 'password'])]
 #[Hidden(['password', 'remember_token', 'totp_secret'])]
-class User extends Authenticatable implements MustVerifyEmail, WebAuthnAuthenticatable
+class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
 {
     use HasExternalId;
 
@@ -39,7 +39,7 @@ class User extends Authenticatable implements MustVerifyEmail, WebAuthnAuthentic
     use HasFactory;
 
     use Notifiable;
-    use WebAuthnAuthentication;
+    use PasskeyAuthenticatable;
 
     /**
      * @return array<string, string>
@@ -99,10 +99,13 @@ class User extends Authenticatable implements MustVerifyEmail, WebAuthnAuthentic
 
     /**
      * How many passkeys this account can actually authenticate with.
+     *
+     * Every stored credential counts. There is no disabled state to exclude: removing a passkey
+     * deletes the row, so a row that exists is a credential an authenticator can still assert.
      */
-    public function enabledPasskeyCount(): int
+    public function passkeyCount(): int
     {
-        return $this->webAuthnCredentials()->whereEnabled()->count();
+        return $this->passkeys()->count();
     }
 
     /**
@@ -114,7 +117,7 @@ class User extends Authenticatable implements MustVerifyEmail, WebAuthnAuthentic
      */
     public function hasSecondFactor(): bool
     {
-        return $this->hasConfirmedTotp() || $this->enabledPasskeyCount() > 0;
+        return $this->hasConfirmedTotp() || $this->passkeyCount() > 0;
     }
 
     /**

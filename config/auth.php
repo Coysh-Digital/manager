@@ -66,18 +66,19 @@ return [
     'providers' => [
         'users' => [
             /*
-             | eloquent-webauthn rather than eloquent.
+             | Plain Eloquent. The only credential this provider resolves is a password.
              |
-             | It is a superset: password credentials are resolved exactly as the Eloquent provider
-             | does, and it additionally knows how to resolve a WebAuthn assertion. Nothing about
-             | password login changes.
+             | That is the point. A passkey is a second factor here, not a credential in its own
+             | right, so nothing in the guard should be able to turn one into a session. Verification
+             | happens in the two-factor challenge controller, against a challenge the password step
+             | opened — and the session is issued there, explicitly, for the user that step named.
+             |
+             | An assertion-aware provider would put the two on an equal footing and make "a passkey
+             | alone must never sign anybody in" a matter of which routes exist rather than of what
+             | the guard is capable of.
              */
-            'driver' => 'eloquent-webauthn',
+            'driver' => 'eloquent',
             'model' => env('AUTH_MODEL', User::class),
-
-            // Passkeys are a second factor here, not a replacement for the password, so a passkey
-            // alone must never produce a session. See the two-factor challenge.
-            'password_fallback' => true,
         ],
 
         // 'users' => [

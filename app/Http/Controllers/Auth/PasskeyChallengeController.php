@@ -7,12 +7,13 @@ namespace App\Http\Controllers\Auth;
 use App\Domain\Audit\AuditRecorder;
 use App\Models\AuditEvent;
 use App\Models\User;
-use Illuminate\Contracts\Support\Responsable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Laragear\WebAuthn\Contracts\WebAuthnAuthenticatable;
-use Laragear\WebAuthn\Http\Requests\AssertedRequest;
-use Laragear\WebAuthn\Http\Requests\AssertionRequest;
+use Laravel\Passkeys\Actions\GenerateVerificationOptions;
+use Laravel\Passkeys\Actions\VerifyPasskey;
+use Laravel\Passkeys\Exceptions\InvalidPasskeyException;
+use Laravel\Passkeys\Http\Requests\PasskeyVerificationRequest;
+use Laravel\Passkeys\Support\WebAuthn;
 
 /**
  * Satisfying the second-factor challenge with a passkey.
@@ -21,22 +22,32 @@ use Laragear\WebAuthn\Http\Requests\AssertionRequest;
  * gate the TOTP challenge uses. A passkey is an alternative to typing a code, not a way around the
  * password.
  *
- * Two things keep that true:
+ * Three things keep that true, and they are deliberately not the same mechanism:
  *
+ *  - The guard cannot resolve an assertion at all. config/auth.php uses the plain Eloquent provider,
+ *    so there is no code path anywhere that turns a credential into a session on its own.
  *  - The assertion options are scoped to the pending user's credentials, so no other account's
  *    passkey is even offered.
- *  - The login is gated by a callback that rejects any user other than the pending one. Without it, a
- *    passkey belonging to a different account could satisfy a challenge opened for this one — the
- *    password step would have been for one user and the second factor for another.
+ *  - Verification is told which user it must belong to, and the session is issued for *that* user
+ *    rather than for whoever the credential resolves to. Without it, a passkey belonging to a
+ *    different account could close a challenge opened for this one — the password step would have
+ *    been for one person and the second factor for another.
  */
 final class PasskeyChallengeController
 {
+    /**
+     * Where the request options are parked between the two halves of the ceremony.
+     *
+     * The package's request class reads this key when the assertion comes back.
+     */
+    private const OPTIONS_KEY = 'passkey.verification_options';
+
     public function __construct(private readonly AuditRecorder $audit) {}
 
     /**
      * Options for asserting an existing credential.
      */
-    public function options(AssertionRequest $request): Responsable|JsonResponse
+    public function options(Request $request, GenerateVerificationOptions $generate): JsonResponse
     {
         $user = $this->pendingUser($request);
 
@@ -46,13 +57,17 @@ final class PasskeyChallengeController
 
         // Scoped to this user. An unscoped ceremony would let the browser offer any credential it
         // holds for this origin, including one belonging to a different account.
-        return $request->toVerify($user);
+        $options = $generate($user);
+
+        $request->session()->put(self::OPTIONS_KEY, WebAuthn::toJson($options));
+
+        return response()->json(WebAuthn::toBrowserArray($options));
     }
 
     /**
      * Complete the challenge.
      */
-    public function store(AssertedRequest $request): JsonResponse
+    public function store(Request $request, VerifyPasskey $verify): JsonResponse
     {
         $pending = $this->pendingUser($request);
 
@@ -60,23 +75,18 @@ final class PasskeyChallengeController
             return response()->json(['error' => 'no_pending_challenge'], 409);
         }
 
-        $remember = (bool) ($request->session()->get('auth.challenge.remember') ?? false);
+        // Resolved here rather than type-hinted on the method signature, and that ordering is the
+        // point: a form request in the signature is validated by the framework *before* the method
+        // body runs, so a call with no challenge behind it would be answered with a complaint about
+        // its payload instead of a refusal. The gate comes first, then the credential is parsed.
+        $credentials = app(PasskeyVerificationRequest::class);
 
-        $user = $request->login(
-            remember: $remember,
-            callbacks: [
-                // The guard that matters. attemptWhen refuses the login outright when this returns
-                // false, so a passkey for another account cannot close this challenge.
-                //
-                // The instanceof is doing real work as well as narrowing the package's interface: a
-                // credential resolving to anything other than a Manager user has no business closing
-                // a Manager challenge.
-                fn (WebAuthnAuthenticatable $candidate): bool => $candidate instanceof User
-                    && $candidate->id === $pending->id,
-            ],
-        );
-
-        if ($user === null) {
+        try {
+            // The pending user is passed, not inferred. That is what refuses an assertion from a
+            // credential belonging to somebody else, and it is checked inside the same transaction
+            // that rewrites the signature counter.
+            $verify($credentials->credential(), $credentials->verificationOptions(), $pending);
+        } catch (InvalidPasskeyException) {
             $this->audit->record(
                 action: 'auth.passkey.failed',
                 actor: $pending,
@@ -88,9 +98,14 @@ final class PasskeyChallengeController
             return response()->json(['error' => 'assertion_failed'], 422);
         }
 
-        // The package regenerated the session on success. The rest of the post-login work is ours,
-        // and is the same work the TOTP path does — so it lives in one place.
-        LoginController::finaliseSession($request, $pending, 'passkey');
+        // Remembered from the password step rather than read from this request. The choice belongs to
+        // the form somebody actually ticked, and a long-lived cookie is not something the second-factor
+        // call should be able to ask for on its own.
+        $remember = (bool) ($request->session()->get('auth.challenge.remember') ?? false);
+
+        // For the pending user, explicitly. Shared with the password and TOTP paths so that session
+        // regeneration and the recent-authentication timestamp cannot differ between them.
+        LoginController::issueSession($request, $pending, $remember, 'passkey');
 
         return response()->json(['redirect' => route('sites.index')]);
     }

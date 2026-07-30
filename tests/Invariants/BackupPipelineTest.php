@@ -44,7 +44,17 @@ beforeEach(function (): void {
 
     CapabilityGrant::factory()->for($this->site)->capability('backups:create')->create();
 
-    $this->platformKey = (string) config('manager.backups.public_key');
+    // Generated here rather than read from the environment. A configured installation has a backup
+    // keypair, but a fresh checkout does not — and a suite that only passes on a machine where
+    // somebody has run manager:keys:generate is a suite that stops running on CI.
+    $backupKeypair = Sealing::generateBoxKeypair();
+
+    config([
+        'manager.backups.public_key' => $backupKeypair['public'],
+        'manager.backups.secret_key' => $backupKeypair['secret'],
+    ]);
+
+    $this->platformKey = $backupKeypair['public'];
 
     // A claimed backup job, which is the only state an artifact may be declared against.
     $this->job = RemoteJob::factory()->for($this->site)->create([

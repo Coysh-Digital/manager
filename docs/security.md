@@ -98,7 +98,27 @@ codes. A session left open on an unlocked machine is not enough.
 
 Resetting a password does not bypass the second factor, and it ends every other session.
 
-Passkeys are planned for Phase 2. They are a specification requirement and are not yet implemented.
+A passkey satisfies the same requirement as TOTP, and is offered alongside it rather than instead of
+it. It is a **second factor here, not a way past the password**: an account is never signed in on a
+passkey alone. A single passkey on an unlocked, already-signed-in laptop is one factor, and this
+system can read every installation it manages.
+
+That is enforced in three independent places, because a single mechanism is a single thing to get
+wrong:
+
+- The authentication guard uses the plain Eloquent provider, so no code path anywhere resolves a
+  credential other than a password into a session.
+- The passkey package's own routes — including its passwordless login endpoint — are not registered.
+- The challenge endpoint verifies the assertion against the user the password step named, and issues
+  the session for that user rather than for whoever the credential resolves to.
+
+Registration sits behind the same fifteen-minute password confirmation as any other sensitive action,
+and the last remaining second factor cannot be removed while the organisation requires one.
+
+Note for operators: the WebAuthn user handle is derived from `APP_KEY` unless
+`PASSKEYS_USER_HANDLE_SECRET` is set. Rotating `APP_KEY` without having set that variable first
+changes every derived handle and orphans every registered passkey — an account with no authenticator
+app would be locked out. Set it explicitly before any key rotation.
 
 ## Runbooks
 

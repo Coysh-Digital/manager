@@ -31,6 +31,11 @@ it('passes every check on a correctly configured installation', function (): voi
     config([
         'manager.signing.public_key' => ($keypair = Keys::generateKeypair())['public'],
         'manager.signing.secret_key' => $keypair['secret'],
+
+        // Stated here rather than inherited from whatever .env this happens to run against. The
+        // shipped .env.example leaves APP_URL at the default on purpose, so a test that read it
+        // would assert "correctly configured" while running against a deliberately unconfigured one.
+        'app.url' => 'https://manager.example.org',
     ]);
 
     User::factory()->create();

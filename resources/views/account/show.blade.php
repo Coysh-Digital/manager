@@ -132,12 +132,16 @@
                 @forelse ($passkeys as $passkey)
                     <div class="flex items-center justify-between gap-4 border-t border-border py-3 text-[12.5px] first:border-t-0">
                         <div class="flex min-w-0 flex-col gap-0.5">
-                            <span class="font-medium">{{ $passkey->alias ?: 'Passkey' }}</span>
+                            <span class="font-medium">{{ $passkey->name ?: 'Passkey' }}</span>
                             <span class="font-mono text-[11.5px] text-text-3">
                                 added {{ $passkey->created_at?->diffForHumans() ?? 'recently' }}
-                                @if ($passkey->disabled_at)
-                                    · disabled
+                                {{-- The authenticator model, where it identified itself. Worth showing:
+                                     it is how somebody tells two passkeys apart when the labels are
+                                     unhelpful, and how they spot one they do not recognise. --}}
+                                @if ($passkey->authenticator)
+                                    · {{ $passkey->authenticator }}
                                 @endif
+                                · {{ $passkey->last_used_at ? 'last used '.$passkey->last_used_at->diffForHumans() : 'never used' }}
                             </span>
                         </div>
 

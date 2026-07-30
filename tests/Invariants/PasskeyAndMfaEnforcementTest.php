@@ -8,7 +8,14 @@ use App\Models\Membership;
 use App\Models\Organisation;
 use App\Models\Site;
 use App\Models\User;
-use Laragear\WebAuthn\Models\WebAuthnCredential;
+use Illuminate\Auth\EloquentUserProvider;
+use Illuminate\Support\Facades\Route;
+use Laravel\Passkeys\Passkey;
+use Laravel\Passkeys\Support\WebAuthn;
+use ParagonIE\ConstantTime\Base64UrlSafe;
+use Symfony\Component\Uid\Uuid;
+use Webauthn\CredentialRecord;
+use Webauthn\TrustPath\EmptyTrustPath;
 
 /**
  * Passkeys as a second factor, and organisation-level MFA enforcement.
@@ -29,22 +36,39 @@ beforeEach(function (): void {
 });
 
 /**
- * Attach a passkey to a user without going through a WebAuthn ceremony.
+ * Attach a registered passkey to a user without going through a WebAuthn ceremony.
+ *
+ * There is no ceremony here and there cannot be: an assertion requires a real authenticator holding
+ * a private key. What this fabricates is the *stored* side of a registration — the row the platform
+ * would hold afterwards — which is what everything tested below actually reads: whether an account
+ * has a second factor, which credentials get offered, and what removing one does.
+ *
+ * The stored credential is built by serialising a genuine CredentialRecord rather than by hand, so
+ * the row is the shape production writes. Verifying the signature over it is the library's job, and
+ * is not what these tests are about.
  */
-function givePasskey(User $user, string $alias = 'Work laptop'): WebAuthnCredential
+function givePasskey(User $user, string $name = 'Work laptop'): Passkey
 {
-    return WebAuthnCredential::forceCreate([
-        'id' => bin2hex(random_bytes(16)),
-        'authenticatable_type' => $user->getMorphClass(),
-        'authenticatable_id' => $user->getKey(),
-        'user_id' => (string) Str::uuid(),
-        'alias' => $alias,
-        'counter' => 0,
-        'rp_id' => 'localhost',
-        'origin' => 'http://localhost',
-        'aaguid' => '00000000-0000-0000-0000-000000000000',
-        'attestation_format' => 'none',
-        'public_key' => 'test-key',
+    $rawId = random_bytes(16);
+
+    $record = CredentialRecord::create(
+        publicKeyCredentialId: $rawId,
+        type: 'public-key',
+        transports: ['internal'],
+        attestationType: 'none',
+        trustPath: EmptyTrustPath::create(),
+        aaguid: Uuid::fromString('00000000-0000-0000-0000-000000000000'),
+        credentialPublicKey: random_bytes(32),
+        // Derived, not invented. A handle that did not match this account would make the fixture
+        // disagree with what a real registration for the same user would have stored.
+        userHandle: $user->getPasskeyUserHandle(),
+        counter: 0,
+    );
+
+    return $user->passkeys()->create([
+        'name' => $name,
+        'credential_id' => Base64UrlSafe::encodeUnpadded($rawId),
+        'credential' => json_decode(WebAuthn::toJson($record), true, flags: JSON_THROW_ON_ERROR),
     ]);
 }
 
@@ -111,14 +135,49 @@ it('refuses a passkey ceremony with no pending challenge', function (): void {
 
     // Nobody has proved a password, so there is nothing to second-factor.
     $this->postJson(route('two-factor.passkey.options'))->assertStatus(409);
+
+    // 409 rather than 422, which pins the order the checks run in: the missing challenge is refused
+    // before the payload is even parsed. A malformed-credential error here would mean the endpoint
+    // had begun a ceremony for somebody who never passed the password step.
     $this->postJson(route('two-factor.passkey.store'), [
-        'id' => 'x',
-        'rawId' => 'x',
-        'type' => 'public-key',
-        'response' => ['authenticatorData' => 'x', 'clientDataJSON' => 'x', 'signature' => 'x'],
+        'credential' => [
+            'id' => 'x',
+            'rawId' => 'x',
+            'type' => 'public-key',
+            'response' => ['authenticatorData' => 'x', 'clientDataJSON' => 'x', 'signature' => 'x'],
+        ],
     ])->assertStatus(409);
 
     expect(auth()->check())->toBeFalse();
+});
+
+it('registers none of the package\'s own passkey routes', function (string $name): void {
+    // The package ships a passwordless login endpoint: present a passkey, receive a session. It is a
+    // reasonable default and the exact opposite of what this platform allows, so the routes are
+    // switched off in AppServiceProvider.
+    //
+    // Asserted by name because this is the kind of thing a package upgrade re-enables quietly. The
+    // guard config would still refuse to resolve an assertion, but a route that exists is a route
+    // somebody has to reason about.
+    expect(Route::has($name))->toBeFalse();
+})->with([
+    'passkey.login',
+    'passkey.login-options',
+    'passkey.confirm',
+    'passkey.confirm-options',
+    'passkey.registration-options',
+    'passkey.store',
+    'passkey.destroy',
+]);
+
+it('gives the guard no way to resolve a passkey at all', function (): void {
+    // The belt to the routes' braces. Even if an assertion-shaped payload reached a guard, the
+    // provider behind it resolves exactly one kind of credential: a password.
+    expect(config('auth.providers.users.driver'))->toBe('eloquent');
+
+    // The exact class, not an instanceof: an assertion-aware provider would be a *subclass* of this
+    // one, so anything looser would pass while the property being pinned had been lost.
+    expect(auth()->guard('web')->getProvider()::class)->toBe(EloquentUserProvider::class);
 });
 
 it('scopes the passkey ceremony to the pending user', function (): void {
@@ -163,7 +222,7 @@ it('lists and removes a passkey', function (): void {
         ->delete(route('passkeys.destroy', $credential->id))
         ->assertRedirect();
 
-    expect($this->user->fresh()->enabledPasskeyCount())->toBe(0)
+    expect($this->user->fresh()->passkeyCount())->toBe(0)
         ->and(AuditEvent::query()->where('action', 'user.passkey.removed')->exists())->toBeTrue();
 });
 
@@ -177,7 +236,7 @@ it('will not remove a passkey belonging to somebody else', function (): void {
         ->assertRedirect();
 
     // Scoped to the caller's own credentials, so an identifier from elsewhere removes nothing.
-    expect($other->fresh()->enabledPasskeyCount())->toBe(1);
+    expect($other->fresh()->passkeyCount())->toBe(1);
 });
 
 it('refuses to remove the last second factor while the organisation requires one', function (): void {
@@ -191,7 +250,7 @@ it('refuses to remove the last second factor while the organisation requires one
 
     // Leaving an account unable to satisfy a requirement it is subject to would lock the person out
     // on their next sign-in, which is worse than refusing here.
-    expect($this->user->fresh()->enabledPasskeyCount())->toBe(1)
+    expect($this->user->fresh()->passkeyCount())->toBe(1)
         ->and(session('warning'))->toContain('requires two-factor authentication');
 });
 
@@ -206,7 +265,7 @@ it('allows removing one passkey when another second factor remains', function ()
         ->delete(route('passkeys.destroy', $first->id))
         ->assertRedirect();
 
-    expect($this->user->fresh()->enabledPasskeyCount())->toBe(1);
+    expect($this->user->fresh()->passkeyCount())->toBe(1);
 });
 
 // --------------------------------------------------------------------------------------------------

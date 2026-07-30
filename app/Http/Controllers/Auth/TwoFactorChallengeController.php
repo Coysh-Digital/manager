@@ -40,7 +40,7 @@ final class TwoFactorChallengeController
         return view('auth.two-factor', [
             // Whether to offer the passkey button at all. Showing it to somebody with no passkey
             // registered would be a button that can only fail.
-            'hasPasskeys' => $user->enabledPasskeyCount() > 0,
+            'hasPasskeys' => $user->passkeyCount() > 0,
             'hasTotp' => $user->hasConfirmedTotp(),
         ]);
     }

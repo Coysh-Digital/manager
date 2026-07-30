@@ -43,7 +43,7 @@ final class AccountController
 
             // Listed from the source of truth rather than counted, so the screen can name each device
             // and say when it was added.
-            'passkeys' => $user->webAuthnCredentials()->orderByDesc('created_at')->get(),
+            'passkeys' => $user->passkeys()->orderByDesc('created_at')->get(),
 
             // Held in the session between starting enrolment and confirming it. It is not written
             // to the user until a valid code proves the authenticator actually has it.

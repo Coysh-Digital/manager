@@ -48,24 +48,30 @@
         @if ($connector && $site->craft_version === null)
             {{-- The state that caused real confusion: paired successfully, but nothing reported yet,
                  so every version field is empty. Say which of the two it is. --}}
-            <div class="mb-5 mt-5 flex flex-wrap items-center justify-between gap-3 rounded-[9px] border border-info-line bg-info-bg px-4 py-3.5">
-                <div class="flex flex-col gap-0.5">
-                    <span class="text-[13px] font-medium text-info">Paired, but nothing reported yet</span>
-                    <span class="text-[12.5px] text-text-2">
-                        The connector has authenticated. Versions appear once the site sends its first
-                        report — press Refresh, or wait for its schedule. If nothing arrives, check that
-                        <span class="font-mono text-[12px]">manager-connector/jobs</span> is running on
-                        the site.
-                    </span>
+            <div class="mb-5 mt-5 rounded-[9px] border border-info-line bg-info-bg px-4 py-3.5">
+                <div class="mb-3 flex flex-wrap items-start justify-between gap-3">
+                    <div class="flex flex-col gap-0.5">
+                        <span class="text-[13px] font-medium text-info">Paired, but nothing reported yet</span>
+                        <span class="text-[12.5px] text-text-2">
+                            The connector has authenticated. Nothing is sent until something on the site
+                            asks it to — <strong>Manager never calls out to a site</strong>, so there is
+                            one more step: a scheduled task.
+                        </span>
+                    </div>
+
+                    <form method="POST" action="{{ route('sites.refresh', $site) }}">
+                        @csrf
+                        <button type="submit"
+                                class="h-8 whitespace-nowrap rounded-[7px] border border-primary bg-primary px-3 text-[12.5px] font-medium text-primary-fg hover:bg-primary-hover">
+                            Refresh now
+                        </button>
+                    </form>
                 </div>
 
-                <form method="POST" action="{{ route('sites.refresh', $site) }}">
-                    @csrf
-                    <button type="submit"
-                            class="h-8 whitespace-nowrap rounded-[7px] border border-primary bg-primary px-3 text-[12.5px] font-medium text-primary-fg hover:bg-primary-hover">
-                        Refresh now
-                    </button>
-                </form>
+                <p class="text-[12.5px] text-text-2">
+                    The scheduled tasks are set out below, and are what the site needs before anything
+                    arrives — including the Refresh button above.
+                </p>
             </div>
         @endif
 
@@ -123,11 +129,12 @@
                     </div>
                 </details>
 
-                <p class="mt-3 text-[12px] text-text-3">
+                <p class="mt-3 mb-3 text-[12px] text-text-3">
                     The connector generates its own keypair on the site and sends only the public half.
                     Manager never receives a private key, an administrator password or a database
                     credential.
                 </p>
+
             </div>
         @endif
 
@@ -166,6 +173,12 @@
                 </form>
             </div>
         @endif
+
+        {{-- Always present, opened while the site has reported nothing. Instructions that vanish once
+             they have worked are no use to somebody whose cron broke three months later. --}}
+        <div class="mb-5 mt-5 rounded-[10px] border border-border bg-surface-2 px-4 py-3.5">
+            <x-connector-schedule :site="$site" :open="$connector !== null && $site->craft_version === null" />
+        </div>
 
         @if ($pendingConnector)
             <div class="mb-5 mt-5 flex items-start gap-3 rounded-[9px] border border-amber-line bg-amber-bg px-4 py-3.5">

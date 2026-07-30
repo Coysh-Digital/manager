@@ -1,7 +1,7 @@
 /*
  * WebAuthn ceremonies, by hand.
  *
- * The package ships a helper script, but it is a handful of lines to do this directly and one fewer
+ * Done directly rather than through a browser library: it is a handful of lines, and one fewer
  * dependency to audit in something that guards a control plane. The only real work is base64url
  * conversion, because WebAuthn wants ArrayBuffers and JSON carries strings.
  */
@@ -94,14 +94,16 @@ async function registerPasskey(button) {
         const credential = await navigator.credentials.create({ publicKey: options });
 
         await postJson(button.dataset.registerUrl, {
-            id: credential.id,
-            rawId: bufferToBase64Url(credential.rawId),
-            type: credential.type,
-            response: {
-                clientDataJSON: bufferToBase64Url(credential.response.clientDataJSON),
-                attestationObject: bufferToBase64Url(credential.response.attestationObject),
-            },
             name: nameField?.value ?? '',
+            credential: {
+                id: credential.id,
+                rawId: bufferToBase64Url(credential.rawId),
+                type: credential.type,
+                response: {
+                    clientDataJSON: bufferToBase64Url(credential.response.clientDataJSON),
+                    attestationObject: bufferToBase64Url(credential.response.attestationObject),
+                },
+            },
         });
 
         // Reloaded rather than patched into the DOM: the account page is rendered server-side, and
@@ -143,16 +145,18 @@ async function assertPasskey(button) {
         const assertion = await navigator.credentials.get({ publicKey: options });
 
         const result = await postJson(button.dataset.assertUrl, {
-            id: assertion.id,
-            rawId: bufferToBase64Url(assertion.rawId),
-            type: assertion.type,
-            response: {
-                authenticatorData: bufferToBase64Url(assertion.response.authenticatorData),
-                clientDataJSON: bufferToBase64Url(assertion.response.clientDataJSON),
-                signature: bufferToBase64Url(assertion.response.signature),
-                userHandle: assertion.response.userHandle
-                    ? bufferToBase64Url(assertion.response.userHandle)
-                    : null,
+            credential: {
+                id: assertion.id,
+                rawId: bufferToBase64Url(assertion.rawId),
+                type: assertion.type,
+                response: {
+                    authenticatorData: bufferToBase64Url(assertion.response.authenticatorData),
+                    clientDataJSON: bufferToBase64Url(assertion.response.clientDataJSON),
+                    signature: bufferToBase64Url(assertion.response.signature),
+                    userHandle: assertion.response.userHandle
+                        ? bufferToBase64Url(assertion.response.userHandle)
+                        : null,
+                },
             },
         });
 

@@ -89,24 +89,33 @@ final class LoginController
      */
     public static function completeLogin(Request $request, User $user, bool $remember, string $factor = 'password'): RedirectResponse
     {
+        self::issueSession($request, $user, $remember, $factor);
+
+        return redirect()->intended(route('sites.index'));
+    }
+
+    /**
+     * Issue the session, once and in one place.
+     *
+     * Separate from completeLogin only because the passkey path answers a fetch() with JSON rather
+     * than a redirect. Everything that decides whether the login is *safe* happens here, so the two
+     * paths cannot drift apart on it — session regeneration above all, since a passkey path that
+     * forgot to regenerate would leave a session fixed before login perfectly usable after it.
+     */
+    public static function issueSession(Request $request, User $user, bool $remember, string $factor): void
+    {
         Auth::login($user, $remember);
 
         // A fresh identifier on privilege change, so a session fixed before login is worthless.
         $request->session()->regenerate();
 
         self::finaliseSession($request, $user, $factor);
-
-        return redirect()->intended(route('sites.index'));
     }
 
     /**
      * The bookkeeping every successful login shares, whichever factor closed it.
-     *
-     * Extracted because the passkey path logs the user in through the WebAuthn guard rather than
-     * through Auth::login, and two copies of this would eventually disagree about something that
-     * matters — the recent-authentication timestamp most of all.
      */
-    public static function finaliseSession(Request $request, User $user, string $factor): void
+    private static function finaliseSession(Request $request, User $user, string $factor): void
     {
         $request->session()->forget('auth.challenge');
 
