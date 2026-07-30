@@ -1,11 +1,13 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/laravel",
+    "name": "coysh-digital/manager",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
+    "description": "A control plane for a fleet of Craft CMS installations. This is Manager Self-Hosted.",
     "keywords": [
-        "laravel",
-        "framework"
+        "craft-cms",
+        "fleet-management",
+        "monitoring",
+        "self-hosted"
     ],
     "license": "proprietary",
     "require": {
@@ -113,5 +115,11 @@
             "type": "path",
             "url": "../protocol"
         }
-    ]
+    ],
+    "homepage": "https://github.com/Coysh-Digital/manager",
+    "support": {
+        "issues": "https://github.com/Coysh-Digital/manager/issues",
+        "security": "https://github.com/Coysh-Digital/manager/blob/main/SECURITY.md",
+        "docs": "https://github.com/Coysh-Digital/manager/tree/main/docs"
+    }
 }
