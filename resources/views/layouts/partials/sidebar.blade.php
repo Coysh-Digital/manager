@@ -51,6 +51,24 @@
             @endisset
         </a>
 
+        <a href="{{ route('findings.index') }}"
+           @class([
+               'flex items-center justify-between rounded-md px-2.5 py-[7px] text-[13.5px] font-medium no-underline',
+               'bg-pale text-primary' => request()->routeIs('findings.*'),
+               'text-text-2 hover:bg-row-hover hover:text-text' => ! request()->routeIs('findings.*'),
+           ])>
+            <span>Findings</span>
+            @isset($findingCount)
+                @if ($findingCount > 0)
+                    <span @class([
+                        'font-mono text-[11px]',
+                        'rounded px-1.5 py-px border border-danger-line bg-danger-bg text-danger' => $severeFindings ?? false,
+                        'rounded px-1.5 py-px border border-amber-line bg-amber-bg text-amber' => ! ($severeFindings ?? false),
+                    ])>{{ $findingCount }}</span>
+                @endif
+            @endisset
+        </a>
+
         <div class="px-2.5 pb-2 pt-[18px] font-mono text-[10px] uppercase tracking-[0.08em] text-text-3">Access</div>
 
         <a href="{{ route('activity.index') }}"
@@ -64,6 +82,15 @@
     </div>
 
     <div class="flex flex-col gap-0.5 border-t border-border p-2.5">
+        <a href="{{ route('settings.show') }}"
+           @class([
+               'flex items-center rounded-md px-2.5 py-[7px] text-[13.5px] font-medium no-underline',
+               'bg-pale text-primary' => request()->routeIs('settings.*'),
+               'text-text-2 hover:bg-row-hover hover:text-text' => ! request()->routeIs('settings.*'),
+           ])>
+            Settings
+        </a>
+
         <a href="{{ route('account.show') }}"
            @class([
                'flex items-center rounded-md px-2.5 py-[7px] text-[13.5px] font-medium no-underline',

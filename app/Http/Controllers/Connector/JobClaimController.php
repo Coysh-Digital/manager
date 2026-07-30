@@ -47,6 +47,14 @@ final class JobClaimController
             payload: [
                 'jobs' => $envelopes->values()->all(),
 
+                // The platform's current view of what this site may do.
+                //
+                // Carried here, on a signed response, because a capability list is security-sensitive
+                // configuration. Without it the connector's copy would stay frozen at whatever
+                // pairing agreed, so granting a capability would change nothing on the site and
+                // revoking one would leave it still collecting.
+                'capabilities' => $site->grantedCapabilities(),
+
                 // Echoed so a connector can confirm it is still talking to the platform it paired
                 // with, without keeping a separate record to compare against.
                 'platform_public_key' => $keypair->publicKey(),

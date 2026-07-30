@@ -66,14 +66,20 @@ final class AuditRecorder
         $this->secretGuard->assertSafe($before, 'before');
         $this->secretGuard->assertSafe($after, 'after');
 
-        // A site always implies its organisation. Taking it from the site rather than trusting the
-        // caller keeps an event from being filed against the wrong tenant.
-        $organisation ??= $site?->organisation;
+        // A site always implies its organisation. Taken from the site rather than trusted from the
+        // caller, so an event cannot be filed against the wrong tenant.
+        //
+        // Read as a foreign key rather than through the relation: the relation would lazy-load, which
+        // is an N+1 when recording an event per site in a loop — and exactly that turned up when
+        // revoking every connector in an organisation.
+        $organisationId = $organisation !== null
+            ? $organisation->id
+            : $site?->organisation_id;
 
         $request ??= request();
 
         $attributes = [
-            'organisation_id' => $organisation?->id,
+            'organisation_id' => $organisationId,
             'actor_type' => $actorType,
             'actor_id' => $actor?->id,
             // Falls through an empty name to the email, so an account created without a display
@@ -93,11 +99,11 @@ final class AuditRecorder
             'failure_reason' => $failureReason,
         ];
 
-        return DB::transaction(function () use ($attributes, $organisation): AuditEvent {
-            $this->lockChain($organisation);
+        return DB::transaction(function () use ($attributes, $organisationId): AuditEvent {
+            $this->lockChain($organisationId);
 
             $previous = AuditEvent::query()
-                ->where('organisation_id', $organisation?->id)
+                ->where('organisation_id', $organisationId)
                 ->orderByDesc('seq')
                 ->first();
 
@@ -160,12 +166,12 @@ final class AuditRecorder
      * An advisory lock rather than a row lock, because the first event in a chain has no
      * predecessor row to lock. Postgres releases it automatically at commit or rollback.
      */
-    private function lockChain(?Organisation $organisation): void
+    private function lockChain(?int $organisationId): void
     {
         DB::statement('SELECT pg_advisory_xact_lock(?, ?)', [
             self::LOCK_NAMESPACE,
             // 0 stands for the platform chain, which has no organisation.
-            $organisation === null ? 0 : $organisation->id,
+            $organisationId ?? 0,
         ]);
     }
 

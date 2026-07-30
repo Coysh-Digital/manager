@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Contracts\KeyService;
+use App\Models\Finding;
 use App\Models\Organisation;
 use App\Models\Site;
 use App\Support\CorrelationId;
@@ -61,10 +62,19 @@ class AppServiceProvider extends ServiceProvider
                 ->where('organisation_id', $organisation->id)
                 ->active();
 
+            $outstanding = Finding::query()
+                ->whereIn('site_id', $sites->clone()->select('id'))
+                ->whereIn('state', [Finding::STATE_OPEN, Finding::STATE_ACKNOWLEDGED]);
+
             $view->with([
                 'siteCount' => $view->getData()['siteCount'] ?? $sites->clone()->count(),
                 'updateCount' => $sites->clone()->sum('available_updates'),
                 'securityUpdates' => $sites->clone()->where('has_security_release', true)->exists(),
+                'findingCount' => $outstanding->clone()->count(),
+
+                // Red only for critical or high. Amber for the rest, so the badge distinguishes
+                // "look now" from "there is a list".
+                'severeFindings' => $outstanding->clone()->whereIn('severity', ['critical', 'high'])->exists(),
             ]);
         });
     }

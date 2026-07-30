@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Updates;
 
+use App\Domain\Findings\FindingsEvaluator;
 use App\Models\Site;
 use App\Models\UpdateReport;
 use App\Support\CorrelationId;
@@ -23,7 +24,10 @@ final class UpdatesIngestService
 {
     public const SCHEMA = 'updates.v1';
 
-    public function __construct(private readonly CorrelationId $correlationId) {}
+    public function __construct(
+        private readonly CorrelationId $correlationId,
+        private readonly FindingsEvaluator $findings,
+    ) {}
 
     /**
      * @param  array<string, mixed>  $payload
@@ -89,6 +93,8 @@ final class UpdatesIngestService
                 'available_updates' => ($craftUpdate ? 1 : 0) + $pluginUpdates,
                 'last_seen_at' => $now,
             ])->save();
+
+            $this->findings->evaluate($site->refresh());
 
             return $report;
         });

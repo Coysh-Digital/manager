@@ -9,7 +9,9 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\TwoFactorChallengeController;
 use App\Http\Controllers\CapabilityController;
+use App\Http\Controllers\FindingController;
 use App\Http\Controllers\HealthController;
+use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SetupController;
 use App\Http\Controllers\SiteController;
 use App\Http\Controllers\UpdateController;
@@ -64,7 +66,11 @@ Route::middleware(['auth', 'organisation'])->group(function (): void {
 
     Route::get('updates', [UpdateController::class, 'index'])->name('updates.index');
 
+    Route::get('findings', [FindingController::class, 'index'])->name('findings.index');
+
     Route::get('activity', [ActivityController::class, 'index'])->name('activity.index');
+
+    Route::get('settings', [SettingsController::class, 'show'])->name('settings.show');
 
     Route::get('account', [AccountController::class, 'show'])->name('account.show');
 
@@ -94,6 +100,13 @@ Route::middleware(['auth', 'organisation'])->group(function (): void {
         // Enqueues a job rather than reaching into the site: the platform cannot contact a
         // connector, so this waits for the site to come and ask.
         Route::post('updates/{site}/refresh', [UpdateController::class, 'refresh'])->name('updates.refresh');
+
+        Route::post('findings/{finding}/acknowledge', [FindingController::class, 'acknowledge'])->name('findings.acknowledge');
+        Route::post('findings/{finding}/reopen', [FindingController::class, 'reopen'])->name('findings.reopen');
+
+        Route::post('settings/mfa', [SettingsController::class, 'updateMfa'])->name('settings.mfa');
+        Route::post('settings/connectors/rotate', [SettingsController::class, 'rotateAllConnectors'])
+            ->name('settings.connectors.rotate');
 
         Route::post('account/two-factor/start', [AccountController::class, 'startTotp'])->name('account.totp.start');
         Route::post('account/two-factor/confirm', [AccountController::class, 'confirmTotp'])->name('account.totp.confirm');

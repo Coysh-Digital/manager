@@ -121,6 +121,32 @@ class Site extends Model
     }
 
     /**
+     * @return HasMany<UpdateReport, $this>
+     */
+    public function updateReports(): HasMany
+    {
+        return $this->hasMany(UpdateReport::class);
+    }
+
+    /**
+     * @return HasMany<Finding, $this>
+     */
+    public function findings(): HasMany
+    {
+        return $this->hasMany(Finding::class);
+    }
+
+    /**
+     * Findings that are still true, acknowledged or not.
+     *
+     * @return HasMany<Finding, $this>
+     */
+    public function outstandingFindings(): HasMany
+    {
+        return $this->findings()->whereIn('state', [Finding::STATE_OPEN, Finding::STATE_ACKNOWLEDGED]);
+    }
+
+    /**
      * @return HasMany<Heartbeat, $this>
      */
     public function heartbeats(): HasMany

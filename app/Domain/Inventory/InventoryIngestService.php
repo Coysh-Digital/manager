@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Inventory;
 
+use App\Domain\Findings\FindingsEvaluator;
 use App\Models\InventoryReport;
 use App\Models\Site;
 use App\Support\CorrelationId;
@@ -27,7 +28,10 @@ final class InventoryIngestService
 {
     public const SCHEMA = 'inventory.v1';
 
-    public function __construct(private readonly CorrelationId $correlationId) {}
+    public function __construct(
+        private readonly CorrelationId $correlationId,
+        private readonly FindingsEvaluator $findings,
+    ) {}
 
     /**
      * Validate a payload without storing it.
@@ -73,6 +77,11 @@ final class InventoryIngestService
                 'last_seen_at' => $now,
                 'status' => Site::STATUS_CONNECTED,
             ])->save();
+
+            // Re-evaluated here rather than on a schedule, so the findings screen is never stale
+            // relative to the report that produced it. Inside the transaction, because a report
+            // stored without its findings would leave the two disagreeing.
+            $this->findings->evaluate($site->refresh());
 
             return $report;
         });
