@@ -100,6 +100,12 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
     Route::middleware('password.confirm')->group(function (): void {
         // Requesting a backup and deleting one both need recent authentication: one asks a production
         // site for a copy of its database, the other destroys one irrecoverably.
+        // Adding a site and issuing a code both sit behind recent authentication. A code is a bearer
+        // secret until it is consumed, so a stale session must not be able to mint one.
+        Route::post('sites', [SiteController::class, 'store'])->name('sites.store');
+        Route::post('sites/{site}/enrolment-code', [SiteController::class, 'issueCode'])
+            ->name('sites.enrolment-code');
+
         Route::post('backups/sites/{site}', [BackupController::class, 'store'])->name('backups.store');
         Route::delete('backups/{artifact}', [BackupController::class, 'destroy'])->name('backups.destroy');
 

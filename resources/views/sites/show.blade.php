@@ -32,6 +32,64 @@
             </a>
         </div>
 
+        {{-- Shown once, on the request that issued it. Only the hash is stored, so there is no route
+             that will show it again — which is exactly why it is safe to show here. --}}
+        @if (session('enrolmentCode'))
+            <div class="mb-5 mt-5 rounded-[10px] border border-primary bg-pale p-4">
+                <p class="mb-1.5 text-[13.5px] font-medium">Enrolment code — shown once</p>
+                <p class="mb-3 text-[12.5px] text-text-2">
+                    Run this on <code class="font-mono">{{ $site->expected_domain }}</code>. It is
+                    single-use, expires in
+                    {{ (int) (config('manager.enrolment.ttl') / 60) }} minutes, and is not stored anywhere
+                    it can be read back — if you lose it, issue another.
+                </p>
+
+                <pre class="mb-3 overflow-x-auto rounded-lg border border-primary bg-surface p-3"><code class="font-mono text-[12.5px]">php craft manager-connector/pair {{ session('enrolmentCode') }}</code></pre>
+
+                <p class="text-[12px] text-text-3">
+                    The connector generates its own keypair on the site and sends only the public half.
+                    Manager never receives a private key, an administrator password or a database
+                    credential.
+                </p>
+            </div>
+        @endif
+
+        @if ($membership->canAdminister())
+            <div class="mb-5 mt-5 flex flex-wrap items-center justify-between gap-3 rounded-[10px] border border-border bg-surface-2 px-4 py-3">
+                <div class="flex flex-col gap-0.5">
+                    <span class="text-[13px] font-medium">
+                        {{ $connector ? 'Re-pair this site' : 'Pair this site' }}
+                    </span>
+                    <span class="text-[12.5px] text-text-2">
+                        @if ($connector)
+                            This site has a working connector. A new code will not replace it unless you
+                            say so, which is what stops a compromised site re-pairing itself.
+                        @else
+                            Issues a single-use code to run on the site.
+                        @endif
+                    </span>
+                </div>
+
+                <form method="POST" action="{{ route('sites.enrolment-code', $site) }}"
+                      class="flex flex-wrap items-center gap-3">
+                    @csrf
+
+                    @if ($connector)
+                        <label class="flex items-center gap-2 text-[12.5px] text-text-2">
+                            <input type="checkbox" name="authorise_replacement" value="1" required
+                                   class="accent-[var(--primary)]">
+                            Replace the current connector
+                        </label>
+                    @endif
+
+                    <button type="submit"
+                            class="h-8 whitespace-nowrap rounded-[7px] border border-border-2 bg-surface px-3 text-[12.5px] text-text hover:bg-row-hover">
+                        Issue a code
+                    </button>
+                </form>
+            </div>
+        @endif
+
         @if ($pendingConnector)
             <div class="mb-5 mt-5 flex items-start gap-3 rounded-[9px] border border-amber-line bg-amber-bg px-4 py-3.5">
                 <span class="mt-px flex h-5 w-5 flex-none items-center justify-center rounded-[5px] border border-amber-line font-mono text-[12px] text-amber">!</span>

@@ -17,7 +17,60 @@
                 @endif
             </p>
         </div>
+
+        @if ($membership->canAdminister())
+            {{-- A details element rather than a modal. No JavaScript, and the form is linkable and
+                 keyboard-navigable for free. --}}
+            <details class="group relative">
+                <summary class="flex h-8 cursor-pointer list-none items-center rounded-[7px] border border-primary bg-primary px-3 text-[12.5px] font-medium text-primary-fg hover:bg-primary-hover">
+                    Add a site
+                </summary>
+
+                <form method="POST" action="{{ route('sites.store') }}"
+                      class="absolute right-0 z-10 mt-2 flex w-[360px] flex-col gap-3 rounded-[10px] border border-border bg-surface p-4 shadow-[var(--shadow-lg,var(--shadow))]">
+                    @csrf
+
+                    <label class="flex flex-col gap-1.5">
+                        <span class="text-[12.5px] font-medium">Name</span>
+                        <input type="text" name="name" required maxlength="120" value="{{ old('name') }}"
+                               placeholder="Example Client"
+                               class="h-[34px] rounded-[7px] border border-border-2 bg-surface-2 px-2.5 text-[12.5px] placeholder:text-text-3">
+                    </label>
+
+                    <label class="flex flex-col gap-1.5">
+                        <span class="text-[12.5px] font-medium">Domain</span>
+                        <input type="text" name="expected_domain" required maxlength="255" value="{{ old('expected_domain') }}"
+                               placeholder="example.org"
+                               class="h-[34px] rounded-[7px] border border-border-2 bg-surface-2 px-2.5 font-mono text-[12.5px] placeholder:text-text-3">
+                        <span class="text-[11.5px] text-text-3">
+                            The host the site is served from. Pairing compares this against what the
+                            connector reports, and holds the pairing for approval if they differ.
+                        </span>
+                    </label>
+
+                    <label class="flex flex-col gap-1.5">
+                        <span class="text-[12.5px] font-medium">Environment</span>
+                        <select name="environment" class="h-[34px] rounded-[7px] border border-border-2 bg-surface-2 px-2 text-[12.5px]">
+                            <option value="production">Production</option>
+                            <option value="staging">Staging</option>
+                            <option value="development">Development</option>
+                        </select>
+                    </label>
+
+                    <button type="submit"
+                            class="h-8 rounded-[7px] border border-primary bg-primary px-3 text-[12.5px] font-medium text-primary-fg hover:bg-primary-hover">
+                        Add site and issue a code
+                    </button>
+                </form>
+            </details>
+        @endif
     </div>
+
+    @if ($errors->any())
+        <div class="mb-4 rounded-lg border border-danger-line bg-danger-bg px-3.5 py-2.5 text-[12.5px] text-danger">
+            {{ $errors->first() }}
+        </div>
+    @endif
 
     <div class="overflow-hidden rounded-[10px] border border-border bg-surface shadow-[var(--shadow)]">
         {{-- Filters bind to the query string, so a filtered view can be linked and bookmarked. --}}

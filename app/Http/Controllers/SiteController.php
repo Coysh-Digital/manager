@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Domain\Pairing\EnrolmentService;
 use App\Domain\Site\SiteRemovalService;
 use App\Models\AuditEvent;
 use App\Models\Connector;
@@ -44,6 +45,7 @@ final class SiteController
         return view('sites.index', [
             'groups' => $groups,
             'filters' => $filters,
+            'membership' => app(Membership::class),
             'totalSites' => $organisation->sites()->active()->count(),
             'shown' => $sites->count(),
             'summary' => $this->summary($organisation),
@@ -58,6 +60,7 @@ final class SiteController
 
         return view('sites.show', [
             'site' => $site,
+            'membership' => app(Membership::class),
             'connector' => $site->activeConnector()->first(),
             'pendingConnector' => $site->connectors()
                 ->where('state', Connector::STATE_PENDING_CONFIRMATION)
@@ -78,6 +81,74 @@ final class SiteController
      * Behind a recent-authentication check, and it revokes the connector in the same transaction —
      * see SiteRemovalService for why that matters.
      */
+    /**
+     * Add a site and issue its first enrolment code.
+     *
+     * The code is shown once, on the redirect, and never again — only its hash is stored. Anybody who
+     * misses it issues another, which is cheaper than having somewhere a live credential can be looked
+     * up.
+     */
+    public function store(Request $request, Organisation $organisation, EnrolmentService $enrolment): RedirectResponse
+    {
+        abort_unless(app(Membership::class)->canAdminister(), 403);
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:120'],
+            'expected_domain' => ['required', 'string', 'max:255'],
+            'environment' => ['required', 'in:production,staging,development'],
+        ]);
+
+        $domain = $enrolment->normaliseDomain($validated['expected_domain']);
+
+        if ($domain === '' || ! str_contains($domain, '.')) {
+            return back()->withErrors([
+                'expected_domain' => 'That does not look like a domain. Use the host the site is served from, such as example.org.',
+            ])->withInput();
+        }
+
+        ['site' => $site, 'code' => $code] = $enrolment->createSite(
+            organisation: $organisation,
+            name: $validated['name'],
+            expectedDomain: $domain,
+            environment: $validated['environment'],
+            actor: $request->user(),
+        );
+
+        return to_route('sites.show', $site)
+            ->with('status', "Added {$site->name}.")
+            ->with('enrolmentCode', $code);
+    }
+
+    /**
+     * Issue a fresh enrolment code for a site.
+     *
+     * Replacing a working connector needs its own confirmation. Without it a code cannot displace an
+     * active one however it is used, which is what stops a compromised site re-pairing itself quietly.
+     */
+    public function issueCode(Request $request, Site $site, EnrolmentService $enrolment): RedirectResponse
+    {
+        $this->authoriseSite($site);
+        abort_unless(app(Membership::class)->canAdminister(), 403);
+
+        $replacing = $enrolment->wouldReplaceConnector($site);
+
+        $validated = $request->validate([
+            'authorise_replacement' => [$replacing ? 'accepted' : 'nullable'],
+        ]);
+
+        $code = $enrolment->issue(
+            site: $site,
+            actor: $request->user(),
+            authoriseReplacement: $replacing && (bool) ($validated['authorise_replacement'] ?? false),
+        );
+
+        return back()
+            ->with('status', $replacing
+                ? 'New code issued, authorised to replace the current connector. The old credentials stop working once it is used.'
+                : 'New code issued. Any previous code for this site no longer works.')
+            ->with('enrolmentCode', $code);
+    }
+
     public function destroy(Request $request, Site $site, SiteRemovalService $removal): RedirectResponse
     {
         $this->authoriseSite($site);
