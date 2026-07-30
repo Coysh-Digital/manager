@@ -11,8 +11,29 @@
 @import '@fontsource/ibm-plex-mono/400.css';
 @import '@fontsource/ibm-plex-mono/500.css';
 
+/*
+ * Vendor Blade that Tailwind's automatic detection cannot see, because vendor/ is gitignored. The
+ * lock file pins it, so this input is identical on every machine.
+ */
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
-@source '../../storage/framework/views/*.php';
+
+/*
+ * storage/framework/views is deliberately NOT a source.
+ *
+ * It is the compiled Blade cache: gitignored, empty on a fresh checkout, and populated differently
+ * on every machine depending on which pages happen to have been rendered. Scanning it makes the
+ * build non-deterministic, which is fatal here because the compiled output is committed and CI
+ * asserts that a rebuild reproduces it byte for byte.
+ *
+ * It also swept in whatever vendor Blade had been rendered. Horizon and Pail brought roughly three
+ * hundred selectors this application does not use, doubling the stylesheet to ship classes for
+ * pages it does not style.
+ *
+ * Nothing is lost by removing it. Tailwind v4 already scans every non-ignored file in the project,
+ * so resources/views and app/ are covered, and compiled views contain no class string that was not
+ * literal in the Blade they came from.
+ */
+
 
 /*
  * ==================================================================================================
