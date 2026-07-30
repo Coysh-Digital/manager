@@ -13,7 +13,7 @@
     "require": {
         "php": "^8.3",
         "bacon/bacon-qr-code": "^3.1",
-        "coysh-digital/manager-protocol": "@dev",
+        "coysh-digital/manager-protocol": "^1.0",
         "laragear/webauthn": "^5.0",
         "laravel/framework": "^13.8",
         "laravel/horizon": "^5.48",
@@ -109,17 +109,11 @@
     },
     "minimum-stability": "stable",
     "prefer-stable": true,
-    "repositories": [
-        {
-            "name": "manager-protocol",
-            "type": "path",
-            "url": "../protocol"
-        }
-    ],
     "homepage": "https://github.com/Coysh-Digital/manager",
     "support": {
         "issues": "https://github.com/Coysh-Digital/manager/issues",
         "security": "https://github.com/Coysh-Digital/manager/blob/main/SECURITY.md",
-        "docs": "https://github.com/Coysh-Digital/manager/tree/main/docs"
+        "docs": "https://github.com/Coysh-Digital/manager/tree/main/docs",
+        "email": "hello@coysh.digital"
     }
 }

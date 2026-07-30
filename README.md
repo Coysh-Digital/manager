@@ -87,7 +87,7 @@ map the suite to the document.
 
 ## Security
 
-See [SECURITY.md](SECURITY.md). Report vulnerabilities to security@coysh.digital, privately.
+See [SECURITY.md](SECURITY.md). Report vulnerabilities to hello@coysh.digital, privately.
 
 Nothing here depends on the source being secret. Rejections are deliberately uniform so an endpoint
 cannot be used to discover which site identifiers exist; the unknown-site path verifies against a
@@ -107,7 +107,7 @@ are missing here; it adds the fact that somebody else runs it.
 
 Bug reports and patches are welcome. Two things to know first:
 
-- **Security issues go to security@coysh.digital, never to a public issue.**
+- **Security issues go to hello@coysh.digital, never to a public issue.**
 - `tests/Invariants/` encodes the security properties this software promises. A change that makes one
   of those tests fail is a change to the promise, so it needs an explanation of why the promise should
   change — not a fix to the test.

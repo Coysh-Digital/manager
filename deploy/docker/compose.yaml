@@ -25,9 +25,6 @@ x-app: &app
   build:
     context: ../..
     dockerfile: deploy/docker/Dockerfile
-    additional_contexts:
-      # The shared protocol package, until it is published to Packagist.
-      protocol: ../../../protocol
     args:
       MANAGER_VERSION: ${MANAGER_VERSION:-dev}
   image: manager:${MANAGER_VERSION:-dev}

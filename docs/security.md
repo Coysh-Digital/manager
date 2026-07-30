@@ -2,7 +2,7 @@
 
 ## Reporting a vulnerability
 
-Email **security@coysh.digital**. Please do not open a public issue.
+Email **hello@coysh.digital**. Please do not open a public issue.
 
 We aim to acknowledge within two working days, and to publish an advisory once a fix is available or
 after 90 days, whichever comes first. If something is being actively exploited we move faster and

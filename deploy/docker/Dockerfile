@@ -13,6 +13,8 @@
 #   - Runs as a non-root user.
 #   - No Node in the final image. Assets are built and committed, so a deployment needs no
 #     toolchain — and the image carries no npm dependency tree to audit.
+#   - Nothing outside this repository is needed to build it. Everything comes from the clone and
+#     from Packagist, so `git clone && docker compose build` works for anybody.
 
 FROM php:8.4-fpm-alpine AS base
 
@@ -54,16 +56,6 @@ FROM base AS vendor
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# The shared protocol package, supplied as a named build context.
-#
-# Placed at /protocol so that the "../protocol" path repository in composer.json resolves from
-# /app exactly as it does in development — /app/../protocol is /protocol. One declaration works in
-# both places rather than two that can drift.
-#
-# Once manager-protocol is published, this becomes an ordinary Packagist requirement and both this
-# and the additional context in compose.yaml go away.
-COPY --from=protocol . /protocol
-
 WORKDIR /app
 
 COPY composer.json composer.lock ./
@@ -95,9 +87,6 @@ WORKDIR /app
 
 COPY --chown=manager:manager . .
 COPY --from=vendor --chown=manager:manager /app/vendor ./vendor
-
-# Composer installs the protocol package as a symlink, so the target has to exist here too.
-COPY --from=protocol --chown=manager:manager . /protocol
 
 # Development files a production image has no use for. Removed rather than merely excluded so the
 # build stays a single COPY and cannot silently miss something new.
