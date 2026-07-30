@@ -64,6 +64,24 @@ docker compose up -d
 docker compose exec app php artisan manager:doctor
 ```
 
+## If nobody can log in
+
+The setup route closes permanently once an account exists, and the password reset flow needs working
+mail — which a fresh installation may not have. So there is a way in from the server:
+
+```bash
+docker compose exec app php artisan manager:user:password you@example.org --generate
+```
+
+It prints a strong password once. Add `--reset-second-factor` if you have also lost the authenticator,
+which is a separate flag on purpose: a password reset does not remove multi-factor authentication, and
+a command that did both quietly would be a way to strip it from any account.
+
+Both are recorded in the audit log. Neither the password nor its hash is.
+
+This grants nothing new — anybody who can run it already has the database and `APP_KEY`, and therefore
+the installation. It just means you do not have to edit a password hash by hand to get back in.
+
 `manager:doctor` must report no failures. It checks the things that are easy to get wrong and
 expensive to discover later: a wildcard trusted-proxy setting, a non-atomic replay store, missing
 audit-log triggers, an insecure session cookie, a superuser database role.

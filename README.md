@@ -76,6 +76,7 @@ map the suite to the document.
 | `manager:backups:keygen` | Mint the backup encryption keypair. Separate from the signing one. |
 | `manager:backups:fetch` | Decrypt a stored backup, verifying it against the checksum taken on the site. |
 | `manager:backups:prune` | Apply retention. Runs nightly from the scheduler. |
+| `manager:user:password` | Set a password from the server, for when nobody can log in. |
 
 ## Related repositories
 
