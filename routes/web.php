@@ -12,6 +12,7 @@ use App\Http\Controllers\Auth\TwoFactorChallengeController;
 use App\Http\Controllers\CapabilityController;
 use App\Http\Controllers\FindingController;
 use App\Http\Controllers\HealthController;
+use App\Http\Controllers\NotificationDestinationController;
 use App\Http\Controllers\PasskeyController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SetupController;
@@ -114,6 +115,13 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
         Route::post('settings/mfa', [SettingsController::class, 'updateMfa'])->name('settings.mfa');
         Route::post('settings/connectors/rotate', [SettingsController::class, 'rotateAllConnectors'])
             ->name('settings.connectors.rotate');
+
+        Route::post('settings/notifications', [NotificationDestinationController::class, 'store'])
+            ->name('notifications.store');
+        Route::post('settings/notifications/{destination}/test', [NotificationDestinationController::class, 'test'])
+            ->name('notifications.test');
+        Route::delete('settings/notifications/{destination}', [NotificationDestinationController::class, 'destroy'])
+            ->name('notifications.destroy');
 
         Route::post('account/two-factor/start', [AccountController::class, 'startTotp'])->name('account.totp.start');
         Route::post('account/two-factor/confirm', [AccountController::class, 'confirmTotp'])->name('account.totp.confirm');

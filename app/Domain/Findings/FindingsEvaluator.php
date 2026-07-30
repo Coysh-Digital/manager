@@ -17,6 +17,8 @@ use App\Domain\Findings\Rules\PhpEndOfLife;
 use App\Domain\Findings\Rules\PluginSecurityRelease;
 use App\Domain\Findings\Rules\SiteNotReporting;
 use App\Domain\Findings\Rules\UpdatesAllowedInProduction;
+use App\Domain\Notifications\NotificationEvent;
+use App\Domain\Notifications\Notifier;
 use App\Models\AuditEvent;
 use App\Models\Finding;
 use App\Models\Site;
@@ -47,7 +49,10 @@ use Illuminate\Support\Facades\DB;
  */
 final class FindingsEvaluator
 {
-    public function __construct(private readonly AuditRecorder $audit) {}
+    public function __construct(
+        private readonly AuditRecorder $audit,
+        private readonly Notifier $notifier,
+    ) {}
 
     /**
      * Every rule, worst-consequence first for readability rather than for behaviour.
@@ -190,6 +195,21 @@ final class FindingsEvaluator
                 'evidence' => $match->evidence,
             ],
         );
+
+        // Notified only for the severities worth interrupting somebody about. A channel that fires on
+        // everything gets filtered into a folder nobody opens, at which point it looks like coverage
+        // while providing none.
+        if (in_array($match->severity, [Severity::CRITICAL, Severity::HIGH], true)) {
+            $this->notifier->dispatch(new NotificationEvent(
+                type: $rule->key() === 'site_not_reporting'
+                    ? NotificationEvent::SITE_SILENT
+                    : NotificationEvent::FINDING_OPENED,
+                subject: $match->title,
+                summary: $match->detail,
+                site: $site,
+                context: ['severity' => $match->severity, 'rule' => $rule->key()],
+            ));
+        }
 
         return true;
     }

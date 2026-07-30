@@ -6,6 +6,8 @@ namespace App\Http\Controllers;
 
 use App\Domain\Audit\AuditRecorder;
 use App\Domain\Capability\CapabilityService;
+use App\Domain\Notifications\NotificationEvent;
+use App\Domain\Notifications\Notifier;
 use App\Models\CapabilityEvent;
 use App\Models\Connector;
 use App\Models\Membership;
@@ -28,6 +30,7 @@ final class CapabilityController
     public function __construct(
         private readonly CapabilityService $capabilities,
         private readonly AuditRecorder $audit,
+        private readonly Notifier $notifier,
     ) {}
 
     public function show(Site $site): View
@@ -185,6 +188,18 @@ final class CapabilityController
             before: ['state' => Connector::STATE_ACTIVE],
             after: ['state' => Connector::STATE_REVOKED],
         );
+
+        // Notified because a revocation nobody expected is the shape of a compromise, and the person
+        // who should notice may not be the person who did it.
+        $this->notifier->dispatch(new NotificationEvent(
+            type: NotificationEvent::CONNECTOR_REVOKED,
+            subject: "Connector revoked for {$site->name}",
+            summary: 'The connector for this site was revoked, so it has stopped reporting. It needs a '
+                .'fresh enrolment code before it will report again. If you did not expect this, treat '
+                .'it as a possible compromise.',
+            site: $site,
+            context: ['revoked_by' => $request->user()->name ?: $request->user()->email],
+        ));
 
         return back()->with('status', 'Connector revoked. Its credentials no longer authenticate.');
     }

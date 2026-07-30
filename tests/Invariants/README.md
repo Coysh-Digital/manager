@@ -24,12 +24,17 @@ ordinary test output.
 | 10 | Every remote job authenticated, authorised, validated, audited | `RemoteJobRegistryTest` |
 | 11 | A compromised site cannot expose another site's credentials | `TenantIsolationTest` |
 | 12 | A compromised organisation cannot expose another | `TenantIsolationTest`, `PairingTest` |
-| 13 | Secrets never in logs, exceptions, analytics or exports | `AuditLogIntegrityTest`, `AccountSecurityTest`, `DataMinimisationTest` |
+| 13 | Secrets never in logs, exceptions, analytics or exports | `AuditLogIntegrityTest`, `AccountSecurityTest`, `DataMinimisationTest`, `OutboundDestinationTest` |
 | 14 | Removing a site immediately revokes its credentials | `NoRemoteExecutionTest` |
 | 15 | Security-sensitive actions fail closed | `ConnectorSignatureTest`, `SelfHostedHardeningTest` |
 | 16 | Retries must not cause an action to run twice | `ConnectorSignatureTest` |
 | 17 | Connector and platform updates use verifiable artifacts | **Not yet covered.** Needs signed tags and release checksums in place first; CI builds the SBOM and scans the image today |
 | 18 | No application content or user records collected for monitoring | `DataMinimisationTest` |
+
+The specification's *assumptions* are covered alongside the numbered invariants where they are
+testable in their own right. `OutboundDestinationTest` is the one for "a webhook destination may be
+malicious": a notification names which site is unpatched, so the destination it goes to is part of
+the threat model rather than a configuration detail.
 
 ## What is deliberately not covered yet
 
@@ -55,5 +60,8 @@ registry.
   merely existing.
 - `RemoteJobRegistryTest` — the job registry, including that no job type or parameter name can name a
   command, a path, a query or a URL.
+- `OutboundDestinationTest` — server-side request forgery through notification destinations, including
+  that a hostname is re-checked on every send and the connection pinned to the address that was
+  checked, so DNS cannot change between the two.
 - The protocol package's own suite, which asserts byte-compatibility of the canonical signing string
   against committed fixtures.

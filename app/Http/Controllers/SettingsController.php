@@ -7,8 +7,11 @@ namespace App\Http\Controllers;
 use App\Domain\Audit\AuditRecorder;
 use App\Domain\Capability\CapabilityService;
 use App\Domain\Health\Diagnostics;
+use App\Domain\Notifications\NotificationEvent;
+use App\Domain\Notifications\Notifier;
 use App\Models\Connector;
 use App\Models\Membership;
+use App\Models\NotificationDestination;
 use App\Models\Organisation;
 use App\Models\Site;
 use Illuminate\Contracts\View\View;
@@ -32,6 +35,7 @@ final class SettingsController
         private readonly Diagnostics $diagnostics,
         private readonly CapabilityService $capabilities,
         private readonly AuditRecorder $audit,
+        private readonly Notifier $notifier,
     ) {}
 
     public function show(Organisation $organisation): View
@@ -52,6 +56,13 @@ final class SettingsController
             // they pair one, rather than discovering it afterwards.
             'pairingDefaults' => CapabilityService::pairingDefaults(),
             'grantable' => CapabilityService::grantableFromInterface(),
+
+            'destinations' => NotificationDestination::query()
+                ->where('organisation_id', $organisation->id)
+                ->with(['deliveries' => fn ($query) => $query->latest('created_at')->limit(3)])
+                ->orderBy('label')
+                ->get(),
+            'eventCatalogue' => NotificationEvent::catalogue(),
         ]);
     }
 
@@ -159,6 +170,22 @@ final class SettingsController
                 after: ['connectors_revoked' => $revoked, 'sites' => $sites->count()],
             );
         });
+
+        // After the transaction, so a rotation that rolled back does not announce itself. Notified for
+        // the same reason a single revocation is, only more so: this silences the entire fleet, and if
+        // the account that did it was compromised, the notification is the one thing the attacker
+        // cannot suppress from in here.
+        if ($revoked > 0) {
+            $this->notifier->dispatch(new NotificationEvent(
+                type: NotificationEvent::CONNECTOR_REVOKED,
+                subject: "Every connector in {$organisation->name} was revoked",
+                summary: "All {$revoked} active ".($revoked === 1 ? 'connector was' : 'connectors were').
+                    ' revoked at once, so the whole fleet has stopped reporting. Each site needs a '
+                    .'fresh enrolment code. If you did not expect this, treat it as a possible '
+                    .'compromise of the account that did it.',
+                context: ['connectors_revoked' => $revoked],
+            ), $organisation);
+        }
 
         return back()->with(
             'warning',
