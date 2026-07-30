@@ -8,6 +8,10 @@ on:
 permissions:
   contents: read
 
+# Actions are pinned to the commit behind a release rather than to a tag. A tag can be moved; a commit
+# cannot. This workflow runs on pull requests from anybody, so what executes here should not be something
+# a third party can change under us.
+
 jobs:
   test:
     name: Tests and analysis
@@ -42,9 +46,9 @@ jobs:
       REDIS_HOST: 127.0.0.1
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
         with:
           php-version: '8.4'
           extensions: pdo_pgsql, intl, zip, sodium, redis
@@ -77,9 +81,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
         with:
           php-version: '8.4'
           extensions: sodium
@@ -94,10 +98,20 @@ jobs:
       - name: Dependency advisories
         run: composer audit --locked --abandoned=report
 
+      # The binary, not gitleaks/gitleaks-action. The action requires a paid licence for repositories
+      # owned by an organisation; the tool it wraps is MIT and free. Running it directly also removes a
+      # third-party action from a workflow that executes on pull requests from strangers.
       - name: Secret scanning
-        uses: gitleaks/gitleaks-action@v2
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_VERSION: 8.30.1
+        run: |
+          curl -sSfL -o /tmp/gitleaks.tar.gz \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          tar -xzf /tmp/gitleaks.tar.gz -C /tmp gitleaks
+
+          # The whole history, not just the diff. A secret committed and later removed is still a
+          # secret that was published, and this repository is public.
+          /tmp/gitleaks git . --redact --verbose --exit-code 1
 
       # The compiled assets are committed, because the shipped image carries no Node toolchain. That
       # only works if they match the source, so this asserts it: a change to CSS or JS without a
@@ -114,7 +128,7 @@ jobs:
           composer require --dev --no-interaction cyclonedx/cyclonedx-php-composer
           vendor/bin/cyclonedx-php-composer make-sbom --output-file=sbom.json --output-format=JSON
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: sbom
           path: sbom.json
@@ -125,13 +139,13 @@ jobs:
     needs: test
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Build
         run: docker build -f deploy/docker/Dockerfile -t manager:ci .
 
       - name: Scan
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: manager:ci
           format: table

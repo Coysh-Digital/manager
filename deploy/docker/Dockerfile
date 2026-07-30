@@ -18,6 +18,18 @@
 
 FROM php:8.4-fpm-alpine AS base
 
+# Security patches for whatever the base image shipped with, before anything else is installed.
+#
+# The base image is rebuilt on its own schedule, so between rebuilds it carries whatever was current
+# when it was cut. Taking the upgrade here means a fix lands the next time this image is built rather
+# than the next time upstream gets round to it — which is how CVE-2026-33630 in c-ares was blocking the
+# build with a fix available two patch versions ahead.
+#
+# It does mean two builds of the same commit on different days can contain different package versions.
+# That is the right trade for security patches, and it does not affect the reproducibility that matters:
+# the release artifact is the source tarball, which is byte-identical regardless.
+RUN apk upgrade --no-cache
+
 # Runtime dependencies only. Each one is here because something needs it: postgresql-dev for pdo_pgsql,
 # icu for intl, and the rest for the extension build in the next stage.
 RUN apk add --no-cache \
