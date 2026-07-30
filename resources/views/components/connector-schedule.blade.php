@@ -26,9 +26,22 @@ CRON;
         <span class="hidden group-open/schedule:inline">Scheduled tasks</span>
     </summary>
 
-<div class="mt-2.5 flex flex-col gap-2">
+<div class="mt-2.5 flex flex-col gap-3">
+    {{-- The no-cron path first, because it is the one somebody without server access needs and the one
+         they will otherwise conclude is impossible. --}}
+    <div class="rounded-lg border border-ok-line bg-ok-bg px-3 py-2.5">
+        <p class="mb-1 text-[12.5px] font-medium text-ok">No cron? Nothing to do.</p>
+        <p class="text-[12px] text-text-2">
+            Connector 1.5.0 and later drive this from ordinary traffic to the site: when something is
+            due, the next visitor's request queues it and Craft's queue does the work. Each task runs at
+            most once per interval however busy the site is, and nobody waits for it.
+            It needs Craft's queue to be running, which is Craft's default.
+        </p>
+    </div>
+
     <p class="text-[12.5px] text-text-2">
-        Add these four lines to cron on
+        <strong>With cron it is more predictable</strong> — it does not depend on the queue, and it does
+        not go quiet when the site does. Add these four lines on
         <span class="font-mono text-[12px]">{{ $site->expected_domain }}</span>, replacing
         <span class="font-mono text-[12px]">/path/to/site</span> with the directory holding
         <span class="font-mono text-[12px]">craft</span>:
