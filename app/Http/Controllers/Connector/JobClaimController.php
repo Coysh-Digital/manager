@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Connector;
 
 use App\Domain\Backup\BackupKeypair;
+use App\Domain\Backup\RecoveryKeyService;
 use App\Domain\Connector\PlatformKeypair;
 use App\Domain\Connector\ResponseSigner;
 use App\Domain\Job\JobService;
 use App\Models\Connector;
 use App\Models\Site;
 use coyshdigital\managerprotocol\Jobs;
+use coyshdigital\managerprotocol\Protocol;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -32,6 +34,7 @@ final class JobClaimController
         ResponseSigner $signer,
         PlatformKeypair $keypair,
         BackupKeypair $backups,
+        RecoveryKeyService $recoveryKeys,
     ): JsonResponse {
         /** @var Site $site */
         $site = $request->attributes->get('manager.site');
@@ -45,9 +48,38 @@ final class JobClaimController
 
         $envelopes = $jobs->claimFor($site, $connector, (int) ($validated['limit'] ?? Jobs::MAX_CLAIM_BATCH));
 
+        $zeroKnowledge = $site->organisation->backup_format_floor === Protocol::BACKUP_FORMAT_V2;
+
         return $signer->sign(
             payload: [
                 'jobs' => $envelopes->values()->all(),
+
+                /*
+                 | Which artifact format this site should produce, and for v2 the keys to seal to.
+                 |
+                 | On the signed response for the same reason the capability list is: this is
+                 | security-sensitive configuration, and a connector that only learned it at pairing
+                 | could never follow a rotation. Never inside a job envelope — a `backup.create` job
+                 | carries no parameters at all, and the moment it carried one naming a recipient it
+                 | would also be able to carry one naming a destination.
+                 |
+                 | Note what a signature does and does not buy here. It proves the platform said this.
+                 | It does not prove the platform said something honest, and a compromised platform
+                 | could serve a key of its own. The control for that is not on this side: the
+                 | connector refuses any key whose fingerprint is not pinned in a file on the Craft
+                 | server, which is somewhere this platform cannot reach.
+                 */
+                'backup' => [
+                    'format' => $zeroKnowledge ? Protocol::BACKUP_FORMAT_V2 : Protocol::BACKUP_FORMAT_V1,
+                    'min_connector_version' => Protocol::MIN_CONNECTOR_VERSION_FOR_V2,
+
+                    // Empty when the organisation has none active. The connector then refuses before
+                    // taking a dump, so no plaintext database is written for a backup that could not
+                    // have been encrypted.
+                    'recipients' => $zeroKnowledge
+                        ? $recoveryKeys->recipientsFor($site->organisation)
+                        : [],
+                ],
 
                 // The platform's current view of what this site may do.
                 //
@@ -61,11 +93,15 @@ final class JobClaimController
                 // with, without keeping a separate record to compare against.
                 'platform_public_key' => $keypair->publicKey(),
 
-                // The artifact encryption key, carried for the same reason the capability list is:
-                // it is security-sensitive configuration, and a connector that only learned it at
-                // pairing would have no way to follow a rotation. Adopted only from this signed
-                // response, never from a job payload.
-                'backup_public_key' => $backups->isConfigured() ? $backups->publicKey() : null,
+                // The legacy artifact encryption key, for organisations still on v1.
+                //
+                // Withheld the moment an organisation has recovery keys. A connector too old to use
+                // them then finds nothing to seal to and refuses outright, rather than quietly
+                // producing a backup this platform could read — and its existing message, "the
+                // platform has no artifact encryption key configured", is exactly right for that.
+                'backup_public_key' => ! $zeroKnowledge && $backups->isConfigured()
+                    ? $backups->publicKey()
+                    : null,
             ],
             siteExternalId: $site->external_id,
             requestNonce: (string) $request->attributes->get('manager.nonce'),

@@ -66,14 +66,41 @@ final class BackupDeclareController
             return $this->rejected($e->getMessage(), $correlationId);
         }
 
-        return response()->json([
+        $payload = [
             'artifact' => $artifact->external_id,
 
             // Told plainly whether this is a fresh declaration or the one a previous attempt made. A
             // connector retrying after a timeout needs to know it should not dump the database again.
             'already_declared' => ! $artifact->isPending(),
             'chunk_bytes' => Protocol::ARTIFACT_CHUNK_BYTES,
-        ], headers: [Protocol::HEADER_CORRELATION_ID => $correlationId->get()]);
+        ];
+
+        /*
+         | Permission to write the bytes straight to storage, when this edition issues it.
+         |
+         | Issued here rather than when the job was handed out, because only now is the whole-file
+         | checksum known — so the grant is bound to it and the storage service itself refuses a body
+         | that does not match. A grant minted at claim time could only say "write something here".
+         |
+         | It carries a path, a query string and headers. **No host and no scheme**, which is the
+         | property that keeps this inside invariant 8: the connector builds the URL from a host in its
+         | own configuration file, so a compromised platform can vary the path within a bucket the site
+         | operator already approved and can do nothing else. A `host` key here would silently undo
+         | that, and one of the connector's build checks looks for exactly that.
+         |
+         | The query string is a bearer credential for the life of the grant. It goes in this response
+         | and nowhere else — never an audit row, never a log line, never a job payload.
+         */
+        $grant = $backups->issueGrant($artifact);
+
+        if ($grant !== null) {
+            $payload['upload'] = $grant->toPayload($job->external_id);
+        }
+
+        return response()->json(
+            $payload,
+            headers: [Protocol::HEADER_CORRELATION_ID => $correlationId->get()],
+        );
     }
 
     private function rejected(string $reason, CorrelationId $correlationId): JsonResponse

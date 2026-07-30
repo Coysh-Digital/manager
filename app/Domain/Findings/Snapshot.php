@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Domain\Findings;
 
 use App\Models\InventoryReport;
+use App\Models\LoginReport;
+use App\Models\RuntimeReport;
 use App\Models\Site;
 use App\Models\UpdateReport;
 
@@ -22,6 +24,8 @@ final class Snapshot
         public readonly ?UpdateReport $updates,
         /** @var list<string> */
         public readonly array $capabilities,
+        public readonly ?RuntimeReport $runtime = null,
+        public readonly ?LoginReport $logins = null,
     ) {}
 
     public function isProduction(): bool
@@ -50,5 +54,29 @@ final class Snapshot
     public function inventoryValue(string $path, mixed $default = null): mixed
     {
         return $this->inventory?->value($path, $default) ?? $default;
+    }
+
+    public function runtimeValue(string $path, mixed $default = null): mixed
+    {
+        return $this->runtime?->value($path, $default) ?? $default;
+    }
+
+    /**
+     * How stale the runtime report is.
+     *
+     * Disk usage and response timings age differently from a version number: a six-hourly figure
+     * from last month is not evidence of anything, and a rule firing on it would be reporting the
+     * past. Rules that read the runtime report check this first.
+     */
+    public function hasRecentRuntime(int $maxAgeHours = 48): bool
+    {
+        return $this->runtime !== null
+            && $this->runtime->received_at->gt(now()->subHours($maxAgeHours));
+    }
+
+    public function hasRecentLogins(int $maxAgeHours = 6): bool
+    {
+        return $this->logins !== null
+            && $this->logins->received_at->gt(now()->subHours($maxAgeHours));
     }
 }

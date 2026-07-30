@@ -49,9 +49,15 @@ final class BackupUploadController
         // The hash the signature covered. Compared against what the declare step recorded before a
         // single byte is read: if a connector signed a different hash from the one it declared, the two
         // requests disagree and neither should be believed.
+        //
+        // Which hash that is depends on the format, and it is asked of the artifact rather than named
+        // here. A v1 artifact uploads a bare encrypted stream; a v2 artifact uploads an envelope
+        // wrapped around one, so its ciphertext hash covers only part of the file. Comparing against
+        // the wrong one either rejects every valid upload or — worse — accepts a file whose manifest
+        // had been replaced wholesale.
         $signedHash = (string) $request->attributes->get('manager.content_sha256', '');
 
-        if (! hash_equals($artifact->ciphertext_sha256, $signedHash)) {
+        if (! hash_equals($artifact->expectedUploadSha256(), $signedHash)) {
             return $this->rejected(
                 'the signed content hash does not match the declared artifact',
                 $correlationId,

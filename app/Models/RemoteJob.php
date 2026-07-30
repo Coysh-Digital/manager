@@ -60,6 +60,9 @@ class RemoteJob extends Model
     protected function casts(): array
     {
         return [
+            // Recorded when a backup job is handed out, and compared against the manifest at declare
+            // time. Never read from the connector's payload.
+            'backup_recipient_fingerprints' => 'array',
             'parameters' => 'array',
             'result' => 'array',
             'claimed_at' => 'datetime',

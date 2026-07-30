@@ -1,0 +1,20 @@
+# Mount the sibling protocol checkout so the platform can be built against it from source.
+#
+# The wire contract lives in its own repository on purpose — it is shared by repositories with
+# different licences and release cadences, and vendoring copies into each guarantees drift. The
+# README calls a protocol change "a version bump and two dependent pull requests: deliberate
+# friction", and that friction is right for a release.
+#
+# It is wrong for the twenty minutes in which a schema is being written. Without this mount, adding
+# a field means tagging and publishing a public MIT package before the platform can even run its
+# tests against it — which is not deliberate friction, it is a released version of something nobody
+# has run yet.
+#
+# The path repository in composer.json is declared with a container-absolute path, so always use
+# `ddev composer` in this project — host composer would not find /var/www/protocol. Where the
+# directory does not exist, composer skips the repository and resolves the package from Packagist as
+# usual, so CI and production are unaffected.
+services:
+  web:
+    volumes:
+      - ../../protocol:/var/www/protocol

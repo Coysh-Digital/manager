@@ -66,22 +66,33 @@ it('exposes only reporting endpoints to connectors', function (): void {
     //   heartbeat       liveness, no capability, no data
     //   inventory       operational metadata, requires inventory:read
     //   updates         update availability, requires updates:read
+    //   system          disk usage, PHP limits, sampled response timings, requires runtime:read
+    //   logins          counts of failed control-panel sign-ins, requires logins:read
     //   jobs/claim      asks what to do; the response is signed because it carries instructions
     //   jobs/*/result   reports how a job went; validated against the job's result schema
     //   backups         declares an artifact about to be uploaded, requires backups:create
+    //   backups/progress   which phase a backup has reached; a bounded enum and a timestamp, and
+    //                      nothing on the platform acts on it
+    //   backups/*/uploaded   says an artifact went straight to storage; carries nothing but the fact,
+    //                        and the platform asks storage rather than believing it
     //   backups/*/content  the artifact bytes; authenticated before the body is read at all
     //
-    // Note what is not here: nothing the platform can push, and nothing that takes a command. The two
-    // backup routes are both connector-initiated uploads — the platform never asks a site for an
-    // artifact, it queues a job and waits to be sent one.
+    // Note what is not here: nothing the platform can push, and nothing that takes a command. Every
+    // one of these is a connector posting something it decided to send — the two backup routes
+    // included, since the platform never asks a site for an artifact, it queues a job and waits to be
+    // sent one.
     expect($connectorRoutes)->toBe([
         'api/connector/v1/backups',
+        'api/connector/v1/backups/progress',
         'api/connector/v1/backups/{artifactId}/content',
+        'api/connector/v1/backups/{artifactId}/uploaded',
         'api/connector/v1/heartbeat',
         'api/connector/v1/inventory',
         'api/connector/v1/jobs/claim',
         'api/connector/v1/jobs/{job}/result',
+        'api/connector/v1/logins',
         'api/connector/v1/pair',
+        'api/connector/v1/system',
         'api/connector/v1/updates',
     ]);
 });

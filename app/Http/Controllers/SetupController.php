@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Contracts\Provisioner;
 use App\Domain\Audit\AuditRecorder;
 use App\Http\Middleware\EnsureSetupIsAvailable;
 use App\Models\AuditEvent;
@@ -27,7 +28,10 @@ use Illuminate\Validation\Rules\Password;
  */
 final class SetupController
 {
-    public function __construct(private readonly AuditRecorder $audit) {}
+    public function __construct(
+        private readonly AuditRecorder $audit,
+        private readonly Provisioner $provisioner,
+    ) {}
 
     public function show(Request $request): View
     {
@@ -64,6 +68,12 @@ final class SetupController
                 'user_id' => $user->id,
                 'role' => Membership::ROLE_OWNER,
             ]);
+
+            // Self-hosted has nothing to provision and the null implementation does nothing. It is
+            // called anyway, inside the transaction, so that an organisation is never half-created:
+            // an edition that allocates storage or a billing record here needs that work to roll
+            // back with everything else if any of it fails.
+            $this->provisioner->provision($organisation);
 
             $this->audit->record(
                 action: 'platform.setup.completed',

@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('title', 'Account and security · Manager')
-@section('crumb', 'Account and security')
+@section('crumb', App\Support\Crumbs::top('Account and security'))
 
 @section('content')
     <div class="mx-auto max-w-[820px]">
@@ -31,6 +31,65 @@
                 </div>
             </div>
         @endif
+
+        {{--
+            Password first: it is the thing people come here to change, and it was the one thing this
+            screen could not do. Before this the only routes to it were the forgotten-password email
+            or a shell command.
+        --}}
+        <div class="mb-3.5 overflow-hidden rounded-[10px] border border-border bg-surface shadow-[var(--shadow)]">
+            <div class="flex items-center justify-between border-b border-border px-4 py-3">
+                <span class="text-[13.5px] font-medium">Password</span>
+                {{-- When it last changed is in the audit log, under user.password.changed, rather
+                     than denormalised onto the account for a label. --}}
+                <a href="{{ route('activity.index') }}" class="text-[12px] text-text-3 hover:text-primary">History</a>
+            </div>
+
+            <form method="POST" action="{{ route('account.password') }}" class="flex flex-col gap-4 p-4">
+                @csrf
+
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    <label class="flex flex-col gap-1.5">
+                        <span class="text-[12.5px] font-medium">Current password</span>
+                        <input type="password" name="current_password" required autocomplete="current-password"
+                               class="h-[34px] w-full rounded-[7px] border border-border-2 bg-surface px-2.5 text-[13px]">
+                        @error('current_password')
+                            <span class="text-[12px] text-danger">{{ $message }}</span>
+                        @enderror
+                    </label>
+
+                    <label class="flex flex-col gap-1.5">
+                        <span class="text-[12.5px] font-medium">New password</span>
+                        <input type="password" name="password" required autocomplete="new-password" minlength="12"
+                               class="h-[34px] w-full rounded-[7px] border border-border-2 bg-surface px-2.5 text-[13px]">
+                        @error('password')
+                            <span class="text-[12px] text-danger">{{ $message }}</span>
+                        @enderror
+                    </label>
+
+                    <label class="flex flex-col gap-1.5">
+                        <span class="text-[12.5px] font-medium">Confirm new password</span>
+                        <input type="password" name="password_confirmation" required autocomplete="new-password" minlength="12"
+                               class="h-[34px] w-full rounded-[7px] border border-border-2 bg-surface px-2.5 text-[13px]">
+                    </label>
+                </div>
+
+                {{-- Said before it happens rather than discovered after. --}}
+                <p class="max-w-[80ch] text-[12px] leading-relaxed text-text-3">
+                    At least twelve characters, and checked against known breach corpora — the same
+                    rule a password reset applies, because two policies for one secret is one policy
+                    and one loophole. Changing it signs out every other session on this account, which
+                    is the point if you are changing it because something felt wrong.
+                </p>
+
+                <div>
+                    <button type="submit"
+                            class="h-[34px] rounded-[7px] border border-primary bg-primary px-3.5 text-[12.5px] font-medium text-primary-fg hover:bg-primary-hover">
+                        Change password
+                    </button>
+                </div>
+            </form>
+        </div>
 
         <div class="mb-3.5 overflow-hidden rounded-[10px] border border-border bg-surface shadow-[var(--shadow)]">
             <div class="flex items-center justify-between border-b border-border px-4 py-3">
@@ -163,7 +222,7 @@
                     <label class="flex flex-col gap-1.5">
                         <span class="text-[12.5px] font-medium">Name this device</span>
                         <input type="text" data-passkey-name maxlength="60" placeholder="Work laptop"
-                               class="h-8 w-[200px] rounded-[7px] border border-border-2 bg-surface-2 px-2.5 text-[12.5px] placeholder:text-text-3">
+                               class="h-8 w-[200px] max-w-full rounded-[7px] border border-border-2 bg-surface-2 px-2.5 text-[12.5px] placeholder:text-text-3">
                     </label>
 
                     <button type="button"

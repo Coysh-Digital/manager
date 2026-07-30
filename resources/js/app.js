@@ -1,9 +1,9 @@
 /*
  * Theme switching.
  *
- * Deliberately tiny and dependency-free. The rest of the interface is server-rendered Blade, and a
- * control plane is somewhere every dependency has to earn its place — this is a dozen lines rather
- * than a framework.
+ * Deliberately tiny. The rest of the interface is server-rendered Blade, and a control plane is
+ * somewhere every dependency has to earn its place — this is a dozen lines rather than a framework.
+ * Charts are the one exception, and charts.js says what it is paying for.
  *
  * The initial theme is applied by an inline script in the layout head, before first paint, so
  * there is no flash of the wrong theme. This file only handles changing it afterwards.
@@ -11,6 +11,9 @@
 
 import './passkeys.js';
 import './copy.js';
+import './charts.js';
+import './nav.js';
+import './palette.js';
 
 const STORAGE_KEY = 'manager.theme';
 

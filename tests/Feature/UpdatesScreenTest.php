@@ -148,13 +148,23 @@ it('refuses at the service layer too, however it is called', function (): void {
         ->toThrow(UnknownCapabilityException::class);
 });
 
-it('shows the capability screen with unavailable capabilities explained', function (): void {
+it('shows the capability section with unavailable capabilities explained', function (): void {
+    // Capabilities became a section of Settings rather than a screen of its own. The old route still
+    // resolves and redirects, which is what the following test asserts.
     $this->actingAs($this->user)
-        ->get(route('sites.capabilities', $this->site))
+        ->get(route('sites.settings', $this->site))
         ->assertOk()
         ->assertSee('Take a database backup')
         // Says why it is not on offer rather than just showing it greyed out.
         ->assertSee('Needs separate confirmation');
+});
+
+it('keeps the old capabilities link working', function (): void {
+    // Links to it exist on the fleet screens and in people's bookmarks. A moved section should not
+    // produce a 404 for either.
+    $this->actingAs($this->user)
+        ->get(route('sites.capabilities', $this->site))
+        ->assertRedirect(route('sites.settings', $this->site).'#capabilities');
 });
 
 it('counts fleet updates in the sidebar', function (): void {

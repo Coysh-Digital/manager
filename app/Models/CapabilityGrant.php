@@ -63,6 +63,19 @@ class CapabilityGrant extends Model
         return $this->belongsTo(Site::class);
     }
 
+    /**
+     * Who turned this on.
+     *
+     * Nullable, and legitimately so: the pairing defaults are granted by the system rather than by a
+     * person, and a grant whose author left is still a grant.
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function grantedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'granted_by');
+    }
+
     public function isGranted(): bool
     {
         return $this->state === self::STATE_GRANTED;

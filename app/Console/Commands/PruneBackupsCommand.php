@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Domain\Backup\BackupService;
+use App\Domain\Backup\RetentionPolicy;
 use App\Models\BackupArtifact;
 use App\Models\Organisation;
 use Illuminate\Console\Command;
@@ -16,10 +17,13 @@ use Illuminate\Support\Carbon;
  * A backup kept indefinitely is personal data kept indefinitely, so retention is not optional and the
  * default is not "forever".
  *
- * Two rules, and the interaction between them is the point. An artifact goes when it is past its expiry
- * date *and* the organisation still has its minimum number of newer ones. Expiry alone would let a short
- * retention window leave somebody with nothing after a quiet fortnight; a count alone would keep the
- * oldest backup of a departed client on disk forever.
+ * Retention is by period rather than by count — see {@see RetentionPolicy} for why that distinction is
+ * the whole point. An artifact goes when its own expiry has passed *and* the policy does not want it as
+ * the representative of a week or a month. Whichever rule keeps it alive wins.
+ *
+ * Expiry is computed when an artifact is stored, so shortening the policy today does not retroactively
+ * re-date backups already taken. An operator shortening retention is saying what should happen to
+ * future backups; deciding it also applies to the past is not theirs to assume.
  *
  * Also sweeps declarations whose bytes never arrived. A pending artifact is not a backup, and leaving
  * them accumulating would make the interface claim protection that does not exist.
@@ -40,9 +44,6 @@ final class PruneBackupsCommand extends Command
         $kept = 0;
 
         foreach (Organisation::query()->cursor() as $organisation) {
-            $keep = max(0, $organisation->backup_keep_count);
-
-            // Newest first, so the ones being kept as the floor are the ones worth keeping.
             $artifacts = BackupArtifact::query()
                 ->stored()
                 // Eager loaded because deleting one audits against its site, and a sweep over a
@@ -52,14 +53,17 @@ final class PruneBackupsCommand extends Command
                 ->orderByDesc('taken_at')
                 ->get();
 
-            foreach ($artifacts->values() as $index => $artifact) {
+            // Computed over the whole set rather than artifact by artifact. Whether a backup survives
+            // depends on whether a newer one exists in the same week, which is not a question a single
+            // row can answer about itself.
+            $protected = RetentionPolicy::forOrganisation($organisation)->keep($artifacts);
+
+            foreach ($artifacts as $artifact) {
                 if (! $artifact->hasExpired()) {
                     continue;
                 }
 
-                // The floor. Whichever rule keeps an artifact alive wins, so an organisation that has
-                // taken nothing recently still has its last few.
-                if ($index < $keep) {
+                if (isset($protected[$artifact->id])) {
                     $kept++;
 
                     continue;

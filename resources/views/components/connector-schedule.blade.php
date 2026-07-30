@@ -1,10 +1,21 @@
 @props(['site', 'open' => false])
 
 @php
+    /*
+     | Every task, including the ones a site may not be granted yet.
+     |
+     | Listing only the granted ones would be the obvious thing and the wrong one: a capability
+     | granted next month would then need somebody to notice the cron had changed. A command whose
+     | capability is missing exits cleanly saying so, which is a far better failure than a screen
+     | that reads "granted, but nothing reported yet" forever because the cron nobody revisited is
+     | still the one from before.
+     */
     $cron = <<<'CRON'
 */5 * * * * cd /path/to/site && php craft manager-connector/heartbeat
 */5 * * * * cd /path/to/site && php craft manager-connector/jobs
+*/30 * * * * cd /path/to/site && php craft manager-connector/logins
 0 * * * *   cd /path/to/site && php craft manager-connector/report
+0 */6 * * * cd /path/to/site && php craft manager-connector/system
 0 6 * * *   cd /path/to/site && php craft manager-connector/updates
 CRON;
 @endphp
@@ -80,8 +91,25 @@ CRON;
                 </dd>
             </div>
             <div class="flex flex-wrap gap-x-2">
+                <dt class="font-mono text-text">logins</dt>
+                <dd class="text-text-2">
+                    Counts of failed control-panel sign-ins. Needs
+                    <code class="font-mono">logins:read</code>; without it the command exits saying so
+                    and costs nothing.
+                </dd>
+            </div>
+            <div class="flex flex-wrap gap-x-2">
                 <dt class="font-mono text-text">report</dt>
                 <dd class="text-text-2">Sends versions, plugins and whatever else is permitted.</dd>
+            </div>
+            <div class="flex flex-wrap gap-x-2">
+                <dt class="font-mono text-text">system</dt>
+                <dd class="text-text-2">
+                    Disk usage, PHP limits and response timings. Needs
+                    <code class="font-mono">runtime:read</code>. Six-hourly rather than hourly because
+                    it walks the asset volumes, which is the one genuinely expensive thing the
+                    connector does.
+                </dd>
             </div>
             <div class="flex flex-wrap gap-x-2">
                 <dt class="font-mono text-text">updates</dt>

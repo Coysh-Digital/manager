@@ -6,16 +6,22 @@ namespace App\Domain\Findings;
 
 use App\Domain\Audit\AuditRecorder;
 use App\Domain\Findings\Rules\AbandonedPlugin;
+use App\Domain\Findings\Rules\AccountsLockedOut;
 use App\Domain\Findings\Rules\AdminChangesInProduction;
+use App\Domain\Findings\Rules\CertificateExpiring;
 use App\Domain\Findings\Rules\CraftSecurityRelease;
 use App\Domain\Findings\Rules\DevModeInProduction;
+use App\Domain\Findings\Rules\DiskAlmostFull;
 use App\Domain\Findings\Rules\FailedQueueJobs;
 use App\Domain\Findings\Rules\HttpsNotEnforced;
 use App\Domain\Findings\Rules\InvalidLicence;
+use App\Domain\Findings\Rules\OpcacheDisabledInProduction;
 use App\Domain\Findings\Rules\PendingMigrations;
 use App\Domain\Findings\Rules\PhpEndOfLife;
 use App\Domain\Findings\Rules\PluginSecurityRelease;
+use App\Domain\Findings\Rules\RepeatedFailedLogins;
 use App\Domain\Findings\Rules\SiteNotReporting;
+use App\Domain\Findings\Rules\SlowResponseTimes;
 use App\Domain\Findings\Rules\UpdatesAllowedInProduction;
 use App\Domain\Notifications\NotificationEvent;
 use App\Domain\Notifications\Notifier;
@@ -65,15 +71,25 @@ final class FindingsEvaluator
             new CraftSecurityRelease,
             new PluginSecurityRelease,
             new PhpEndOfLife,
+            new DiskAlmostFull,
             new SiteNotReporting,
+
+            // Needs no capability and comes from the platform's own observation, like the rule above.
+            // Unlike every other rule here that observation is one the platform went and made itself,
+            // because the connector cannot see the certificate a visitor validates.
+            new CertificateExpiring,
+            new RepeatedFailedLogins,
             new DevModeInProduction,
             new HttpsNotEnforced,
             new InvalidLicence,
             new AbandonedPlugin,
             new AdminChangesInProduction,
+            new AccountsLockedOut,
             new PendingMigrations,
             new FailedQueueJobs,
+            new SlowResponseTimes,
             new UpdatesAllowedInProduction,
+            new OpcacheDisabledInProduction,
         ];
     }
 
@@ -89,6 +105,8 @@ final class FindingsEvaluator
             inventory: $site->inventoryReports()->latest('received_at')->first(),
             updates: $site->updateReports()->latest('received_at')->first(),
             capabilities: $site->grantedCapabilities(),
+            runtime: $site->runtimeReports()->latest('received_at')->first(),
+            logins: $site->loginReports()->latest('received_at')->first(),
         );
 
         $tally = ['opened' => 0, 'updated' => 0, 'resolved' => 0, 'skipped' => 0];

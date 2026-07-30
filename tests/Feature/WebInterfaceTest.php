@@ -102,9 +102,9 @@ it('renders a site and its capabilities', function (): void {
     $this->actingAs($this->user)->get(route('sites.show', $this->site))->assertOk()->assertSee('Example Site');
 
     $this->actingAs($this->user)
-        ->get(route('sites.capabilities', $this->site))
+        ->get(route('sites.settings', $this->site))
         ->assertOk()
-        // The screen shows what is not permitted as plainly as what is.
+        // The section shows what is not permitted as plainly as what is.
         ->assertSee('Read status and versions')
         ->assertSee('Take a database backup')
         ->assertSee('Not granted');

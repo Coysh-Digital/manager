@@ -9,10 +9,12 @@ use App\Domain\Job\JobRejectedException;
 use App\Domain\Job\JobService;
 use App\Domain\Pairing\EnrolmentService;
 use App\Domain\Site\SiteRemovalService;
+use App\Http\Controllers\Concerns\ResolvesSiteContext;
 use App\Models\AuditEvent;
-use App\Models\Connector;
+use App\Models\BackupArtifact;
 use App\Models\Membership;
 use App\Models\Organisation;
+use App\Models\RuntimeReport;
 use App\Models\Site;
 use App\Models\User;
 use coyshdigital\managerprotocol\Jobs;
@@ -20,6 +22,8 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 
 /**
  * The fleet.
@@ -29,6 +33,8 @@ use Illuminate\Http\Request;
  */
 final class SiteController
 {
+    use ResolvesSiteContext;
+
     public function __construct(private readonly CapabilityService $capabilities) {}
 
     public function index(Request $request, Organisation $organisation): View
@@ -39,19 +45,43 @@ final class SiteController
             'environment' => (string) $request->query('environment', ''),
         ];
 
+        $sort = (string) $request->query('sort', '');
         $sites = $this->query($organisation, $filters)->get();
 
-        // Grouped by what needs doing, not alphabetically. The whole point of the screen is to
-        // answer "what needs me today", and sorting by name buries that.
+        // The latest runtime report per site, in one query rather than one per row. Only the two
+        // figures the fleet table shows — a month of reports is a lot of jsonb to drag back for a
+        // disk percentage.
+        $runtime = $this->latestRuntimeFor($sites);
+
+        /*
+         | Grouped by what needs doing, not alphabetically. The whole point of the screen is to
+         | answer "what needs me today", and sorting by name buries that.
+         |
+         | Sorting deliberately does not dissolve the groups: it orders *within* them. A fleet sorted
+         | by disk with a healthy site at the top and a silent one buried underneath would be a
+         | table that had forgotten what it was for. The one exception is that choosing a sort at all
+         | is a signal somebody is looking for something specific, so the groups stay and the rows
+         | inside them move.
+         */
         $groups = [
             'Needs attention' => $sites->filter(fn (Site $site): bool => $this->needsAttention($site))->values(),
             'Steady' => $sites->filter(fn (Site $site): bool => $this->isSteady($site))->values(),
             'Not monitored' => $sites->filter(fn (Site $site): bool => $this->isUnmonitored($site))->values(),
         ];
 
+        if (self::sortable()[$sort] ?? false) {
+            $groups = array_map(
+                fn (Collection $group): Collection => $this->sortGroup($group, $sort, $runtime),
+                $groups,
+            );
+        }
+
         return view('sites.index', [
             'groups' => $groups,
             'filters' => $filters,
+            'sort' => $sort,
+            'sortable' => self::sortable(),
+            'runtime' => $runtime,
             'membership' => app(Membership::class),
             'grantableCapabilities' => CapabilityService::grantableFromInterface(),
             'totalSites' => $organisation->sites()->active()->count(),
@@ -60,21 +90,26 @@ final class SiteController
         ]);
     }
 
+    /**
+     * The Overview tab.
+     *
+     * What the site is and how it is behaving, and nothing else. Setting up a connector moved to
+     * Settings, plugin detail to Updates, configuration flags to Security: this page used to hold
+     * all of it, and opening a healthy site began with a re-pairing form.
+     */
     public function show(Site $site): View
     {
-        $this->authoriseSite($site);
-
-        $site->load(['activeConnector', 'capabilityGrants']);
-
         return view('sites.show', [
-            'site' => $site,
+            ...$this->siteContext($site),
             'membership' => app(Membership::class),
-            'connector' => $site->activeConnector()->first(),
-            'pendingConnector' => $site->connectors()
-                ->where('state', Connector::STATE_PENDING_CONFIRMATION)
-                ->latest('id')
+            'latestReport' => $this->latestInventoryReport($site),
+            'updateReport' => $this->latestUpdateReport($site),
+            'latestBackup' => BackupArtifact::query()
+                ->where('site_id', $site->id)
+                ->stored()
+                ->latest('taken_at')
                 ->first(),
-            'latestReport' => $site->inventoryReports()->latest('received_at')->first(),
+            'notes' => $site->notes()->with('author')->limit(25)->get(),
             'recentActivity' => AuditEvent::query()
                 ->where('site_id', $site->id)
                 ->latest('id')
@@ -83,12 +118,6 @@ final class SiteController
         ]);
     }
 
-    /**
-     * Remove a site.
-     *
-     * Behind a recent-authentication check, and it revokes the connector in the same transaction —
-     * see SiteRemovalService for why that matters.
-     */
     /**
      * Ask a site to report again now.
      *
@@ -102,8 +131,6 @@ final class SiteController
      */
     public function refresh(Request $request, Site $site, JobService $jobs): RedirectResponse
     {
-        $this->authoriseSite($site);
-
         $queued = $this->queueRefresh($site, $jobs, $request->user());
 
         if ($queued === []) {
@@ -259,7 +286,6 @@ final class SiteController
      */
     public function issueCode(Request $request, Site $site, EnrolmentService $enrolment): RedirectResponse
     {
-        $this->authoriseSite($site);
         abort_unless(app(Membership::class)->canAdminister(), 403);
 
         $replacing = $enrolment->wouldReplaceConnector($site);
@@ -283,8 +309,6 @@ final class SiteController
 
     public function destroy(Request $request, Site $site, SiteRemovalService $removal): RedirectResponse
     {
-        $this->authoriseSite($site);
-
         abort_unless(app(Membership::class)->canAdminister(), 403);
 
         $validated = $request->validate([
@@ -302,6 +326,108 @@ final class SiteController
         return redirect()
             ->route('sites.index')
             ->with('status', "{$site->name} has been removed and its connector revoked.");
+    }
+
+    /**
+     * Columns the fleet table may be ordered by, and how each reads in a heading.
+     *
+     * A closed set, because the value arrives in a query string. Ordering by an arbitrary column
+     * name from a URL is how a sort control becomes a way to probe the schema.
+     *
+     * @return array<string, string>
+     */
+    public static function sortable(): array
+    {
+        return [
+            'name' => 'Site',
+            'seen' => 'Last seen',
+            'craft' => 'Craft',
+            'disk' => 'Disk',
+            'response' => 'Response',
+        ];
+    }
+
+    /**
+     * The latest runtime report per site, as the two figures the fleet shows.
+     *
+     * One query for the whole page. The obvious implementation — `$site->runtimeReports()->latest()`
+     * inside the loop — is a query per row, which is invisible on a fleet of three and painful on a
+     * fleet of two hundred.
+     *
+     * @param  Collection<int, Site>  $sites
+     * @return array<int, array{disk: float|null, p95: int|null, at: Carbon|null}>
+     */
+    private function latestRuntimeFor(Collection $sites): array
+    {
+        if ($sites->isEmpty()) {
+            return [];
+        }
+
+        $latest = RuntimeReport::query()
+            ->whereIn('site_id', $sites->pluck('id'))
+            ->orderByDesc('received_at')
+            ->get(['site_id', 'disk_free_bytes', 'disk_total_bytes', 'response_p95_ms', 'received_at'])
+            ->groupBy('site_id');
+
+        $figures = [];
+
+        foreach ($latest as $siteId => $reports) {
+            /** @var RuntimeReport $report */
+            $report = $reports->first();
+
+            $figures[(int) $siteId] = [
+                'disk' => $report->diskUsedPercent(),
+                'p95' => $report->response_p95_ms,
+                'at' => $report->received_at,
+            ];
+        }
+
+        return $figures;
+    }
+
+    /**
+     * Order one group.
+     *
+     * Sites with nothing to sort on sink to the bottom rather than sorting as zero. A site that has
+     * never reported its disk is not the emptiest disk in the fleet, and putting it at the top of a
+     * "fullest first" list would be the table lying about which sites it knows anything about.
+     *
+     * @param  Collection<int, Site>  $group
+     * @param  array<int, array{disk: float|null, p95: int|null, at: Carbon|null}>  $runtime
+     * @return Collection<int, Site>
+     */
+    private function sortGroup(Collection $group, string $sort, array $runtime): Collection
+    {
+        return $group
+            ->sortBy(function (Site $site) use ($sort, $runtime): array {
+                $figures = $runtime[$site->id] ?? ['disk' => null, 'p95' => null];
+
+                return match ($sort) {
+                    // Descending, by negating: the interesting end of each of these is the top.
+                    'disk' => [$figures['disk'] === null ? 1 : 0, -($figures['disk'] ?? 0)],
+                    'response' => [$figures['p95'] === null ? 1 : 0, -($figures['p95'] ?? 0)],
+
+                    // Oldest first: "who have we not heard from" is the question being asked.
+                    'seen' => [$site->last_seen_at === null ? 1 : 0, $site->last_seen_at?->getTimestamp() ?? 0],
+
+                    'craft' => [$site->craft_version === null ? 1 : 0, 0],
+                    default => [0, 0],
+                };
+            }, SORT_REGULAR)
+            ->when(
+                $sort === 'craft',
+                // Version strings do not sort as strings: 5.10.1 is newer than 5.9.9 and sorts
+                // before it. Oldest first, because an old Craft is the one that needs somebody.
+                fn (Collection $sorted): Collection => $sorted->sortBy(
+                    fn (Site $site): string => $site->craft_version === null
+                        ? 'zzz'
+                        : implode('.', array_map(
+                            static fn (string $part): string => str_pad($part, 5, '0', STR_PAD_LEFT),
+                            explode('.', $site->craft_version),
+                        )),
+                ),
+            )
+            ->values();
     }
 
     /**
@@ -368,16 +494,5 @@ final class SiteController
     {
         return in_array($site->status, [Site::STATUS_NEVER_CONNECTED, Site::STATUS_PAUSED], true)
             && ! $this->needsAttention($site);
-    }
-
-    /**
-     * Refuse a site belonging to another organisation.
-     *
-     * Route binding resolves on the external identifier alone, so this is what keeps one tenant
-     * from reading another's site by pasting in a ULID.
-     */
-    private function authoriseSite(Site $site): void
-    {
-        abort_if($site->organisation_id !== app(Organisation::class)->id, 404);
     }
 }

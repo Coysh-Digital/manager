@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 /**
@@ -45,6 +46,17 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $deleted_at
  * @property string|null $deleted_reason
  * @property string|null $failure_reason
+ * @property string $format_version
+ * @property string|null $manifest
+ * @property string|null $manifest_sha256
+ * @property string|null $manifest_signature
+ * @property string|null $artifact_id
+ * @property int|null $sequence
+ * @property string|null $artifact_sha256
+ * @property int|null $artifact_bytes
+ * @property string|null $upload_mode
+ * @property string|null $stage
+ * @property Carbon|null $stage_at
  */
 class BackupArtifact extends Model
 {
@@ -56,14 +68,33 @@ class BackupArtifact extends Model
     /** Declared, bytes not yet uploaded. */
     public const STATE_PENDING = 'pending';
 
+    /**
+     * Bytes present, integrity not yet confirmed by this platform.
+     *
+     * Only reachable on the direct-to-object-storage path. When bytes stream through the platform they
+     * are hashed on the way past, so storing and verifying happen in the same instant and this state is
+     * skipped. When they go straight to storage the connector can only report that it finished, and
+     * calling that `stored` would be claiming a check nobody had run.
+     */
+    public const STATE_UPLOADED = 'uploaded';
+
     /** Bytes present and verified against the checksum the connector declared. */
     public const STATE_STORED = 'stored';
 
     /** The upload did not complete, or did not verify. */
     public const STATE_FAILED = 'failed';
 
+    /** Past retention, bytes not yet removed. Distinct from deleted, because the sweep runs later. */
+    public const STATE_EXPIRED = 'expired';
+
     /** Removed. The row survives, because the audit trail should still show it existed. */
     public const STATE_DELETED = 'deleted';
+
+    /** Key sealed to this platform and re-wrapped for storage. We can read these. */
+    public const FORMAT_V1 = 'v1';
+
+    /** Key sealed only to the organisation's recovery keys. We cannot read these. */
+    public const FORMAT_V2 = 'v2';
 
     protected $guarded = [];
 
@@ -79,6 +110,7 @@ class BackupArtifact extends Model
             'verified_at' => 'datetime',
             'expires_at' => 'datetime',
             'deleted_at' => 'datetime',
+            'stage_at' => 'datetime',
 
             // Wrapped once by the key service and encrypted again here. A database dump alone does not
             // open an artifact even if object storage was taken at the same time.
@@ -110,6 +142,22 @@ class BackupArtifact extends Model
         return $this->belongsTo(RemoteJob::class, 'remote_job_id');
     }
 
+    /**
+     * @return HasMany<BackupArtifactRecipient, $this>
+     */
+    public function recipients(): HasMany
+    {
+        return $this->hasMany(BackupArtifactRecipient::class);
+    }
+
+    /**
+     * @return HasMany<BackupEvent, $this>
+     */
+    public function events(): HasMany
+    {
+        return $this->hasMany(BackupEvent::class)->orderBy('recorded_at');
+    }
+
     public function isStored(): bool
     {
         return $this->state === self::STATE_STORED;
@@ -120,12 +168,57 @@ class BackupArtifact extends Model
         return $this->state === self::STATE_PENDING;
     }
 
+    public function isUploaded(): bool
+    {
+        return $this->state === self::STATE_UPLOADED;
+    }
+
+    /**
+     * Whether this platform is able to decrypt it.
+     *
+     * The question worth asking directly rather than inferring from a version string at each call site,
+     * because the answer is the whole difference between the two formats and the interface has to say
+     * it out loud for v1 artifacts.
+     */
+    public function isReadableByPlatform(): bool
+    {
+        return $this->format_version === self::FORMAT_V1;
+    }
+
+    public function isZeroKnowledge(): bool
+    {
+        return $this->format_version === self::FORMAT_V2;
+    }
+
     /**
      * Whether the bytes are still there to be read.
      */
     public function isRetrievable(): bool
     {
         return $this->isStored() && $this->storage_key !== null;
+    }
+
+    /**
+     * The checksum the uploaded bytes must have.
+     *
+     * The two formats upload different things. A v1 artifact is a bare encrypted stream, so its
+     * ciphertext hash covers the whole upload. A v2 artifact is an envelope wrapped around that same
+     * stream, so the ciphertext hash covers only part of the file and comparing against it would
+     * reject every valid upload. Asked as one question here rather than branched on at each call site,
+     * because getting it wrong in one place produces a check that silently passes.
+     */
+    public function expectedUploadSha256(): string
+    {
+        return $this->isZeroKnowledge() && $this->artifact_sha256 !== null
+            ? $this->artifact_sha256
+            : $this->ciphertext_sha256;
+    }
+
+    public function expectedUploadBytes(): int
+    {
+        return $this->isZeroKnowledge() && $this->artifact_bytes !== null
+            ? $this->artifact_bytes
+            : $this->ciphertext_bytes;
     }
 
     public function hasExpired(): bool

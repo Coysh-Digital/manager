@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Job;
 
 use App\Domain\Audit\AuditRecorder;
+use App\Domain\Backup\RecoveryKeyService;
 use App\Models\AuditEvent;
 use App\Models\Connector;
 use App\Models\RemoteJob;
@@ -12,6 +13,7 @@ use App\Models\Site;
 use App\Models\User;
 use App\Support\CorrelationId;
 use coyshdigital\managerprotocol\Jobs;
+use coyshdigital\managerprotocol\Protocol;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -38,6 +40,7 @@ final class JobService
         private readonly JobRegistry $registry,
         private readonly AuditRecorder $audit,
         private readonly CorrelationId $correlationId,
+        private readonly RecoveryKeyService $recoveryKeys,
     ) {}
 
     /**
@@ -188,6 +191,39 @@ final class JobService
 
                 $expiresAt = Carbon::now()->addSeconds($definition->maxRuntimeSeconds);
 
+                /*
+                 | For a backup job, record which recovery keys the connector is about to be told
+                 | about. The declaration is checked against exactly this set.
+                 |
+                 | Recorded at claim time rather than read again at declare time, because the two are
+                 | minutes apart on a large site and a key revoked in between must not turn a backup
+                 | already in progress into a rejected one. What was served is what the site was asked
+                 | to seal to, and that is the promise it should be held to.
+                 |
+                 | A backup job for an organisation with no active key is cancelled here rather than
+                 | handed out. The connector would refuse it anyway — it will not dump a database it
+                 | cannot encrypt — but cancelling means the job does not sit claimed until it expires.
+                 */
+                $recipientFingerprints = null;
+
+                if ($job->type === Jobs::BACKUP_CREATE
+                    && $site->organisation->backup_format_floor === Protocol::BACKUP_FORMAT_V2) {
+                    $recipientFingerprints = array_column(
+                        $this->recoveryKeys->recipientsFor($site->organisation),
+                        'fingerprint',
+                    );
+
+                    if ($recipientFingerprints === []) {
+                        $this->finish(
+                            $job,
+                            Jobs::STATE_CANCELLED,
+                            failureReason: 'this organisation has no active recovery key, so there is nothing to encrypt a backup to',
+                        );
+
+                        continue;
+                    }
+                }
+
                 $claimed = DB::selectOne(
                     <<<'SQL'
                         UPDATE remote_jobs
@@ -203,6 +239,10 @@ final class JobService
                 if ($claimed === null) {
                     // Lost the race. Somebody else has it; nothing to do.
                     continue;
+                }
+
+                if ($recipientFingerprints !== null) {
+                    $job->forceFill(['backup_recipient_fingerprints' => $recipientFingerprints])->save();
                 }
 
                 $this->audit->record(

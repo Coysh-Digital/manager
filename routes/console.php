@@ -32,3 +32,38 @@ Schedule::command('manager:audit:verify')
 Schedule::command('manager:backups:prune')
     ->dailyAt('03:30')
     ->withoutOverlapping();
+
+/*
+ | Scheduled backups.
+ |
+ | Hourly rather than nightly, and deciding per site inside the command. A fleet of forty sites all
+ | dumping at 03:00 is forty databases being read at once on shared hosting, and "nightly" means
+ | something different in Auckland from what it means in Bristol — the hour is stored per site, in the
+ | organisation's own time zone.
+ |
+ | Nothing here decides what a backup is encrypted to or where it goes. It decides when to ask.
+ */
+Schedule::command('manager:backups:schedule')
+    ->hourly()
+    ->withoutOverlapping();
+
+/*
+ | TLS certificates.
+ |
+ | Once a day, because the failure this catches is a renewal that did not happen, and that becomes
+ | visible weeks before it matters. Checking hourly would multiply the outbound connections by
+ | twenty-four to learn the same thing.
+ |
+ | The one check where this platform reaches out to a site rather than waiting to be told, because the
+ | connector genuinely cannot see the certificate a visitor validates — TLS terminates at the edge.
+ */
+Schedule::command('manager:certificates:check')
+    ->dailyAt('05:00')
+    ->withoutOverlapping();
+
+// Heartbeats arrive every five minutes per site and the Health screen derives uptime from them
+// rather than storing it, so they accumulate faster than anything else here. Retention is a stated
+// window, not "forever with an index on it".
+Schedule::command('manager:telemetry:prune')
+    ->dailyAt('04:00')
+    ->withoutOverlapping();

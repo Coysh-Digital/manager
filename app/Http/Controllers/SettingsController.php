@@ -9,10 +9,12 @@ use App\Domain\Capability\CapabilityService;
 use App\Domain\Health\Diagnostics;
 use App\Domain\Notifications\NotificationEvent;
 use App\Domain\Notifications\Notifier;
+use App\Domain\Team\TeamService;
 use App\Models\Connector;
 use App\Models\Membership;
 use App\Models\NotificationDestination;
 use App\Models\Organisation;
+use App\Models\RecoveryKey;
 use App\Models\Site;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -56,6 +58,36 @@ final class SettingsController
             // they pair one, rather than discovering it afterwards.
             'pairingDefaults' => CapabilityService::pairingDefaults(),
             'grantable' => CapabilityService::grantableFromInterface(),
+
+            /*
+             | Recovery keys, including revoked ones.
+             |
+             | Revoked keys are shown rather than hidden, for the same reason revoked memberships are:
+             | "which keys used to open our backups" is a question this screen should answer without
+             | anybody opening the audit log. It also keeps a fingerprint appearing in an artifact's
+             | manifest explicable a year after the key stopped being used.
+             */
+            'recoveryKeys' => RecoveryKey::query()
+                ->where('organisation_id', $organisation->id)
+                ->orderByRaw("case state when 'active' then 0 when 'pending_proof' then 1 else 2 end")
+                ->orderBy('id')
+                ->get(),
+
+            // Revoked memberships are shown too, greyed: "who used to have access" is a question an
+            // access screen should answer without anybody opening the audit log.
+            'members' => Membership::query()
+                ->where('organisation_id', $organisation->id)
+                ->with('user')
+                ->orderByRaw("case role when 'owner' then 0 when 'admin' then 1 else 2 end")
+                ->orderBy('id')
+                ->get(),
+            'assignableRoles' => TeamService::assignableRoles(),
+
+            // Addresses with an unused password link outstanding. The broker deletes the row when a
+            // link is used, so its presence means somebody has a live invitation — or asked for a
+            // reset and has not finished it. The screen says the former, because it cannot tell them
+            // apart and offering to resend is the right answer to both.
+            'awaitingPassword' => DB::table('password_reset_tokens')->pluck('email')->all(),
 
             'destinations' => NotificationDestination::query()
                 ->where('organisation_id', $organisation->id)

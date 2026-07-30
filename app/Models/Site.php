@@ -31,6 +31,15 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $last_seen_at
  * @property Carbon|null $last_inventory_at
  * @property Carbon|null $archived_at
+ * @property string $backup_schedule
+ * @property int $backup_schedule_hour
+ * @property int $backup_schedule_day
+ * @property Carbon|null $backup_scheduled_at
+ * @property Carbon|null $certificate_checked_at
+ * @property Carbon|null $certificate_expires_at
+ * @property string|null $certificate_issuer
+ * @property string|null $certificate_subject
+ * @property string|null $certificate_error
  */
 class Site extends Model
 {
@@ -61,6 +70,9 @@ class Site extends Model
     protected function casts(): array
     {
         return [
+            'backup_scheduled_at' => 'datetime',
+            'certificate_checked_at' => 'datetime',
+            'certificate_expires_at' => 'datetime',
             'last_seen_at' => 'datetime',
             'last_inventory_at' => 'datetime',
             'archived_at' => 'datetime',
@@ -126,6 +138,30 @@ class Site extends Model
     public function updateReports(): HasMany
     {
         return $this->hasMany(UpdateReport::class);
+    }
+
+    /**
+     * @return HasMany<RuntimeReport, $this>
+     */
+    public function runtimeReports(): HasMany
+    {
+        return $this->hasMany(RuntimeReport::class);
+    }
+
+    /**
+     * @return HasMany<LoginReport, $this>
+     */
+    public function loginReports(): HasMany
+    {
+        return $this->hasMany(LoginReport::class);
+    }
+
+    /**
+     * @return HasMany<SiteNote, $this>
+     */
+    public function notes(): HasMany
+    {
+        return $this->hasMany(SiteNote::class)->orderByDesc('pinned')->orderByDesc('created_at');
     }
 
     /**

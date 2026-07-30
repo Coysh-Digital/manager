@@ -39,6 +39,16 @@ return [
         'description' => 'Reports database engine and version, queue depth and pending migrations. Counts only: job payloads are never read, because they would carry site content.',
     ],
 
+    'runtime:read' => [
+        'title' => 'Read disk usage and runtime limits',
+        'description' => 'Reports how much space each asset volume uses, how full the disk is, PHP\'s memory and upload limits, and how long the site takes to build its own pages. It reads file sizes, never file names, paths or contents — a byte count says how much is there and nothing about what. Response times are sampled from traffic the site was already serving; no visitor, address or URL is recorded, and this is server render time rather than the full time a visitor waits.',
+    ],
+
+    'logins:read' => [
+        'title' => 'Read failed sign-in counts',
+        'description' => 'Reports how many control-panel sign-ins have failed in the last day, how many accounts are affected, and how many are locked out. Counts only: never a username, an email address or the address anyone connected from. Bear in mind Craft resets an account\'s counter on a successful sign-in, so these numbers are a floor rather than a total.',
+    ],
+
     'backups:create' => [
         'title' => 'Take a database backup',
         'description' => 'Lets Manager take and verify scheduled database backups. This reads the full database, including user records, so it is granted separately and never during ordinary pairing. Backups are encrypted before they leave the server. It cannot restore or delete data.',

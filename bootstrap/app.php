@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Middleware\EnsureSecondFactorWhenRequired;
 use App\Http\Middleware\EnsureSetupIsAvailable;
+use App\Http\Middleware\EnsureSiteBelongsToOrganisation;
 use App\Http\Middleware\RequiresCapability;
 use App\Http\Middleware\ResolveOrganisation;
 use App\Http\Middleware\VerifyConnectorSignature;
@@ -19,11 +20,20 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
         then: function (): void {
-            // Connector traffic is machine-to-machine and stateless: no session, no cookies, no
-            // CSRF token. Authentication is the Ed25519 signature on each request, so none of the
-            // browser-oriented middleware applies and including it would only add attack surface.
+            /*
+             | Connector traffic is machine-to-machine and stateless: no session, no cookies, no
+             | CSRF token. Authentication is the Ed25519 signature on each request, so none of the
+             | browser-oriented middleware applies and including it would only add attack surface.
+             |
+             | The group is named rather than anonymous so that the pipeline has somewhere to add to.
+             | It starts empty and stays empty here. An operator wanting to allow-list source
+             | networks, or an edition wanting to refuse traffic from a suspended tenant, appends to
+             | the group from a service provider; group membership resolves at runtime, so route:cache
+             | does not bake the decision in the way an inline middleware list would.
+             */
             Route::prefix('api/connector/v1')
                 ->name('connector.')
+                ->middleware('connector')
                 ->group(base_path('routes/connector.php'));
         },
     )
@@ -34,7 +44,15 @@ return Application::configure(basePath: dirname(__DIR__))
             'organisation' => ResolveOrganisation::class,
             'setup.available' => EnsureSetupIsAvailable::class,
             'second-factor' => EnsureSecondFactorWhenRequired::class,
+
+            // Applied to every route with a {site} parameter. Tenant scoping is not something an
+            // action should have to remember.
+            'site.scoped' => EnsureSiteBelongsToOrganisation::class,
         ]);
+
+        // Declared empty, and deliberately so. See the connector route group above: this exists to
+        // be appended to, not to carry anything by default.
+        $middleware->group('connector', []);
 
         // Sensitive actions require the password to have been proved recently.
         $middleware->redirectGuestsTo(fn () => route('login'));

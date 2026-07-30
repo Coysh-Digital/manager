@@ -1,7 +1,7 @@
 @extends('layouts.app', ['siteCount' => $totalSites, 'fleetSummary' => $summary])
 
 @section('title', 'Sites · Manager')
-@section('crumb', 'Sites')
+@section('crumb', App\Support\Crumbs::top('Sites'))
 
 @section('content')
     <div class="mb-5 flex items-start justify-between gap-6">
@@ -41,7 +41,7 @@
                 </summary>
 
                 <form method="POST" action="{{ route('sites.store') }}"
-                      class="absolute right-0 z-20 mt-2 flex w-[360px] flex-col gap-3 rounded-[10px] border border-border bg-surface p-4 shadow-[var(--shadow-lg,var(--shadow))]">
+                      class="absolute right-0 z-20 mt-2 flex w-[360px] max-w-[calc(100vw-2rem)] flex-col gap-3 rounded-[10px] border border-border bg-surface p-4 shadow-[var(--shadow-lg,var(--shadow))]">
                     @csrf
 
                     <label class="flex flex-col gap-1.5">
@@ -110,12 +110,21 @@
     @endif
 
     <div class="overflow-hidden rounded-[10px] border border-border bg-surface shadow-[var(--shadow)]">
-        {{-- Filters bind to the query string, so a filtered view can be linked and bookmarked. --}}
+        {{-- Filters bind to the query string, so a filtered view can be linked and bookmarked.
+             Hidden on an installation with no sites: three controls for filtering nothing are three
+             things to rule out before you find the one sentence that tells you what to do next. --}}
+        @if ($totalSites > 0)
         <form method="GET" class="flex flex-wrap items-center gap-2 border-b border-border p-3.5">
-            <input type="search" name="q" value="{{ $filters['q'] }}" placeholder="Filter sites"
-                   class="h-[30px] w-[220px] rounded-[7px] border border-border bg-surface-2 px-2.5 text-[12.5px] text-text placeholder:text-text-3">
+            {{-- Carried through, so applying a filter does not silently undo a sort somebody chose
+                 a moment ago. The two compose; neither resets the other. --}}
+            @if ($sort !== '')
+                <input type="hidden" name="sort" value="{{ $sort }}">
+            @endif
 
-            <select name="status" class="h-[30px] rounded-[7px] border border-border bg-surface px-2 text-[12.5px] text-text-2">
+            <input type="search" name="q" value="{{ $filters['q'] }}" placeholder="Filter sites"
+                   class="h-[30px] w-[220px] max-w-full rounded-[7px] border border-border bg-surface-2 px-2.5 text-[12.5px] text-text placeholder:text-text-3">
+
+            <select name="status" aria-label="Filter by status" class="h-[30px] rounded-[7px] border border-border bg-surface px-2 text-[12.5px] text-text-2">
                 <option value="">Any status</option>
                 @foreach ([
                     \App\Models\Site::STATUS_CONNECTED => 'Connected',
@@ -127,7 +136,7 @@
                 @endforeach
             </select>
 
-            <select name="environment" class="h-[30px] rounded-[7px] border border-border bg-surface px-2 text-[12.5px] text-text-2">
+            <select name="environment" aria-label="Filter by environment" class="h-[30px] rounded-[7px] border border-border bg-surface px-2 text-[12.5px] text-text-2">
                 <option value="">Any environment</option>
                 @foreach (['production' => 'Production', 'staging' => 'Staging', 'development' => 'Development'] as $value => $label)
                     <option value="{{ $value }}" @selected($filters['environment'] === $value)>{{ $label }}</option>
@@ -144,25 +153,65 @@
 
             <span class="ml-auto text-[12px] text-text-3">Showing {{ $shown }} of {{ $totalSites }}</span>
         </form>
+        @endif
 
         @if ($shown === 0)
             <div class="px-4 py-10 text-center">
-                <p class="text-[13px] text-text-2">
-                    @if ($totalSites === 0)
-                        No sites have been added yet.
-                    @else
-                        No sites match these filters.
-                    @endif
-                </p>
+                @if ($totalSites === 0)
+                    {{-- The one screen where a new installation lands. It used to say only "No sites
+                         have been added yet", which states the obvious and withholds the next step. --}}
+                    <p class="text-[13.5px] font-medium">Add your first site</p>
+                    <p class="mx-auto mt-1.5 max-w-[52ch] text-[13px] text-text-2">
+                        Adding a site issues a single-use enrolment code. Run it on the site — through
+                        <strong>Utilities&nbsp;→&nbsp;Manager Connector</strong> in its control panel, or on
+                        the command line — and the connector pairs itself and starts reporting.
+                    </p>
+                @else
+                    <p class="text-[13px] text-text-2">No sites match these filters.</p>
+                @endif
             </div>
         @else
+            {{--
+                Four of the seven columns are hidden below the large breakpoint.
+
+                A seven-column table on a phone is a table you read one column at a time by dragging,
+                and the version numbers are not what the fleet screen is for — "which of these needs
+                me today" is answered by name, status and when it was last heard from. The versions
+                are still one tap away on the site itself.
+            --}}
             <div class="overflow-x-auto">
-                <table class="table-sticky w-full min-w-[1000px] text-[13px]">
+                <table class="table-sticky w-full text-[13px] lg:min-w-[1120px]">
                     <thead>
                         <tr class="bg-surface-2">
-                            @foreach (['Site', 'Environment', 'Status', 'Craft', 'PHP', 'Connector', 'Last seen'] as $heading)
-                                <th class="whitespace-nowrap border-b border-border px-3 py-2.5 text-left font-mono text-[10px] font-medium uppercase tracking-[0.07em] text-text-3 {{ $loop->first ? 'pl-3.5' : '' }}">
-                                    {{ $heading }}
+                            @php
+                                // heading => [responsive classes, sort key or null]
+                                $columns = [
+                                    'Site' => ['', 'name'],
+                                    'Environment' => ['hidden xl:table-cell', null],
+                                    'Status' => ['', null],
+                                    'Craft' => ['hidden lg:table-cell', 'craft'],
+                                    'PHP' => ['hidden xl:table-cell', null],
+                                    'Disk' => ['hidden lg:table-cell', 'disk'],
+                                    'Response' => ['hidden xl:table-cell', 'response'],
+                                    'Last seen' => ['hidden sm:table-cell', 'seen'],
+                                ];
+                            @endphp
+
+                            @foreach ($columns as $heading => [$responsive, $key])
+                                <th class="whitespace-nowrap border-b border-border px-3 py-2.5 text-left font-mono text-[10px] font-medium uppercase tracking-[0.07em] text-text-3 {{ $loop->first ? 'pl-3.5' : '' }} {{ $responsive }}"
+                                    @if ($key && $sort === $key) aria-sort="ascending" @endif>
+                                    @if ($key)
+                                        {{-- In the query string, like the filters: a fleet somebody
+                                             has sorted by disk should survive a reload and be
+                                             linkable to whoever they are asking about it. --}}
+                                        <a href="{{ route('sites.index', array_filter([...$filters, 'sort' => $sort === $key ? null : $key])) }}"
+                                           class="inline-flex items-center gap-1 no-underline {{ $sort === $key ? 'text-primary' : 'text-text-3 hover:text-text' }}">
+                                            {{ $heading }}
+                                            <span aria-hidden="true" class="text-[9px]">{{ $sort === $key ? '▼' : '↕' }}</span>
+                                        </a>
+                                    @else
+                                        {{ $heading }}
+                                    @endif
                                 </th>
                             @endforeach
                         </tr>
@@ -172,7 +221,7 @@
                             @continue($sites->isEmpty())
 
                             <tr>
-                                <td colspan="7" class="border-y border-border bg-surface-2 px-3.5 py-2">
+                                <td colspan="8" class="border-y border-border bg-surface-2 px-3.5 py-2">
                                     <span class="flex items-center gap-2.5">
                                         <span class="font-mono text-[10px] font-medium uppercase tracking-[0.08em] text-text-2">{{ $groupName }}</span>
                                         <span class="font-mono text-[10.5px] text-text-3">{{ $sites->count() }} {{ Str::plural('site', $sites->count()) }}</span>
@@ -188,14 +237,24 @@
                                         default => 'grey',
                                     };
                                 @endphp
+                                {{-- Status is stated once, by the badge. It used to be said three times
+                                     per row — group heading, a 3px coloured rail on this cell, and the
+                                     badge — which is three things to read and one fact to learn. The
+                                     rail went: it was the encoding that carried no words. --}}
                                 <tr class="border-b border-border hover:bg-row-hover">
-                                    <td class="py-3 pl-3.5 pr-3 align-middle" style="border-left: 3px solid var(--{{ $tone === 'ok' ? 'ok' : ($tone === 'warn' ? 'amber' : 'grey') }});">
+                                    <td class="py-3 pl-3.5 pr-3 align-middle">
                                         <a href="{{ route('sites.show', $site) }}" class="flex flex-col gap-0.5 no-underline">
                                             <span class="text-[13.5px] font-medium text-text">{{ $site->name }}</span>
                                             <span class="font-mono text-[11px] text-text-3">{{ $site->expected_domain }}</span>
+                                            {{-- Folded in here rather than dropped: with its own column
+                                                 gone on a phone, "when did we last hear from it" is
+                                                 still the second thing anybody wants off this row. --}}
+                                            <span class="font-mono text-[11px] text-text-3 sm:hidden">
+                                                Last seen {{ $site->last_seen_at?->diffForHumans(short: true) ?? 'never' }}
+                                            </span>
                                         </a>
                                     </td>
-                                    <td class="px-3 py-3">
+                                    <td class="hidden px-3 py-3 xl:table-cell">
                                         <span class="whitespace-nowrap rounded-[5px] border border-border bg-surface-2 px-1.5 py-0.5 font-mono text-[11px] text-text-2">
                                             {{ Str::title($site->environment) }}
                                         </span>
@@ -203,10 +262,38 @@
                                     <td class="px-3 py-3">
                                         <x-status-badge :tone="$tone" :label="Str::of($site->status)->replace('_', ' ')->ucfirst()" />
                                     </td>
-                                    <td class="whitespace-nowrap px-3 py-3 font-mono text-[12px] text-text-2 tabular">{{ $site->craft_version ?? '—' }}</td>
-                                    <td class="whitespace-nowrap px-3 py-3 font-mono text-[12px] text-text-2 tabular">{{ $site->php_version ?? '—' }}</td>
-                                    <td class="whitespace-nowrap px-3 py-3 font-mono text-[12px] text-text-2 tabular">{{ $site->connector_version ?? '—' }}</td>
-                                    <td class="whitespace-nowrap px-3 py-3 font-mono text-[11.5px] text-text-3">
+                                    <td class="hidden whitespace-nowrap px-3 py-3 font-mono text-[12px] tabular text-text-2 lg:table-cell">{{ $site->craft_version ?? '—' }}</td>
+                                    <td class="hidden whitespace-nowrap px-3 py-3 font-mono text-[12px] tabular text-text-2 xl:table-cell">{{ $site->php_version ?? '—' }}</td>
+
+                                    @php
+                                        $figures = $runtime[$site->id] ?? ['disk' => null, 'p95' => null];
+                                    @endphp
+
+                                    {{-- The two figures from the runtime report that are worth
+                                         comparing across a fleet. Both read as an em-dash where the
+                                         site has never reported them, rather than as a zero: "we do
+                                         not know" is not "it is fine". --}}
+                                    <td class="hidden whitespace-nowrap px-3 py-3 font-mono text-[12px] tabular lg:table-cell">
+                                        @if ($figures['disk'] === null)
+                                            <span class="text-text-3">—</span>
+                                        @else
+                                            <span class="{{ $figures['disk'] >= 90 ? 'font-medium text-amber' : 'text-text-2' }}">
+                                                {{ $figures['disk'] }}%
+                                            </span>
+                                        @endif
+                                    </td>
+
+                                    <td class="hidden whitespace-nowrap px-3 py-3 font-mono text-[12px] tabular xl:table-cell">
+                                        @if ($figures['p95'] === null)
+                                            <span class="text-text-3">—</span>
+                                        @else
+                                            <span class="{{ $figures['p95'] >= 2000 ? 'font-medium text-amber' : 'text-text-2' }}">
+                                                {{ number_format($figures['p95']) }} ms
+                                            </span>
+                                        @endif
+                                    </td>
+
+                                    <td class="hidden whitespace-nowrap px-3 py-3 font-mono text-[11.5px] text-text-3 sm:table-cell">
                                         {{ $site->last_seen_at?->diffForHumans(short: true) ?? 'never' }}
                                     </td>
                                 </tr>

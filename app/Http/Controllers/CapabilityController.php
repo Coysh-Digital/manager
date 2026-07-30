@@ -5,21 +5,22 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Domain\Audit\AuditRecorder;
+use App\Domain\Capability\CapabilityPanel;
 use App\Domain\Capability\CapabilityService;
 use App\Domain\Notifications\NotificationEvent;
 use App\Domain\Notifications\Notifier;
-use App\Models\CapabilityEvent;
 use App\Models\Connector;
 use App\Models\Membership;
-use App\Models\Organisation;
 use App\Models\Site;
 use coyshdigital\managerprotocol\Protocol;
-use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 /**
- * What Manager is permitted to do on a site, and the record of how it got that way.
+ * Changing what Manager is permitted to do on a site.
+ *
+ * Actions only — the screen these post from is the Capabilities section of Settings, assembled by
+ * {@see CapabilityPanel}. They all return to it with `back()`.
  *
  * Only read-only capabilities can be granted here. Anything that modifies a site, or reads its
  * content, needs its own confirmation flow — `backups:create` reads the full database including user
@@ -33,44 +34,6 @@ final class CapabilityController
         private readonly Notifier $notifier,
     ) {}
 
-    public function show(Site $site): View
-    {
-        $this->authoriseSite($site);
-
-        $grants = $site->capabilityGrants()->orderBy('capability')->get()->keyBy('capability');
-
-        return view('sites.capabilities', [
-            'site' => $site,
-            'connector' => $site->activeConnector()->first(),
-
-            // Every capability the platform defines, so the screen shows what is *not* permitted
-            // as plainly as what is. A list of only the granted ones would answer the less useful
-            // half of the question.
-            'capabilities' => collect(Protocol::capabilities())->map(fn (string $capability): array => [
-                'name' => $capability,
-                'grant' => $grants->get($capability),
-                'granted' => $grants->get($capability)?->isGranted() ?? false,
-                'readOnly' => Protocol::isReadOnlyCapability($capability),
-                'implemented' => in_array($capability, CapabilityService::grantableFromInterface(), true)
-                    || in_array($capability, CapabilityService::confirmable(), true),
-                'grantable' => in_array($capability, CapabilityService::grantableFromInterface(), true),
-
-                // Grantable, but never with a switch. The screen has to render these differently or
-                // the distinction the specification asks for exists only in the code.
-                'confirmable' => in_array($capability, CapabilityService::confirmable(), true),
-                'acknowledgement' => in_array($capability, CapabilityService::confirmable(), true)
-                    ? CapabilityService::acknowledgementFor($capability)
-                    : null,
-            ]),
-
-            'history' => CapabilityEvent::query()
-                ->where('site_id', $site->id)
-                ->latest('id')
-                ->limit(20)
-                ->get(),
-        ]);
-    }
-
     /**
      * Revoke a capability.
      *
@@ -80,7 +43,6 @@ final class CapabilityController
      */
     public function revoke(Request $request, Site $site): RedirectResponse
     {
-        $this->authoriseSite($site);
         $this->authoriseAdministrator();
 
         $validated = $request->validate([
@@ -107,7 +69,6 @@ final class CapabilityController
      */
     public function grant(Request $request, Site $site): RedirectResponse
     {
-        $this->authoriseSite($site);
         $this->authoriseAdministrator();
 
         $validated = $request->validate([
@@ -137,7 +98,6 @@ final class CapabilityController
      */
     public function grantConfirmed(Request $request, Site $site): RedirectResponse
     {
-        $this->authoriseSite($site);
         $this->authoriseAdministrator();
 
         $validated = $request->validate([
@@ -185,7 +145,6 @@ final class CapabilityController
      */
     public function confirmConnector(Request $request, Site $site): RedirectResponse
     {
-        $this->authoriseSite($site);
         $this->authoriseAdministrator();
 
         $connector = $site->connectors()
@@ -227,7 +186,6 @@ final class CapabilityController
      */
     public function revokeConnector(Request $request, Site $site): RedirectResponse
     {
-        $this->authoriseSite($site);
         $this->authoriseAdministrator();
 
         $connector = $site->activeConnector()->firstOrFail();
@@ -265,11 +223,6 @@ final class CapabilityController
         ));
 
         return back()->with('status', 'Connector revoked. Its credentials no longer authenticate.');
-    }
-
-    private function authoriseSite(Site $site): void
-    {
-        abort_if($site->organisation_id !== app(Organisation::class)->id, 404);
     }
 
     private function authoriseAdministrator(): void

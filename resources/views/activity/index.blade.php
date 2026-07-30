@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('title', 'Activity log · Manager')
-@section('crumb', 'Activity log')
+@section('crumb', App\Support\Crumbs::top('Activity log'))
 
 @section('content')
     <div class="mb-5 flex flex-col gap-1.5">

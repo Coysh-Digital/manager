@@ -3,12 +3,16 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Connector\BackupDeclareController;
+use App\Http\Controllers\Connector\BackupProgressController;
 use App\Http\Controllers\Connector\BackupUploadController;
+use App\Http\Controllers\Connector\BackupUploadedController;
 use App\Http\Controllers\Connector\HeartbeatController;
 use App\Http\Controllers\Connector\InventoryController;
 use App\Http\Controllers\Connector\JobClaimController;
 use App\Http\Controllers\Connector\JobResultController;
+use App\Http\Controllers\Connector\LoginsController;
 use App\Http\Controllers\Connector\PairController;
+use App\Http\Controllers\Connector\SystemController;
 use App\Http\Controllers\Connector\UpdatesController;
 use Illuminate\Support\Facades\Route;
 
@@ -52,6 +56,26 @@ Route::middleware('connector.signed')->group(function (): void {
         ->name('updates');
 
     /*
+     | Disk usage, PHP limits and sampled response timings.
+     |
+     | Its own capability rather than an extension of system:read. Measuring disk means walking a
+     | directory tree and timing responses means observing traffic — both are a different kind of
+     | collection from reading a version number, and widening an existing grant to cover them would
+     | have sites start doing both without anybody deciding to.
+     */
+    Route::post('system', SystemController::class)
+        ->middleware('capability:runtime:read')
+        ->name('system');
+
+    /*
+     | Counts of failed control-panel sign-ins. Never usernames, never addresses — the schema has
+     | nowhere to put either, which is where that promise is kept rather than in a code review.
+     */
+    Route::post('logins', LoginsController::class)
+        ->middleware('capability:logins:read')
+        ->name('logins');
+
+    /*
      | Jobs.
      |
      | Claiming needs no capability of its own: every job names the capability it requires, and that
@@ -73,6 +97,28 @@ Route::middleware('connector.signed')->group(function (): void {
     Route::post('backups', BackupDeclareController::class)
         ->middleware('capability:backups:create')
         ->name('backups.declare');
+
+    /*
+     | Which phase a backup has reached, as reported by the site.
+     |
+     | Telemetry, and nothing acts on it. Exactly one stage is sent today — the dump, because it is
+     | the longest phase and the only one whose information is not derivable from a later report.
+     | Reports for the other phases are accepted so a newer connector needs no platform change.
+     */
+    Route::post('backups/progress', BackupProgressController::class)
+        ->middleware('capability:backups:create')
+        ->name('backups.progress');
+
+    /*
+     | A site reporting that it wrote an artifact straight to storage.
+     |
+     | Carries nothing but the fact. The platform did not see those bytes, so it asks the storage
+     | service rather than believing the site, which is what keeps "uploaded" and "stored" different
+     | states. Idempotent: a connector that timed out waiting for the answer will ask again.
+     */
+    Route::post('backups/{artifactId}/uploaded', BackupUploadedController::class)
+        ->middleware('capability:backups:create')
+        ->name('backups.uploaded');
 });
 
 /*

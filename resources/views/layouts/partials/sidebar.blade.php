@@ -4,9 +4,15 @@
     It lists only what exists. The design prototype showed Updates, Findings, Backups, Clients and
     Connector keys as well, but those land in later phases, and a nav full of links that go nowhere
     teaches people to distrust the whole menu.
+
+    Below the large breakpoint it becomes a drawer: off-canvas, driven by the checkbox in the layout,
+    and sliding in over a scrim. It is still the same list — a phone gets the whole navigation rather
+    than an abridged one, because the screen somebody reaches for during an incident is usually the
+    one in their pocket.
 --}}
-<nav class="sticky top-0 flex h-screen w-[236px] flex-none flex-col border-r border-border bg-nav">
-    <div class="flex h-14 items-center gap-2.5 border-b border-border px-[18px]">
+<nav id="sidebar"
+     class="fixed inset-y-0 left-0 z-40 flex h-screen w-[264px] flex-none -translate-x-full flex-col border-r border-border bg-nav transition-transform duration-200 ease-out peer-checked:translate-x-0 motion-reduce:transition-none lg:sticky lg:top-0 lg:w-[236px] lg:translate-x-0">
+    <div class="flex h-14 flex-none items-center gap-2.5 border-b border-border px-[18px]">
         <div class="flex h-[22px] w-[22px] items-center justify-center rounded-md bg-primary text-[12px] font-semibold tracking-[-0.02em] text-primary-fg">M</div>
         <div class="flex flex-col gap-px">
             <span class="text-sm font-semibold tracking-[-0.01em]">Manager</span>
@@ -14,6 +20,13 @@
                 {{ config('manager.edition') === 'cloud' ? 'Cloud' : 'Self-hosted' }}
             </span>
         </div>
+
+        {{-- Only reachable while the drawer is open, which is the only time it means anything. --}}
+        <label for="nav-drawer"
+               class="ml-auto flex h-8 w-8 cursor-pointer items-center justify-center rounded-md text-text-2 hover:bg-row-hover hover:text-text lg:hidden">
+            <span aria-hidden="true" class="text-[15px] leading-none">&times;</span>
+            <span class="sr-only">Close menu</span>
+        </label>
     </div>
 
     <div class="flex flex-1 flex-col gap-0.5 overflow-y-auto p-2.5 pt-3.5">

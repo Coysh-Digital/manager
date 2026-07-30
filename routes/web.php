@@ -14,11 +14,22 @@ use App\Http\Controllers\CapabilityController;
 use App\Http\Controllers\FindingController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\NotificationDestinationController;
+use App\Http\Controllers\PaletteController;
 use App\Http\Controllers\PasskeyController;
+use App\Http\Controllers\RecoveryKeyController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SetupController;
+use App\Http\Controllers\SiteAuditController;
+use App\Http\Controllers\SiteBackupController;
 use App\Http\Controllers\SiteController;
+use App\Http\Controllers\SiteHealthController;
+use App\Http\Controllers\SiteNoteController;
+use App\Http\Controllers\SiteSecurityController;
+use App\Http\Controllers\SiteSettingsController;
+use App\Http\Controllers\SiteUpdateController;
+use App\Http\Controllers\TeamController;
 use App\Http\Controllers\UpdateController;
+use App\Models\Site;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -69,9 +80,38 @@ Route::post('logout', [LoginController::class, 'destroy'])->middleware('auth')->
 Route::middleware(['auth', 'organisation', 'second-factor'])->group(function (): void {
     Route::redirect('/', '/sites');
 
+    // What the command palette can jump to. Read-only, scoped to the organisation, and fetched once
+    // per page rather than per keystroke — a fleet is small enough to filter in the browser, and a
+    // search-as-you-type endpoint would put what somebody typed into the access log.
+    Route::get('palette', PaletteController::class)->name('palette');
+
     Route::get('sites', [SiteController::class, 'index'])->name('sites.index');
-    Route::get('sites/{site}', [SiteController::class, 'show'])->name('sites.show');
-    Route::get('sites/{site}/capabilities', [CapabilityController::class, 'show'])->name('sites.capabilities');
+
+    /*
+     | One site, six screens.
+     |
+     | Real routes rather than panels switched by script: a tab somebody can link to, bookmark and
+     | reach with the back button is worth more than one that saves a request, and each screen loads
+     | only the data it shows rather than all of it on every visit.
+     |
+     | Every route here carries `site.scoped`, which is what stops one organisation reading another's
+     | site by pasting in a ULID.
+     */
+    Route::middleware('site.scoped')->group(function (): void {
+        Route::get('sites/{site}', [SiteController::class, 'show'])->name('sites.show');
+        Route::get('sites/{site}/health', [SiteHealthController::class, 'show'])->name('sites.health');
+        Route::get('sites/{site}/updates', [SiteUpdateController::class, 'show'])->name('sites.updates');
+        Route::get('sites/{site}/security', [SiteSecurityController::class, 'show'])->name('sites.security');
+        Route::get('sites/{site}/backups', [SiteBackupController::class, 'show'])->name('sites.backups');
+        Route::get('sites/{site}/settings', [SiteSettingsController::class, 'show'])->name('sites.settings');
+        Route::get('sites/{site}/audit', [SiteAuditController::class, 'show'])->name('sites.audit');
+
+        // Capabilities became a section of Settings rather than a screen of its own. The route name
+        // stays so the links pointing at it from the fleet screens keep working.
+        Route::get('sites/{site}/capabilities', fn (Site $site) => redirect()
+            ->route('sites.settings', $site)
+            ->withFragment('capabilities'))->name('sites.capabilities');
+    });
 
     Route::get('updates', [UpdateController::class, 'index'])->name('updates.index');
 
@@ -79,11 +119,27 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
 
     Route::get('backups', [BackupController::class, 'index'])->name('backups.index');
 
+    /*
+     | Notes.
+     |
+     | Any member may write one — it changes nothing about the site, and the value comes entirely
+     | from being easy enough that people actually do it. Outside the recent-authentication group for
+     | the same reason: a note is not a privileged action, and making somebody re-enter their password
+     | to record "the client wants PHP left alone" is how a feature goes unused.
+     */
+    Route::middleware('site.scoped')->group(function (): void {
+        Route::post('sites/{site}/notes', [SiteNoteController::class, 'store'])->name('sites.notes.store');
+        Route::post('sites/{site}/notes/{note}/pin', [SiteNoteController::class, 'pin'])->name('sites.notes.pin');
+        Route::delete('sites/{site}/notes/{note}', [SiteNoteController::class, 'destroy'])->name('sites.notes.destroy');
+    });
+
     // Refreshing asks a site to re-send what it already sends on a schedule. No recent-auth gate and no
     // administrator requirement: it is the least privileged useful action here, and gating it would
     // only make people wait for cron.
     Route::post('sites/refresh-all', [SiteController::class, 'refreshAll'])->name('sites.refresh-all');
-    Route::post('sites/{site}/refresh', [SiteController::class, 'refresh'])->name('sites.refresh');
+    Route::post('sites/{site}/refresh', [SiteController::class, 'refresh'])
+        ->middleware('site.scoped')
+        ->name('sites.refresh');
 
     Route::get('activity', [ActivityController::class, 'index'])->name('activity.index');
 
@@ -109,27 +165,38 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
         // Adding a site and issuing a code both sit behind recent authentication. A code is a bearer
         // secret until it is consumed, so a stale session must not be able to mint one.
         Route::post('sites', [SiteController::class, 'store'])->name('sites.store');
-        Route::post('sites/{site}/enrolment-code', [SiteController::class, 'issueCode'])
-            ->name('sites.enrolment-code');
-
-        Route::post('backups/sites/{site}', [BackupController::class, 'store'])->name('backups.store');
         Route::delete('backups/{artifact}', [BackupController::class, 'destroy'])->name('backups.destroy');
 
-        Route::post('sites/{site}/capabilities/grant-confirmed', [CapabilityController::class, 'grantConfirmed'])
-            ->name('capabilities.grant-confirmed');
-        Route::post('sites/{site}/capabilities/grant', [CapabilityController::class, 'grant'])
-            ->name('sites.capabilities.grant');
-        Route::post('sites/{site}/capabilities/revoke', [CapabilityController::class, 'revoke'])
-            ->name('sites.capabilities.revoke');
-        Route::post('sites/{site}/connector/confirm', [CapabilityController::class, 'confirmConnector'])
-            ->name('sites.connector.confirm');
-        Route::post('sites/{site}/connector/revoke', [CapabilityController::class, 'revokeConnector'])
-            ->name('sites.connector.revoke');
-        Route::delete('sites/{site}', [SiteController::class, 'destroy'])->name('sites.destroy');
+        // Everything below acts on one named site, so all of it is tenant-scoped by the same
+        // middleware the read screens use.
+        Route::middleware('site.scoped')->group(function (): void {
+            Route::post('sites/{site}/enrolment-code', [SiteController::class, 'issueCode'])
+                ->name('sites.enrolment-code');
 
-        // Enqueues a job rather than reaching into the site: the platform cannot contact a
-        // connector, so this waits for the site to come and ask.
-        Route::post('updates/{site}/refresh', [UpdateController::class, 'refresh'])->name('updates.refresh');
+            // Renaming a site, or changing the domain it is expected to pair from, is a change to
+            // what Manager believes about a production install. Administrators only, recently
+            // authenticated, and audited with the previous value.
+            Route::post('sites/{site}/settings', [SiteSettingsController::class, 'update'])
+                ->name('sites.settings.update');
+
+            Route::post('backups/sites/{site}', [BackupController::class, 'store'])->name('backups.store');
+
+            Route::post('sites/{site}/capabilities/grant-confirmed', [CapabilityController::class, 'grantConfirmed'])
+                ->name('capabilities.grant-confirmed');
+            Route::post('sites/{site}/capabilities/grant', [CapabilityController::class, 'grant'])
+                ->name('sites.capabilities.grant');
+            Route::post('sites/{site}/capabilities/revoke', [CapabilityController::class, 'revoke'])
+                ->name('sites.capabilities.revoke');
+            Route::post('sites/{site}/connector/confirm', [CapabilityController::class, 'confirmConnector'])
+                ->name('sites.connector.confirm');
+            Route::post('sites/{site}/connector/revoke', [CapabilityController::class, 'revokeConnector'])
+                ->name('sites.connector.revoke');
+            Route::delete('sites/{site}', [SiteController::class, 'destroy'])->name('sites.destroy');
+
+            // Enqueues a job rather than reaching into the site: the platform cannot contact a
+            // connector, so this waits for the site to come and ask.
+            Route::post('updates/{site}/refresh', [UpdateController::class, 'refresh'])->name('updates.refresh');
+        });
 
         Route::post('findings/{finding}/acknowledge', [FindingController::class, 'acknowledge'])->name('findings.acknowledge');
         Route::post('findings/{finding}/reopen', [FindingController::class, 'reopen'])->name('findings.reopen');
@@ -138,12 +205,47 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
         Route::post('settings/connectors/rotate', [SettingsController::class, 'rotateAllConnectors'])
             ->name('settings.connectors.rotate');
 
+        /*
+         | Recovery keys.
+         |
+         | Owners only, like people and notification destinations, because adding one decides who can
+         | read every future backup this organisation takes. Note what is absent: there is no route
+         | that generates a key. A private key produced on this server would exist in a response body,
+         | and the claim that we cannot read backups would become a claim about our own discipline
+         | rather than a property of the system. Keys come from `manager-restore keygen`, on a machine
+         | we never see.
+         |
+         | Bound on external_id like everything else, so a sequential identifier is never in a URL.
+         */
+        Route::post('settings/recovery-keys', [RecoveryKeyController::class, 'store'])
+            ->name('recovery-keys.store');
+        Route::post('settings/recovery-keys/{recoveryKey}/prove', [RecoveryKeyController::class, 'prove'])
+            ->name('recovery-keys.prove');
+        Route::post('settings/recovery-keys/{recoveryKey}/challenge', [RecoveryKeyController::class, 'rechallenge'])
+            ->name('recovery-keys.challenge');
+        Route::delete('settings/recovery-keys/{recoveryKey}', [RecoveryKeyController::class, 'revoke'])
+            ->name('recovery-keys.revoke');
+
+        /*
+         | People.
+         |
+         | Owners only, and every action audited. Deciding who can reach a control plane at all is a
+         | different kind of decision from managing the sites inside it, so it sits above the
+         | administrator role rather than beside it.
+         */
+        Route::post('settings/people', [TeamController::class, 'invite'])->name('team.invite');
+        Route::post('settings/people/{membership}/resend', [TeamController::class, 'resend'])->name('team.resend');
+        Route::post('settings/people/{membership}/role', [TeamController::class, 'updateRole'])->name('team.role');
+        Route::delete('settings/people/{membership}', [TeamController::class, 'revoke'])->name('team.revoke');
+
         Route::post('settings/notifications', [NotificationDestinationController::class, 'store'])
             ->name('notifications.store');
         Route::post('settings/notifications/{destination}/test', [NotificationDestinationController::class, 'test'])
             ->name('notifications.test');
         Route::delete('settings/notifications/{destination}', [NotificationDestinationController::class, 'destroy'])
             ->name('notifications.destroy');
+
+        Route::post('account/password', [AccountController::class, 'updatePassword'])->name('account.password');
 
         Route::post('account/two-factor/start', [AccountController::class, 'startTotp'])->name('account.totp.start');
         Route::post('account/two-factor/confirm', [AccountController::class, 'confirmTotp'])->name('account.totp.confirm');

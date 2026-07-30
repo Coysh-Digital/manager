@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace App\Domain\Health;
 
+use App\Contracts\KeyService;
 use App\Domain\Backup\BackupKeypair;
 use App\Domain\Backup\BackupService;
 use App\Domain\Connector\PlatformKeypair;
+use App\Domain\Notifications\OutboundUrlGuard;
 use App\Models\CapabilityGrant;
 use App\Models\User;
+use App\Support\SelfHosted\DerivedKeyService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -30,6 +33,7 @@ final class Diagnostics
         private readonly PlatformKeypair $keypair,
         private readonly BackupKeypair $backupKeypair,
         private readonly BackupService $backups,
+        private readonly OutboundUrlGuard $outboundUrls,
     ) {}
 
     /**
@@ -42,6 +46,7 @@ final class Diagnostics
         return [
             ...$this->configuration(),
             ...$this->infrastructure(),
+            ...$this->backupDestination(),
             ...$this->security(),
         ];
     }
@@ -249,6 +254,72 @@ final class Diagnostics
         }
     }
 
+    /**
+     * Where backups are being written, and whether that destination is somewhere sensible.
+     *
+     * An operator running self-hosted may point `MANAGER_BACKUP_DRIVER` at any S3-compatible service,
+     * which is how "bring your own bucket" works on this edition — and a custom endpoint is a URL this
+     * application will connect to, so it gets the same scrutiny a webhook destination does.
+     *
+     * The endpoint is checked against {@see OutboundUrlGuard}: HTTPS only, and no loopback,
+     * link-local, private-range or metadata address. `169.254.169.254` is the one that matters — an
+     * endpoint pointed there turns every backup upload into a request for cloud instance credentials.
+     *
+     * A warning rather than a failure, deliberately. Some operators genuinely do run MinIO on a
+     * private network beside Manager, and refusing to start would be this check overruling somebody
+     * who knows their own topology. It says so, once, where they will see it.
+     *
+     * @return list<Check>
+     */
+    private function backupDestination(): array
+    {
+        $disk = (string) config('manager.backups.disk');
+        $driver = (string) config("filesystems.disks.{$disk}.driver", 'local');
+
+        if ($driver !== 's3') {
+            return [Check::pass('Backup storage', "Disk: {$disk} ({$driver}).")];
+        }
+
+        $endpoint = config("filesystems.disks.{$disk}.endpoint");
+        $bucket = (string) config("filesystems.disks.{$disk}.bucket");
+
+        if ($bucket === '') {
+            return [Check::fail(
+                'Backup storage',
+                'The backup disk is S3 but no bucket is set.',
+                'Set MANAGER_BACKUP_S3_BUCKET.',
+            )];
+        }
+
+        if (! is_string($endpoint) || $endpoint === '') {
+            // No endpoint means AWS itself, which needs no checking.
+            return [Check::pass('Backup storage', "S3 bucket: {$bucket}.")];
+        }
+
+        // Scheme first, because the guard refuses anything but HTTPS as well and would otherwise
+        // answer a plaintext endpoint with a message about private addresses. A check that reports the
+        // wrong reason sends somebody looking in the wrong place.
+        if (! str_starts_with(strtolower($endpoint), 'https://')) {
+            return [Check::warn(
+                'Backup storage',
+                'The configured storage endpoint is not HTTPS.',
+                'Artifacts are encrypted before they leave a site, so this does not expose their '
+                .'contents — but it does expose their sizes, their names and your credentials.',
+            )];
+        }
+
+        if (! $this->outboundUrls->isSafe($endpoint)) {
+            return [Check::warn(
+                'Backup storage',
+                'The configured storage endpoint resolves to a private, loopback or metadata address.',
+                'Confirm this is a service you run deliberately. An endpoint on 169.254.169.254 would '
+                .'send every backup upload to a cloud metadata service.',
+            )];
+        }
+
+        return [Check::pass('Backup storage', "S3-compatible bucket: {$bucket}.")];
+    }
+
     private function queue(): Check
     {
         $connection = (string) config('queue.default');
@@ -262,6 +333,43 @@ final class Diagnostics
         }
 
         return Check::pass('Queue', "Connection: {$connection}.");
+    }
+
+    /**
+     * Whether the edition this installation says it is matches the code it is actually running.
+     *
+     * MANAGER_EDITION used to be decorative: it appeared on the settings screen and nothing else read
+     * it. That is a bad kind of setting, because it reads like a switch and behaves like a label.
+     *
+     * Cloud replaces the key service through a service provider, not through this variable. So the
+     * honest check is not "what does the variable say" but "does the wiring agree with it". An
+     * installation calling itself cloud while still wrapping backup keys from APP_KEY has either
+     * lost its overlay or copied an environment file, and both are worth failing a deploy over: the
+     * whole reason the cloud edition exists is that a database compromise alone should not yield
+     * readable backups.
+     */
+    private function editionConsistency(): Check
+    {
+        $edition = (string) config('manager.edition');
+        $derived = app(KeyService::class) instanceof DerivedKeyService;
+
+        if ($edition !== 'cloud') {
+            return $derived
+                ? Check::pass('Edition', 'Self-hosted, wrapping backup keys from APP_KEY.')
+                : Check::warn(
+                    'Edition',
+                    'MANAGER_EDITION is not cloud, but the key service has been replaced.',
+                    'Either set MANAGER_EDITION=cloud or remove the replacement.',
+                );
+        }
+
+        return $derived
+            ? Check::fail(
+                'Edition',
+                'MANAGER_EDITION is cloud, but backup keys are still wrapped from APP_KEY.',
+                'The cloud key service is not loaded. Check the overlay package installed and its provider was discovered.',
+            )
+            : Check::pass('Edition', 'Cloud, with a managed key service bound.');
     }
 
     /**
@@ -292,6 +400,7 @@ final class Diagnostics
         $checks[] = $this->auditTriggers();
         $checks[] = $this->databaseRole();
         $checks[] = $this->backupEncryption();
+        $checks[] = $this->editionConsistency();
 
         $checks[] = config('session.secure') || ! str_starts_with((string) config('app.url'), 'https://')
             ? Check::pass('Session cookie', config('session.secure') ? 'Marked secure.' : 'Not secure, matching a non-HTTPS URL.')

@@ -102,9 +102,56 @@ return [
 
         'max_bytes' => (int) env('MANAGER_BACKUP_MAX_BYTES', Protocol::MAX_ARTIFACT_BYTES),
 
+        /*
+         | Total bytes one organisation may hold, across every site. Unset by default, because an
+         | operator who has not asked for a limit should not discover one.
+         |
+         | max_bytes above stops a single enormous dump; this stops forty ordinary ones. The failure
+         | it prevents is the worse of the two: a volume that fills, after which every site's backups
+         | fail at once, including the ones that were behaving.
+         |
+         | Null rather than a large number so that "no limit" stays distinguishable from "a big one".
+         */
+        'quota_bytes' => env('MANAGER_BACKUP_QUOTA_BYTES') === null
+            ? null
+            : (int) env('MANAGER_BACKUP_QUOTA_BYTES'),
+
         // How long a declared artifact may sit without its bytes arriving before it is written off.
         // Generous, because a large dump on a slow connection is not a failure.
         'upload_window' => (int) env('MANAGER_BACKUP_UPLOAD_WINDOW', 3600),
+    ],
+
+    /*
+    |---------------------------------------------------------------------------------------------
+    | Site health
+    |---------------------------------------------------------------------------------------------
+    |
+    | How a site's check-in record is read. The interval mirrors the connector's own heartbeat
+    | schedule; an operator who has changed the cron across their fleet sets it here, or every site
+    | reports a permanent shortfall against a cadence nobody is keeping.
+    |
+    | The grace multiplier is what separates "a queue was busy" from "this site has stopped". Three
+    | missed beats — fifteen minutes at the default — before a gap is called an outage.
+    |
+    | Retention is not optional. Uptime is derived from the heartbeats table rather than stored, so it
+    | grows at roughly 8,600 rows per site per month, and the runtime and sign-in reports add another
+    | 1,600 between them. Only the latest of each report is ever displayed — the history is kept so
+    | somebody investigating an incident can look back, not because a screen needs it — so ninety days
+    | is already generous. Nothing else would ever remove any of it.
+    |
+    */
+
+    'health' => [
+        'heartbeat_interval' => (int) env('MANAGER_HEARTBEAT_INTERVAL', 300),
+        'heartbeat_grace_multiplier' => (int) env('MANAGER_HEARTBEAT_GRACE', 3),
+
+        // Covers heartbeats, runtime reports and sign-in reports. MANAGER_HEARTBEAT_RETENTION_DAYS
+        // is still honoured: it was the documented name before the other two tables existed, and
+        // silently ignoring an operator's existing setting would be the wrong way to rename one.
+        'telemetry_retention_days' => (int) env(
+            'MANAGER_TELEMETRY_RETENTION_DAYS',
+            env('MANAGER_HEARTBEAT_RETENTION_DAYS', 90),
+        ),
     ],
 
     /*

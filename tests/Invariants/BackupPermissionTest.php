@@ -235,7 +235,7 @@ it('can be revoked like anything else', function (): void {
 
 it('states plainly what granting it means, next to the switch', function (): void {
     $html = $this->actingAs($this->owner)
-        ->get("/sites/{$this->site->external_id}/capabilities")
+        ->get("/sites/{$this->site->external_id}/settings")
         ->assertOk()
         ->getContent();
 

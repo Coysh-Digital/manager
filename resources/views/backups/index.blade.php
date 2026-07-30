@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('title', 'Backups · Manager')
-@section('crumb', 'Backups')
+@section('crumb', App\Support\Crumbs::top('Backups'))
 
 @section('content')
     <div class="mx-auto max-w-[1100px]">

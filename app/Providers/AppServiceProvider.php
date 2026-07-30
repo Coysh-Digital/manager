@@ -4,15 +4,21 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Contracts\DirectUploadGrants;
 use App\Contracts\KeyService;
 use App\Contracts\ObjectStore;
+use App\Contracts\Provisioner;
+use App\Contracts\StorageQuota;
 use App\Models\Finding;
 use App\Models\Organisation;
 use App\Models\Site;
 use App\Models\User;
 use App\Support\CorrelationId;
+use App\Support\SelfHosted\ConfiguredQuota;
 use App\Support\SelfHosted\DerivedKeyService;
 use App\Support\SelfHosted\DiskObjectStore;
+use App\Support\SelfHosted\NoDirectUploads;
+use App\Support\SelfHosted\NullProvisioner;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
@@ -29,10 +35,21 @@ class AppServiceProvider extends ServiceProvider
         // One identifier per request, shared by logs, audit events and connector responses.
         $this->app->singleton(CorrelationId::class);
 
-        // Cloud-specific concerns sit behind interfaces, with the self-hosted implementation bound
-        // here. manager-cloud rebinds them; nothing in the core knows which edition it is running.
-        $this->app->singleton(KeyService::class, DerivedKeyService::class);
-        $this->app->singleton(ObjectStore::class, DiskObjectStore::class);
+        /*
+         | Cloud-specific concerns sit behind interfaces, with the self-hosted implementation bound
+         | here. manager-cloud rebinds them; nothing in the core knows which edition it is running.
+         |
+         | singletonIf, not singleton, and the distinction is load-bearing. Laravel registers
+         | package-discovered providers *before* application providers, so a Cloud overlay shipped as
+         | a Composer package binds first and a plain singleton() here would overwrite it. These are
+         | defaults: whatever is already bound wins, which is what "the self-hosted implementation"
+         | has always meant.
+         */
+        $this->app->singletonIf(KeyService::class, DerivedKeyService::class);
+        $this->app->singletonIf(ObjectStore::class, DiskObjectStore::class);
+        $this->app->singletonIf(Provisioner::class, NullProvisioner::class);
+        $this->app->singletonIf(StorageQuota::class, ConfiguredQuota::class);
+        $this->app->singletonIf(DirectUploadGrants::class, NoDirectUploads::class);
 
         /*
          | None of the passkey package's own routes are registered, and this is the single most

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Domain\Updates\PluginInventory;
 use Database\Factories\UpdateReportFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -78,6 +79,37 @@ class UpdateReport extends Model
         });
 
         return $plugins;
+    }
+
+    /**
+     * Everything the update check knows about, keyed by handle.
+     *
+     * For joining against the installed list from an inventory report — see
+     * {@see PluginInventory}, which explains why the join runs that way round.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    public function pluginsByHandle(): array
+    {
+        $keyed = [];
+
+        foreach ($this->payload['plugins'] ?? [] as $plugin) {
+            $handle = (string) ($plugin['handle'] ?? '');
+
+            if ($handle !== '') {
+                $keyed[$handle] = $plugin;
+            }
+        }
+
+        return $keyed;
+    }
+
+    /**
+     * Read a value from the payload by dotted path.
+     */
+    public function value(string $path, mixed $default = null): mixed
+    {
+        return data_get($this->payload, $path, $default);
     }
 
     public function totalUpdates(): int

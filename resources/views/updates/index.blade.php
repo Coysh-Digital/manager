@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('title', 'Updates · Manager')
-@section('crumb', 'Updates')
+@section('crumb', App\Support\Crumbs::top('Updates'))
 
 @section('content')
     <div class="mb-5 flex flex-col gap-1.5">
@@ -43,8 +43,11 @@
                             $tone = $security ? 'warn' : ($report->totalUpdates() > 0 ? 'info' : 'ok');
                         @endphp
 
+                        {{-- No colour rail on the row. Urgency here is carried by the "Security
+                             release" badge, which has a word in it; a 3px stripe repeating the same
+                             fact silently was the third encoding of one thing. --}}
                         <tr class="border-b border-border hover:bg-row-hover">
-                            <td class="py-3 pl-3.5 pr-3 align-middle" style="border-left: 3px solid var(--{{ $security ? 'amber' : ($report->totalUpdates() > 0 ? 'info' : 'ok') }});">
+                            <td class="py-3 pl-3.5 pr-3 align-middle">
                                 <a href="{{ route('sites.show', $site) }}" class="flex flex-col gap-0.5 no-underline">
                                     <span class="text-[13.5px] font-medium text-text">{{ $site->name }}</span>
                                     <span class="font-mono text-[11px] text-text-3">{{ $site->expected_domain }}</span>
@@ -137,7 +140,7 @@
 
                         @foreach ($unreported as $site)
                             <tr class="border-b border-border hover:bg-row-hover">
-                                <td class="py-3 pl-3.5 pr-3" style="border-left: 3px solid var(--grey);">
+                                <td class="py-3 pl-3.5 pr-3">
                                     <a href="{{ route('sites.show', $site) }}" class="flex flex-col gap-0.5 no-underline">
                                         <span class="text-[13.5px] font-medium text-text">{{ $site->name }}</span>
                                         <span class="font-mono text-[11px] text-text-3">{{ $site->expected_domain }}</span>
@@ -146,7 +149,7 @@
                                 <td colspan="3" class="px-3 py-3 text-[12.5px] text-text-2">
                                     @if (! $site->hasCapability('updates:read'))
                                         Not granted <code class="font-mono text-[12px]">updates:read</code>.
-                                        <a href="{{ route('sites.capabilities', $site) }}" class="text-primary hover:text-primary-hover">Grant it</a>
+                                        <a href="{{ route('sites.settings', $site) }}#capabilities" class="text-primary hover:text-primary-hover">Grant it</a>
                                     @else
                                         Granted, but has not reported yet.
                                     @endif

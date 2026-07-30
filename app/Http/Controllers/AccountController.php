@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Domain\Audit\AuditRecorder;
 use App\Domain\Auth\RecoveryCodeService;
 use App\Domain\Auth\TotpService;
+use App\Models\AuditEvent;
 use App\Models\Organisation;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -14,6 +15,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rules\Password as PasswordRule;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -139,6 +143,71 @@ final class AccountController
         );
 
         return back()->with('warning', 'Two-factor authentication is off, and your recovery codes have been deleted.');
+    }
+
+    /**
+     * Change your own password.
+     *
+     * Until now the only way was the forgotten-password flow or a shell command, which meant a
+     * routine change either went via an email round trip or via somebody with server access.
+     *
+     * Three things it insists on, each for its own reason:
+     *
+     *  - **The current password**, on top of the recent-authentication gate the route already
+     *    carries. The gate proves somebody authenticated recently; this proves they know the secret
+     *    they are replacing, which is what stops a borrowed unlocked laptop becoming a stolen
+     *    account.
+     *  - **The same rules as a reset** — twelve characters, checked against known breaches. Two
+     *    different strength policies for the same secret is one policy and one loophole.
+     *  - **Every other session ends.** If the change is happening because something felt wrong,
+     *    leaving the other sessions signed in undoes the point of changing it.
+     */
+    public function updatePassword(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'current_password' => ['required', 'string'],
+            'password' => ['required', 'confirmed', PasswordRule::min(12)->uncompromised()],
+        ]);
+
+        if (! Hash::check($validated['current_password'], (string) $user->password)) {
+            // Recorded as a failure. Somebody guessing at a password from inside a live session is
+            // exactly the sort of thing an audit log exists to show.
+            $this->audit->record(
+                action: 'user.password.changed',
+                actor: $user,
+                targetType: 'user',
+                targetId: $user->external_id,
+                outcome: AuditEvent::OUTCOME_FAILURE,
+                failureReason: 'Current password did not match',
+            );
+
+            throw ValidationException::withMessages([
+                'current_password' => 'That is not your current password.',
+            ]);
+        }
+
+        DB::transaction(function () use ($user, $validated, $request): void {
+            $user->forceFill([
+                'password' => $validated['password'],
+                'remember_token' => Str::random(60),
+            ])->save();
+
+            DB::table('sessions')
+                ->where('user_id', $user->id)
+                ->where('id', '!=', $request->session()->getId())
+                ->delete();
+        });
+
+        $this->audit->record(
+            action: 'user.password.changed',
+            actor: $user,
+            targetType: 'user',
+            targetId: $user->external_id,
+        );
+
+        return back()->with('status', 'Password changed. Every other session has been signed out.');
     }
 
     public function regenerateRecoveryCodes(Request $request): RedirectResponse
