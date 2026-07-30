@@ -73,15 +73,41 @@ map the suite to the document.
 | `manager:doctor` | Check configuration and security. Run after installing or upgrading. |
 | `manager:audit:verify` | Verify the audit chain. Run after any restore. |
 | `manager:keys:generate` | Mint the platform signing keypair. |
+| `manager:backups:keygen` | Mint the backup encryption keypair. Separate from the signing one. |
+| `manager:backups:fetch` | Decrypt a stored backup, verifying it against the checksum taken on the site. |
+| `manager:backups:prune` | Apply retention. Runs nightly from the scheduler. |
 
 ## Related repositories
 
 | | |
 |---|---|
-| `craft-manager-connector` | The Craft 5 plugin installed on managed sites. Public, for review. |
-| `manager-protocol` | The wire contract shared by both. Public, zero runtime dependencies. |
-| `manager-cloud` | Cloud-only services: managed keys, billing, provisioning. |
+| `craft-manager-connector` | The Craft 5 plugin installed on managed sites. Public. |
+| `manager-protocol` | The wire contract shared by both. Public, MIT. |
+| `manager-cloud` | Private. Hosting concerns only — billing, provisioning, managed keys, cloud storage. |
 
 ## Security
 
-See [SECURITY.md](SECURITY.md). Report vulnerabilities to security@coysh.digital.
+See [SECURITY.md](SECURITY.md). Report vulnerabilities to security@coysh.digital, privately.
+
+Nothing here depends on the source being secret. Rejections are deliberately uniform so an endpoint
+cannot be used to discover which site identifiers exist; the unknown-site path verifies against a
+decoy key so it costs what the bad-signature path costs. Both are designed for a reader who has this
+repository open, because that reader now exists.
+
+## Licence
+
+Source-available: see [LICENSE.md](LICENSE.md). Running Manager yourself, for your own or your
+clients' sites, is free and always will be. Offering it to third parties as a hosted service is
+reserved — that is Manager Cloud, and Cloud is what funds this.
+
+This repository is the whole product. Cloud adds no monitoring, findings, jobs or backup features that
+are missing here; it adds the fact that somebody else runs it.
+
+## Contributing
+
+Bug reports and patches are welcome. Two things to know first:
+
+- **Security issues go to security@coysh.digital, never to a public issue.**
+- `tests/Invariants/` encodes the security properties this software promises. A change that makes one
+  of those tests fail is a change to the promise, so it needs an explanation of why the promise should
+  change — not a fix to the test.
