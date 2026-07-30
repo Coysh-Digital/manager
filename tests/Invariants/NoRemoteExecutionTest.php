@@ -68,9 +68,15 @@ it('exposes only reporting endpoints to connectors', function (): void {
     //   updates         update availability, requires updates:read
     //   jobs/claim      asks what to do; the response is signed because it carries instructions
     //   jobs/*/result   reports how a job went; validated against the job's result schema
+    //   backups         declares an artifact about to be uploaded, requires backups:create
+    //   backups/*/content  the artifact bytes; authenticated before the body is read at all
     //
-    // Note what is not here: nothing the platform can push, and nothing that takes a command.
+    // Note what is not here: nothing the platform can push, and nothing that takes a command. The two
+    // backup routes are both connector-initiated uploads — the platform never asks a site for an
+    // artifact, it queues a job and waits to be sent one.
     expect($connectorRoutes)->toBe([
+        'api/connector/v1/backups',
+        'api/connector/v1/backups/{artifactId}/content',
         'api/connector/v1/heartbeat',
         'api/connector/v1/inventory',
         'api/connector/v1/jobs/claim',

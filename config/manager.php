@@ -79,6 +79,36 @@ return [
 
     /*
     |---------------------------------------------------------------------------------------------
+    | Backups
+    |---------------------------------------------------------------------------------------------
+    |
+    | The encryption keypair is X25519 and separate from the Ed25519 signing pair above. Using one
+    | keypair for both signing and encryption is a well-known way to weaken both, so there are two.
+    |
+    | A connector seals each artifact's key to the public half, which it holds from pairing. Only the
+    | secret half opens it — which means, stated plainly, that whoever holds this key can read every
+    | backup. That is not end-to-end encryption and the documentation does not claim it is.
+    |
+    | The size ceiling is a policy statement, not a buffer size. Nothing is ever held in memory: an
+    | artifact larger than this is a site whose backup strategy needs a conversation.
+    |
+    */
+
+    'backups' => [
+        'public_key' => env('MANAGER_BACKUP_PUBLIC_KEY'),
+        'secret_key' => env('MANAGER_BACKUP_SECRET_KEY'),
+
+        'disk' => env('MANAGER_BACKUP_DISK', 'backups'),
+
+        'max_bytes' => (int) env('MANAGER_BACKUP_MAX_BYTES', Protocol::MAX_ARTIFACT_BYTES),
+
+        // How long a declared artifact may sit without its bytes arriving before it is written off.
+        // Generous, because a large dump on a slow connection is not a failure.
+        'upload_window' => (int) env('MANAGER_BACKUP_UPLOAD_WINDOW', 3600),
+    ],
+
+    /*
+    |---------------------------------------------------------------------------------------------
     | Account security
     |---------------------------------------------------------------------------------------------
     */

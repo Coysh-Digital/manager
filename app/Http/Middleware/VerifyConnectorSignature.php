@@ -58,7 +58,11 @@ final class VerifyConnectorSignature
         private readonly CorrelationId $correlationId,
     ) {}
 
-    public function handle(Request $request, Closure $next): Response
+    /**
+     * @param  string  $bodyMode  'body' to hash the request body, 'stream' to take the hash from a
+     *                            header and leave the body unread
+     */
+    public function handle(Request $request, Closure $next, string $bodyMode = 'body'): Response
     {
         // The rate limiter is backed by the same shared store as replay protection, so it fails at
         // the same time. Treated as unavailable rather than allowed to throw: the decision is
@@ -72,9 +76,33 @@ final class VerifyConnectorSignature
             return $this->storeUnavailable($e, 'rate limiter unavailable');
         }
 
-        $body = $request->getContent();
+        $streamed = $bodyMode === 'stream';
 
-        if (strlen($body) > (int) config('manager.connector.max_payload_bytes')) {
+        // In streamed mode the body is deliberately never touched. Reading it to hash it would mean
+        // accepting gigabytes from an unauthenticated caller before deciding whether to trust them,
+        // which is the whole thing this mode exists to avoid.
+        $body = $streamed ? '' : $request->getContent();
+        $declaredHash = null;
+
+        if ($streamed) {
+            $declaredHash = strtolower((string) $request->header(Protocol::HEADER_CONTENT_SHA256, ''));
+
+            if (preg_match('~^[0-9a-f]{64}$~', $declaredHash) !== 1) {
+                return $this->reject('malformed content hash');
+            }
+
+            $length = $request->server('CONTENT_LENGTH');
+
+            // A declared length is required, and checked against the ceiling before the body is read.
+            // Without it there is no way to refuse an oversized upload except by receiving it.
+            if (! is_numeric($length) || (int) $length <= 0) {
+                return $this->reject('missing content length', 411);
+            }
+
+            if ((int) $length > (int) config('manager.backups.max_bytes')) {
+                return $this->reject('payload too large', 413);
+            }
+        } elseif (strlen($body) > (int) config('manager.connector.max_payload_bytes')) {
             return $this->reject('payload too large', 413);
         }
 
@@ -103,6 +131,10 @@ final class VerifyConnectorSignature
             method: $request->getMethod(),
             path: CanonicalRequest::canonicalPath($request->getPathInfo(), $request->query()),
             body: $body,
+
+            // Null in the ordinary case, so the hash is computed from the body as it always was. One
+            // signing format either way — only where the hash came from differs.
+            declaredBodyHash: $declaredHash,
         );
 
         // Verified against a decoy when the site is unknown, so both paths do the same work.
@@ -134,6 +166,12 @@ final class VerifyConnectorSignature
         $request->attributes->set('manager.site', $site);
         $request->attributes->set('manager.connector', $connector);
         $request->attributes->set('manager.nonce', $nonce);
+
+        // The authenticated hash, so the route can compare the stream it is about to read against a
+        // promise that has already been verified as coming from this connector.
+        if ($declaredHash !== null) {
+            $request->attributes->set('manager.content_sha256', $declaredHash);
+        }
 
         return $next($request);
     }

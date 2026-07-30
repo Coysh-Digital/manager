@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Contracts\KeyService;
+use App\Contracts\ObjectStore;
 use App\Models\Finding;
 use App\Models\Organisation;
 use App\Models\Site;
 use App\Support\CorrelationId;
 use App\Support\SelfHosted\DerivedKeyService;
+use App\Support\SelfHosted\DiskObjectStore;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
@@ -28,6 +30,7 @@ class AppServiceProvider extends ServiceProvider
         // Cloud-specific concerns sit behind interfaces, with the self-hosted implementation bound
         // here. manager-cloud rebinds them; nothing in the core knows which edition it is running.
         $this->app->singleton(KeyService::class, DerivedKeyService::class);
+        $this->app->singleton(ObjectStore::class, DiskObjectStore::class);
     }
 
     /**

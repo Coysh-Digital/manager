@@ -11,7 +11,6 @@ use App\Models\Site;
 use App\Models\User;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
-use LogicException;
 
 /**
  * Invariant 13, and the audit-logging requirements generally.

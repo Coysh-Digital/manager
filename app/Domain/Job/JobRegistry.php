@@ -152,6 +152,56 @@ final class JobRegistry
             auditDescription: 'Requested an update check',
         );
 
+        /*
+         | backup.create
+         |
+         | Take a database backup, encrypt it on the site and upload it here.
+         |
+         | Takes no parameters, and that is the interesting part of this definition. The obvious design
+         | hands the connector somewhere to upload to — but a parameter naming a destination would let
+         | a compromised platform tell a site to send its entire database somewhere else. So there is
+         | nothing in the payload for a forged instruction to occupy: the connector uploads to the
+         | platform it is already paired with, at an address it holds locally and no payload can reach.
+         |
+         | at_most_once, unlike the two above. A retry after an unknown outcome is not free here: it
+         | means a second dump of a production database, and possibly two artifacts where an operator
+         | expected one. The declare step is keyed on this job so a retried *report* is harmless, but
+         | the work itself is not re-issued automatically.
+         */
+        $definitions[Jobs::BACKUP_CREATE] = new JobDefinition(
+            type: Jobs::BACKUP_CREATE,
+            schemaVersion: 'v1',
+            requiredCapability: 'backups:create',
+            parameterSchema: [
+                'type' => 'object',
+                'additionalProperties' => false,
+                'properties' => [],
+            ],
+            // A dump plus encryption plus an upload, on a site that may be large and a connection that
+            // may be slow. Bounded all the same: an unreported job expires rather than sitting claimed.
+            maxRuntimeSeconds: 3600,
+            idempotency: JobDefinition::AT_MOST_ONCE,
+
+            // Cancelling tells the connector nothing — by the time a cancellation is noticed the dump
+            // has either happened or it has not. Presented honestly rather than offering a button that
+            // stops nothing.
+            cancellable: false,
+            resultSchema: [
+                'type' => 'object',
+                'additionalProperties' => false,
+                'required' => ['stored'],
+                'properties' => [
+                    'stored' => ['type' => 'boolean'],
+
+                    // The artifact identifier this platform issued at the declare step, echoed back so
+                    // the job result and the artifact can be tied together in the audit log.
+                    'artifact' => ['type' => 'string', 'maxLength' => 40],
+                    'plaintext_bytes' => ['type' => 'integer', 'minimum' => 0],
+                ],
+            ],
+            auditDescription: 'Requested a database backup',
+        );
+
         return $definitions;
     }
 }

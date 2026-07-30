@@ -130,3 +130,65 @@ function connectorServerHeaders(array $headers): array
 
     return $server;
 }
+
+/**
+ * Send a signed artifact upload, exactly as a real connector would.
+ *
+ * Distinct from {@see postSignedConnectorRequest()} in the one way that matters: the signature covers a
+ * hash declared in a header rather than the body itself, because the platform authenticates an upload
+ * before reading any of it. Getting that wrong in a test would prove the wrong thing.
+ *
+ * @param  array<string, mixed>  $overrides  tamper with individual signed fields
+ */
+function putSignedArtifact(
+    string $path,
+    string $bytes,
+    Site $site,
+    string $secretKey,
+    array $overrides = [],
+): TestResponse {
+    $siteId = $overrides['site_id'] ?? $site->external_id;
+    $version = $overrides['connector_version'] ?? '1.0.0';
+    $timestamp = $overrides['timestamp'] ?? time();
+    $nonce = $overrides['nonce'] ?? Nonce::generate();
+
+    // What the connector promises it is about to send. Overridable so a test can promise one thing and
+    // send another, which is the case the platform has to catch.
+    $declaredHash = $overrides['declared_hash'] ?? hash('sha256', $bytes);
+
+    $canonical = CanonicalRequest::forStream(
+        siteId: $siteId,
+        connectorVersion: $version,
+        timestamp: $timestamp,
+        nonce: $nonce,
+        method: 'PUT',
+        path: $path,
+        bodyHash: $declaredHash,
+    );
+
+    $headers = [
+        Protocol::HEADER_SITE => $siteId,
+        Protocol::HEADER_TIMESTAMP => (string) $timestamp,
+        Protocol::HEADER_NONCE => $nonce,
+        Protocol::HEADER_CONNECTOR_VERSION => $version,
+        Protocol::HEADER_SIGNATURE => Protocol::SIGNATURE_SCHEME.'='.($overrides['signature'] ?? $canonical->sign($secretKey)),
+        Protocol::HEADER_CONTENT_SHA256 => $overrides['sent_hash'] ?? $declaredHash,
+    ];
+
+    foreach ($overrides['drop_headers'] ?? [] as $drop) {
+        unset($headers[$drop]);
+    }
+
+    $server = connectorServerHeaders($headers);
+
+    // Set explicitly, because the platform refuses an upload that does not declare its length and the
+    // test client does not always provide one.
+    $server['CONTENT_LENGTH'] = (string) ($overrides['content_length'] ?? strlen($bytes));
+
+    return test()->call(
+        method: 'PUT',
+        uri: $path,
+        server: $server,
+        content: $bytes,
+    );
+}

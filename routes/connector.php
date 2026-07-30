@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Connector\BackupDeclareController;
+use App\Http\Controllers\Connector\BackupUploadController;
 use App\Http\Controllers\Connector\HeartbeatController;
 use App\Http\Controllers\Connector\InventoryController;
 use App\Http\Controllers\Connector\JobClaimController;
@@ -61,4 +63,29 @@ Route::middleware('connector.signed')->group(function (): void {
      */
     Route::post('jobs/claim', JobClaimController::class)->name('jobs.claim');
     Route::post('jobs/{job}/result', JobResultController::class)->name('jobs.result');
+
+    /*
+     | Backups, step one: declare what is about to be uploaded.
+     |
+     | An ordinary signed request with a small JSON body, so it goes through the ordinary middleware.
+     | Only the bytes need special handling.
+     */
+    Route::post('backups', BackupDeclareController::class)
+        ->middleware('capability:backups:create')
+        ->name('backups.declare');
 });
+
+/*
+| Backups, step two: the bytes.
+|
+| Outside the group above because it needs the middleware in streaming mode. The ordinary mode hashes
+| the request body to verify the signature, which for an artifact would mean reading a customer's
+| entire database into memory before deciding whether to trust the request that carried it.
+|
+| In streaming mode the hash comes from a header the signature covers, so authentication happens before
+| the body is touched at all — and the body is then compared against a promise that has already been
+| verified as coming from this connector.
+*/
+Route::put('backups/{artifactId}/content', BackupUploadController::class)
+    ->middleware(['connector.signed:stream', 'capability:backups:create'])
+    ->name('backups.upload');
