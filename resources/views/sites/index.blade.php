@@ -18,16 +18,30 @@
             </p>
         </div>
 
-        @if ($membership->canAdminister())
+        <div class="flex flex-none items-center gap-2">
+            @if ($summary['total'] > 0)
+                {{-- Queues a job per site rather than fetching anything: the platform never calls out.
+                     The message says how many were queued and how many were skipped. --}}
+                <form method="POST" action="{{ route('sites.refresh-all') }}">
+                    @csrf
+                    <button type="submit"
+                            class="flex h-8 items-center whitespace-nowrap rounded-[7px] border border-border-2 bg-surface px-3 text-[12.5px] text-text hover:bg-row-hover">
+                        Refresh all
+                    </button>
+                </form>
+            @endif
+
+            @if ($membership->canAdminister())
             {{-- A details element rather than a modal. No JavaScript, and the form is linkable and
                  keyboard-navigable for free. --}}
-            <details class="group relative">
+            {{-- z-20 so the panel sits above the table's sticky header, which is z-1. --}}
+            <details class="group relative z-20">
                 <summary class="flex h-8 cursor-pointer list-none items-center rounded-[7px] border border-primary bg-primary px-3 text-[12.5px] font-medium text-primary-fg hover:bg-primary-hover">
                     Add a site
                 </summary>
 
                 <form method="POST" action="{{ route('sites.store') }}"
-                      class="absolute right-0 z-10 mt-2 flex w-[360px] flex-col gap-3 rounded-[10px] border border-border bg-surface p-4 shadow-[var(--shadow-lg,var(--shadow))]">
+                      class="absolute right-0 z-20 mt-2 flex w-[360px] flex-col gap-3 rounded-[10px] border border-border bg-surface p-4 shadow-[var(--shadow-lg,var(--shadow))]">
                     @csrf
 
                     <label class="flex flex-col gap-1.5">
@@ -57,13 +71,36 @@
                         </select>
                     </label>
 
+                    <fieldset class="flex flex-col gap-1.5 border-t border-border pt-3">
+                        <legend class="mb-1 text-[12.5px] font-medium">What it may report</legend>
+
+                        @foreach ($grantableCapabilities as $capability)
+                            <label class="flex items-start gap-2 text-[12.5px] text-text-2">
+                                <input type="checkbox" name="capabilities[]" value="{{ $capability }}"
+                                       @checked(in_array($capability, old('capabilities', $grantableCapabilities), true))
+                                       class="mt-0.5 flex-none accent-[var(--primary)]">
+                                <span>{{ __('capabilities.'.$capability.'.title') }}</span>
+                            </label>
+                        @endforeach
+
+                        {{-- Every read capability on by default. They are read-only, they cannot change
+                             the site, and a fleet dashboard with nothing in it is not much of a
+                             dashboard. backups:create is deliberately absent: it reads the entire
+                             database, so it is granted per site through its own confirmation. --}}
+                        <p class="mt-1 text-[11.5px] text-text-3">
+                            All read-only, and revocable at any time. Taking backups is granted
+                            separately, per site.
+                        </p>
+                    </fieldset>
+
                     <button type="submit"
                             class="h-8 rounded-[7px] border border-primary bg-primary px-3 text-[12.5px] font-medium text-primary-fg hover:bg-primary-hover">
                         Add site and issue a code
                     </button>
                 </form>
             </details>
-        @endif
+            @endif
+        </div>
     </div>
 
     @if ($errors->any())

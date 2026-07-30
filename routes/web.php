@@ -79,6 +79,12 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
 
     Route::get('backups', [BackupController::class, 'index'])->name('backups.index');
 
+    // Refreshing asks a site to re-send what it already sends on a schedule. No recent-auth gate and no
+    // administrator requirement: it is the least privileged useful action here, and gating it would
+    // only make people wait for cron.
+    Route::post('sites/refresh-all', [SiteController::class, 'refreshAll'])->name('sites.refresh-all');
+    Route::post('sites/{site}/refresh', [SiteController::class, 'refresh'])->name('sites.refresh');
+
     Route::get('activity', [ActivityController::class, 'index'])->name('activity.index');
 
     Route::get('settings', [SettingsController::class, 'show'])->name('settings.show');

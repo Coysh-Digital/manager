@@ -26,11 +26,48 @@
                 </p>
             </div>
 
-            <a href="{{ route('sites.capabilities', $site) }}"
-               class="inline-flex h-[34px] items-center rounded-[7px] border border-border-2 bg-surface px-3.5 text-[13px] text-text no-underline hover:bg-row-hover">
-                Capabilities
-            </a>
+            <div class="flex flex-none items-center gap-2">
+                {{-- Queues a job rather than fetching anything: the platform never calls out to a site.
+                     The confirmation message says so, because a button that looked instantaneous and
+                     was not would be worse than no button. --}}
+                <form method="POST" action="{{ route('sites.refresh', $site) }}">
+                    @csrf
+                    <button type="submit"
+                            class="inline-flex h-[34px] items-center rounded-[7px] border border-border-2 bg-surface px-3.5 text-[13px] text-text hover:bg-row-hover">
+                        Refresh
+                    </button>
+                </form>
+
+                <a href="{{ route('sites.capabilities', $site) }}"
+                   class="inline-flex h-[34px] items-center rounded-[7px] border border-border-2 bg-surface px-3.5 text-[13px] text-text no-underline hover:bg-row-hover">
+                    Capabilities
+                </a>
+            </div>
         </div>
+
+        @if ($connector && $site->craft_version === null)
+            {{-- The state that caused real confusion: paired successfully, but nothing reported yet,
+                 so every version field is empty. Say which of the two it is. --}}
+            <div class="mb-5 mt-5 flex flex-wrap items-center justify-between gap-3 rounded-[9px] border border-info-line bg-info-bg px-4 py-3.5">
+                <div class="flex flex-col gap-0.5">
+                    <span class="text-[13px] font-medium text-info">Paired, but nothing reported yet</span>
+                    <span class="text-[12.5px] text-text-2">
+                        The connector has authenticated. Versions appear once the site sends its first
+                        report — press Refresh, or wait for its schedule. If nothing arrives, check that
+                        <span class="font-mono text-[12px]">manager-connector/jobs</span> is running on
+                        the site.
+                    </span>
+                </div>
+
+                <form method="POST" action="{{ route('sites.refresh', $site) }}">
+                    @csrf
+                    <button type="submit"
+                            class="h-8 whitespace-nowrap rounded-[7px] border border-primary bg-primary px-3 text-[12.5px] font-medium text-primary-fg hover:bg-primary-hover">
+                        Refresh now
+                    </button>
+                </form>
+            </div>
+        @endif
 
         {{-- Shown once, on the request that issued it. Only the hash is stored, so there is no route
              that will show it again — which is exactly why it is safe to show here. --}}
@@ -38,15 +75,55 @@
             <div class="mb-5 mt-5 rounded-[10px] border border-primary bg-pale p-4">
                 <p class="mb-1.5 text-[13.5px] font-medium">Enrolment code — shown once</p>
                 <p class="mb-3 text-[12.5px] text-text-2">
-                    Run this on <code class="font-mono">{{ $site->expected_domain }}</code>. It is
-                    single-use, expires in
-                    {{ (int) (config('manager.enrolment.ttl') / 60) }} minutes, and is not stored anywhere
-                    it can be read back — if you lose it, issue another.
+                    Single-use, expires in {{ (int) (config('manager.enrolment.ttl') / 60) }} minutes,
+                    and stored only as a hash — if you lose it, issue another.
                 </p>
 
-                <pre class="mb-3 overflow-x-auto rounded-lg border border-primary bg-surface p-3"><code class="font-mono text-[12.5px]">php craft manager-connector/pair {{ session('enrolmentCode') }}</code></pre>
+                {{-- The code itself is the thing somebody came here for, so it is the largest thing on
+                     the panel. The command that consumes it is a detail, and detail belongs behind a
+                     disclosure. --}}
+                <div class="mb-3 flex flex-wrap items-center gap-2">
+                    <code id="enrolment-code"
+                          class="flex-1 overflow-x-auto rounded-lg border border-primary bg-surface px-3 py-2.5 font-mono text-[13px] whitespace-nowrap">{{ session('enrolmentCode') }}</code>
 
-                <p class="text-[12px] text-text-3">
+                    <button type="button"
+                            data-copy="{{ session('enrolmentCode') }}"
+                            data-copy-from="enrolment-code"
+                            data-copy-done="Copied"
+                            class="h-[38px] flex-none rounded-[7px] border border-primary bg-primary px-3.5 text-[12.5px] font-medium text-primary-fg hover:bg-primary-hover">
+                        <span data-copy-label>Copy</span>
+                    </button>
+                </div>
+
+                <details class="group">
+                    <summary class="cursor-pointer list-none text-[12.5px] text-text-2 hover:text-text">
+                        <span class="group-open:hidden">Show the command to run on the site</span>
+                        <span class="hidden group-open:inline">Hide the command</span>
+                    </summary>
+
+                    <div class="mt-2.5 flex flex-col gap-2">
+                        <p class="text-[12.5px] text-text-2">
+                            Most people should use the control panel instead:
+                            <strong>Utilities → Manager Connector</strong> on
+                            <span class="font-mono text-[12px]">{{ $site->expected_domain }}</span>.
+                            No shell needed, which matters on managed hosting.
+                        </p>
+
+                        <div class="flex flex-wrap items-center gap-2">
+                            <code id="enrolment-command"
+                                  class="flex-1 overflow-x-auto rounded-lg bg-surface-2 px-3 py-2 font-mono text-[12px] whitespace-nowrap">php craft manager-connector/pair {{ session('enrolmentCode') }}</code>
+
+                            <button type="button"
+                                    data-copy="php craft manager-connector/pair {{ session('enrolmentCode') }}"
+                                    data-copy-from="enrolment-command"
+                                    class="h-8 flex-none rounded-[7px] border border-border-2 bg-surface px-3 text-[12.5px] text-text hover:bg-row-hover">
+                                <span data-copy-label>Copy</span>
+                            </button>
+                        </div>
+                    </div>
+                </details>
+
+                <p class="mt-3 text-[12px] text-text-3">
                     The connector generates its own keypair on the site and sends only the public half.
                     Manager never receives a private key, an administrator password or a database
                     credential.

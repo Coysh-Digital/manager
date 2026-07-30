@@ -144,7 +144,16 @@ final class PairingService
             $capabilities = $domainMatches ? $this->capabilities->grantDefaultsForPairing($site) : [];
 
             if ($domainMatches) {
-                $site->forceFill(['connector_version' => $connectorVersion])->save();
+                // Marked connected, because it is: a connector reached us, authenticated and consumed
+                // a code. Leaving the status at never_connected until the first heartbeat made a
+                // successful pairing read as a failure on the site page, which is how somebody spends
+                // ten minutes looking for a problem that is not there.
+                //
+                // Only in this branch. A pairing held for confirmation genuinely is not reporting.
+                $site->forceFill([
+                    'connector_version' => $connectorVersion,
+                    'status' => Site::STATUS_CONNECTED,
+                ])->save();
             }
 
             $this->audit->record(

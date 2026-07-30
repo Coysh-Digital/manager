@@ -10,6 +10,7 @@
  */
 
 import './passkeys.js';
+import './copy.js';
 
 const STORAGE_KEY = 'manager.theme';
 

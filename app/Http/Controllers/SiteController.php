@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Domain\Capability\CapabilityService;
+use App\Domain\Job\JobRejectedException;
+use App\Domain\Job\JobService;
 use App\Domain\Pairing\EnrolmentService;
 use App\Domain\Site\SiteRemovalService;
 use App\Models\AuditEvent;
@@ -11,6 +14,8 @@ use App\Models\Connector;
 use App\Models\Membership;
 use App\Models\Organisation;
 use App\Models\Site;
+use App\Models\User;
+use coyshdigital\managerprotocol\Jobs;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -24,6 +29,8 @@ use Illuminate\Http\Request;
  */
 final class SiteController
 {
+    public function __construct(private readonly CapabilityService $capabilities) {}
+
     public function index(Request $request, Organisation $organisation): View
     {
         $filters = [
@@ -46,6 +53,7 @@ final class SiteController
             'groups' => $groups,
             'filters' => $filters,
             'membership' => app(Membership::class),
+            'grantableCapabilities' => CapabilityService::grantableFromInterface(),
             'totalSites' => $organisation->sites()->active()->count(),
             'shown' => $sites->count(),
             'summary' => $this->summary($organisation),
@@ -82,6 +90,117 @@ final class SiteController
      * see SiteRemovalService for why that matters.
      */
     /**
+     * Ask a site to report again now.
+     *
+     * Queues the work rather than doing it: the platform never calls out to a site, so a refresh is a
+     * job the connector collects on its next check-in. The wording says so, because a button that
+     * looked instantaneous and was not would be worse than no button.
+     *
+     * Any member may press it. It asks a site to re-send what it already sends on a schedule, which is
+     * the least privileged useful thing in the interface, and the idempotency key means pressing it
+     * repeatedly finds the outstanding job rather than queuing another.
+     */
+    public function refresh(Request $request, Site $site, JobService $jobs): RedirectResponse
+    {
+        $this->authoriseSite($site);
+
+        $queued = $this->queueRefresh($site, $jobs, $request->user());
+
+        if ($queued === []) {
+            return back()->withErrors([
+                'refresh' => 'Nothing to refresh: this site has no active connector.',
+            ]);
+        }
+
+        return back()->with('status', $this->refreshMessage($site->name, $queued));
+    }
+
+    /**
+     * Ask every connected site to report again.
+     */
+    public function refreshAll(Request $request, Organisation $organisation, JobService $jobs): RedirectResponse
+    {
+        $sites = $organisation->sites()->active()->with('capabilityGrants')->get();
+
+        $touched = 0;
+        $skipped = 0;
+
+        foreach ($sites as $site) {
+            if ($this->queueRefresh($site, $jobs, $request->user()) === []) {
+                $skipped++;
+
+                continue;
+            }
+
+            $touched++;
+        }
+
+        if ($touched === 0) {
+            return back()->withErrors([
+                'refresh' => 'No site has an active connector, so there is nothing to refresh.',
+            ]);
+        }
+
+        // The skipped count is reported rather than swallowed. Silently refreshing four of twelve sites
+        // and saying "refreshed" would be the sort of half-truth an operator only discovers later.
+        return back()->with('status', sprintf(
+            'Refresh queued for %d %s.%s They will report when each next checks in.',
+            $touched,
+            $touched === 1 ? 'site' : 'sites',
+            $skipped > 0
+                ? sprintf(' %d skipped, having no active connector.', $skipped)
+                : '',
+        ));
+    }
+
+    /**
+     * Queue whatever this site is permitted to refresh.
+     *
+     * @return list<string> the job types queued
+     */
+    private function queueRefresh(Site $site, JobService $jobs, ?User $actor): array
+    {
+        $queued = [];
+
+        // Inventory first, because it is what the fleet table shows. Updates only if permitted —
+        // enqueue() would refuse it anyway, but asking for something a site cannot do would put a
+        // refusal in the audit log on every press.
+        foreach ([Jobs::INVENTORY_REFRESH => 'inventory:read', Jobs::UPDATES_CHECK => 'updates:read'] as $type => $capability) {
+            if (! $site->hasCapability($capability)) {
+                continue;
+            }
+
+            try {
+                // The idempotency key is what makes repeated presses harmless. Without one,
+                // outstandingFor() returns null and every press inserts another job — which is what
+                // this did until a test pressed the button four times and found four jobs.
+                //
+                // Keyed on the type rather than the moment, so a second press finds the outstanding job
+                // and a press after it has run queues a fresh one.
+                $jobs->enqueue($site, $type, actor: $actor, idempotencyKey: 'refresh:'.$type);
+                $queued[] = $type;
+            } catch (JobRejectedException) {
+                // No active connector, most likely. Reported to the caller as "nothing queued" rather
+                // than as an error, because it is a state rather than a fault.
+            }
+        }
+
+        return $queued;
+    }
+
+    /**
+     * @param  list<string>  $queued
+     */
+    private function refreshMessage(string $name, array $queued): string
+    {
+        return sprintf(
+            'Refresh queued for %s. It will report when it next checks in%s.',
+            $name,
+            in_array(Jobs::UPDATES_CHECK, $queued, true) ? ', including an update check' : '',
+        );
+    }
+
+    /**
      * Add a site and issue its first enrolment code.
      *
      * The code is shown once, on the redirect, and never again — only its hash is stored. Anybody who
@@ -96,6 +215,12 @@ final class SiteController
             'name' => ['required', 'string', 'max:120'],
             'expected_domain' => ['required', 'string', 'max:255'],
             'environment' => ['required', 'in:production,staging,development'],
+
+            // The read-only set only. backups:create is absent from the rule, not merely from the form,
+            // so a crafted request cannot reach it either — it has its own confirmation flow, and
+            // invariant 7 is the reason.
+            'capabilities' => ['nullable', 'array'],
+            'capabilities.*' => ['string', 'in:'.implode(',', CapabilityService::grantableFromInterface())],
         ]);
 
         $domain = $enrolment->normaliseDomain($validated['expected_domain']);
@@ -113,6 +238,13 @@ final class SiteController
             environment: $validated['environment'],
             actor: $request->user(),
         );
+
+        // Granted now rather than waiting for somebody to visit the Capabilities screen. All read-only,
+        // all revocable, and a fleet table with nothing in it is not much of a fleet table. The
+        // connector picks the set up on its next check-in.
+        foreach ($validated['capabilities'] ?? [] as $capability) {
+            $this->capabilities->grant($site, $capability, $request->user(), 'Selected when the site was added');
+        }
 
         return to_route('sites.show', $site)
             ->with('status', "Added {$site->name}.")

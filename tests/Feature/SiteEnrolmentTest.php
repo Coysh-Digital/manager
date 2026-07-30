@@ -2,13 +2,17 @@
 
 declare(strict_types=1);
 
+use App\Domain\Capability\CapabilityService;
 use App\Models\AuditEvent;
+use App\Models\CapabilityGrant;
 use App\Models\Connector;
 use App\Models\EnrolmentCode;
 use App\Models\Membership;
 use App\Models\Organisation;
+use App\Models\RemoteJob;
 use App\Models\Site;
 use App\Models\User;
+use coyshdigital\managerprotocol\Jobs;
 use coyshdigital\managerprotocol\Nonce;
 
 /**
@@ -231,4 +235,156 @@ it('offers the form on the fleet screen, and only to administrators', function (
     $this->actingAs($this->member)->get('/sites')
         ->assertOk()
         ->assertDontSee('Add a site');
+});
+
+// --------------------------------------------------------------------------------------------------
+// Capabilities chosen when the site is added
+// --------------------------------------------------------------------------------------------------
+
+it('grants every read capability by default', function (): void {
+    $this->actingAs($this->owner)->withSession($this->recentAuth)->post('/sites', [
+        'name' => 'Example Client',
+        'expected_domain' => 'example.org',
+        'environment' => 'production',
+        'capabilities' => CapabilityService::grantableFromInterface(),
+    ])->assertRedirect();
+
+    // All five, without anybody visiting the Capabilities screen. A fleet table with nothing in it is
+    // not much of a fleet table.
+    expect(Site::query()->sole()->grantedCapabilities())
+        ->toEqualCanonicalizing(CapabilityService::grantableFromInterface());
+});
+
+it('checks every read capability in the form by default', function (): void {
+    $html = $this->actingAs($this->owner)->get('/sites')->assertOk()->getContent();
+
+    // Counted rather than eyeballed: five checkboxes, five of them checked.
+    expect(substr_count($html, 'name="capabilities[]"'))->toBe(5)
+        ->and(substr_count($html, 'name="capabilities[]"'))
+        ->toBe(preg_match_all('/name="capabilities\[\]"[^>]*checked/', $html));
+});
+
+it('never offers backups as a checkbox, and refuses it if asked', function (): void {
+    $html = $this->actingAs($this->owner)->get('/sites')->assertOk()->getContent();
+
+    expect($html)->not->toContain('value="backups:create"');
+
+    // Refused by the validation rule, not merely absent from the form — invariant 7 is not a matter of
+    // which inputs happen to be rendered.
+    $this->actingAs($this->owner)->withSession($this->recentAuth)->post('/sites', [
+        'name' => 'Sneaky',
+        'expected_domain' => 'example.org',
+        'environment' => 'production',
+        'capabilities' => ['inventory:read', 'backups:create'],
+    ])->assertSessionHasErrors('capabilities.1');
+
+    expect(Site::query()->count())->toBe(0);
+});
+
+it('grants nothing when every box is unchecked', function (): void {
+    $this->actingAs($this->owner)->withSession($this->recentAuth)->post('/sites', [
+        'name' => 'Watchful waiting',
+        'expected_domain' => 'example.org',
+        'environment' => 'production',
+    ])->assertRedirect();
+
+    // A site can be added now and permitted later. Pairing will still grant inventory:read, because
+    // that is what pairing does — but nothing here presumes.
+    expect(Site::query()->sole()->grantedCapabilities())->toBe([]);
+});
+
+// --------------------------------------------------------------------------------------------------
+// Refresh
+// --------------------------------------------------------------------------------------------------
+
+it('queues a refresh for a site', function (): void {
+    $site = Site::factory()->for($this->organisation)->connected()->create();
+    Connector::factory()->for($site)->create();
+    CapabilityGrant::factory()->for($site)->capability('inventory:read')->create();
+
+    $this->actingAs($this->owner)->post(route('sites.refresh', $site))
+        ->assertRedirect()
+        ->assertSessionHas('status');
+
+    $job = RemoteJob::query()->sole();
+
+    expect($job->type)->toBe(Jobs::INVENTORY_REFRESH)
+        ->and($job->state)->toBe(Jobs::STATE_QUEUED);
+});
+
+it('also queues an update check when that is permitted', function (): void {
+    $site = Site::factory()->for($this->organisation)->connected()->create();
+    Connector::factory()->for($site)->create();
+    CapabilityGrant::factory()->for($site)->capability('inventory:read')->create();
+    CapabilityGrant::factory()->for($site)->capability('updates:read')->create();
+
+    $this->actingAs($this->owner)->post(route('sites.refresh', $site))->assertRedirect();
+
+    expect(RemoteJob::query()->pluck('type')->all())
+        ->toEqualCanonicalizing(['inventory.refresh', 'updates.check']);
+});
+
+it('does not pile up refreshes when pressed repeatedly', function (): void {
+    $site = Site::factory()->for($this->organisation)->connected()->create();
+    Connector::factory()->for($site)->create();
+    CapabilityGrant::factory()->for($site)->capability('inventory:read')->create();
+
+    foreach (range(1, 4) as $ignored) {
+        $this->actingAs($this->owner)->post(route('sites.refresh', $site));
+    }
+
+    // One outstanding job, not four. Somebody pressing a button that appears to do nothing will press
+    // it again, and the site should not pay for that.
+    expect(RemoteJob::query()->count())->toBe(1);
+});
+
+it('says so rather than failing when a site has no connector', function (): void {
+    $site = Site::factory()->for($this->organisation)->create();
+
+    $this->actingAs($this->owner)->post(route('sites.refresh', $site))
+        ->assertSessionHasErrors('refresh');
+
+    expect(RemoteJob::query()->count())->toBe(0);
+});
+
+it('refreshes the whole fleet, and reports what it skipped', function (): void {
+    $ready = Site::factory()->for($this->organisation)->connected()->create();
+    Connector::factory()->for($ready)->create();
+    CapabilityGrant::factory()->for($ready)->capability('inventory:read')->create();
+
+    // Connected but with nothing granted, so there is nothing to ask it for.
+    $bare = Site::factory()->for($this->organisation)->connected()->create();
+    Connector::factory()->for($bare)->create();
+
+    $this->actingAs($this->owner)->post(route('sites.refresh-all'))
+        ->assertRedirect()
+        ->assertSessionHas('status');
+
+    expect(RemoteJob::query()->count())->toBe(1);
+
+    // The skipped one is reported rather than swallowed. "Refreshed" while quietly doing half of them
+    // is the sort of half-truth somebody discovers a week later.
+    expect(session('status'))->toContain('1 skipped');
+});
+
+it('lets a member refresh, since it only asks a site to repeat itself', function (): void {
+    $site = Site::factory()->for($this->organisation)->connected()->create();
+    Connector::factory()->for($site)->create();
+    CapabilityGrant::factory()->for($site)->capability('inventory:read')->create();
+
+    // No recent-auth gate and no administrator requirement: it is the least privileged useful action
+    // in the interface, and gating it would only make people wait for cron.
+    $this->actingAs($this->member)->post(route('sites.refresh', $site))->assertRedirect();
+
+    expect(RemoteJob::query()->count())->toBe(1);
+});
+
+it('cannot refresh another organisation\'s site', function (): void {
+    $other = Organisation::factory()->create();
+    $theirs = Site::factory()->for($other)->connected()->create();
+    Connector::factory()->for($theirs)->create();
+
+    $this->actingAs($this->owner)->post(route('sites.refresh', $theirs))->assertNotFound();
+
+    expect(RemoteJob::query()->count())->toBe(0);
 });

@@ -182,7 +182,11 @@
     .table-sticky thead th {
         position: sticky;
         top: 0;
-        z-index: 10;
+
+        /* Only needs to sit above the rows it heads. It was 10, which tied with the "Add a site"
+           panel above the table -- and a tie is decided by document order, so the header won and
+           clipped the panel. A header does not need to outrank anything but its own tbody. */
+        z-index: 1;
         background: var(--surface-2);
     }
 
