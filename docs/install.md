@@ -34,19 +34,35 @@ Generate a key:
 docker compose run --rm --no-deps app php artisan key:generate --show
 ```
 
-Then start it and check the installation before letting anyone near it:
+## Keys
+
+Manager needs two keypairs beyond `APP_KEY`, and they are separate on purpose: one signs responses to
+connectors, the other encrypts backups. Using one keypair for both would weaken both.
+
+Generate them **before** starting the stack, and put them in `.env` yourself:
+
+```bash
+docker compose run --rm --no-deps app php artisan manager:keys:generate --show
+docker compose run --rm --no-deps app php artisan manager:backups:keygen --show
+```
+
+Each prints two lines. Add all four to `.env`.
+
+They are printed rather than saved because the container has no writable `.env` — the environment
+arrives from this file and the container's root filesystem is read-only, which is deliberate. If you
+run these against a container that *does* have a writable `.env`, they write to it and say so.
+
+Back both secret keys up with your other application secrets, and keep the backup key somewhere other
+than alongside the backups themselves. Losing the signing key means re-pairing every site; losing the
+backup key makes every stored backup permanently unreadable, with no recovery path. See
+[backup.md](backup.md).
+
+## Start it
 
 ```bash
 docker compose up -d
-docker compose exec app php artisan manager:keys:generate
-docker compose exec app php artisan manager:backups:keygen
 docker compose exec app php artisan manager:doctor
 ```
-
-Both keypairs are written to `.env`. They are separate on purpose — one signs responses to
-connectors, the other encrypts backups — and they need backing up separately from the database.
-Losing the signing key means re-pairing every site; losing the backup key makes every stored backup
-permanently unreadable. See [backup.md](backup.md).
 
 `manager:doctor` must report no failures. It checks the things that are easy to get wrong and
 expensive to discover later: a wildcard trusted-proxy setting, a non-atomic replay store, missing

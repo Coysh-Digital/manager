@@ -59,7 +59,10 @@ services:
     ports:
       # Bound to localhost. Put a reverse proxy in front and terminate TLS there — see
       # docs/reverse-proxy.md. Exposing this directly would serve the control plane over plain HTTP.
-      - "127.0.0.1:8080:8080"
+      #
+      # The host port is configurable because 8080 is popular and a port clash is a poor first
+      # experience. The container port is not: the reverse-proxy examples name it.
+      - "127.0.0.1:${MANAGER_HTTP_PORT:-8080}:8080"
 
   worker:
     <<: *app

@@ -39,6 +39,27 @@ require_config() {
     fi
 }
 
+# Key generation is exempt from the checks below, and has to be.
+#
+# Installing starts with generating an APP_KEY, and the documented way to do that is to run this image
+# with `key:generate --show`. Refusing that for want of an APP_KEY makes the first step of the install
+# depend on having already completed it — which is precisely the state a first-time installer is in.
+#
+# An exact allowlist rather than a flag or an environment variable. These three commands print a fresh
+# random value to stdout and touch nothing: no database, no storage, no request served. Anything else,
+# including any other artisan command, still goes through require_config.
+case "${1:-web} ${2:-} ${3:-}" in
+    "php artisan key:generate"*|"artisan key:generate"*)
+        exec "$@"
+        ;;
+    "php artisan manager:keys:generate"*|"artisan manager:keys:generate"*)
+        exec "$@"
+        ;;
+    "php artisan manager:backups:keygen"*|"artisan manager:backups:keygen"*)
+        exec "$@"
+        ;;
+esac
+
 require_config
 
 # Cached for speed, and cleared first so a stale cache from an earlier image cannot survive an

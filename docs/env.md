@@ -76,6 +76,7 @@ one-time setup flow.
 
 | Variable | Default | Notes |
 |---|---|---|
+| `MANAGER_HTTP_PORT` | `8080` | Host port the app binds on, on localhost only. Change it if something already holds 8080. The container port stays 8080, which is what the reverse-proxy examples name. |
 | `MANAGER_TRUSTED_PROXIES` | empty | Comma-separated addresses or CIDR ranges. **Never `*`** — that lets any caller forge its apparent source address, defeating per-network rate limits and the addresses in the audit log. `manager:doctor` fails on it. |
 
 ## Mail

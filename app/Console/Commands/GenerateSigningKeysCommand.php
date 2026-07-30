@@ -42,12 +42,34 @@ final class GenerateSigningKeysCommand extends Command
             return self::SUCCESS;
         }
 
-        $this->writeToEnvironmentFile($generated);
+        $persisted = $this->writeToEnvironmentFile($generated);
 
         $this->components->info('Platform signing keypair generated.');
-        $this->line('  Public key: '.$generated['public']);
+
+        if ($persisted) {
+            $this->line('  Public key: '.$generated['public']);
+            $this->newLine();
+            $this->components->warn(
+                'The secret key was written to .env and is not shown here. Back it up with your other '
+                .'application secrets: losing it means re-pairing every site.'
+            );
+
+            return self::SUCCESS;
+        }
+
+        // Nothing was saved, so the keys are printed and the operator is told exactly that. Reporting
+        // success here — as this once did — is how a signing key gets lost on the next restart, and the
+        // symptom appears later as every site failing to pair.
+        $this->line('  Nothing was written: there is no writable .env here, which is normal in a');
+        $this->line('  container. Add both lines to the environment Manager starts with, then restart it.');
         $this->newLine();
-        $this->components->warn('The secret key was written to .env and is not shown here. Back it up with your other application secrets: losing it means re-pairing every site.');
+        $this->line('MANAGER_SIGNING_PUBLIC_KEY='.$generated['public']);
+        $this->line('MANAGER_SIGNING_SECRET_KEY='.$generated['secret']);
+        $this->newLine();
+        $this->components->warn(
+            'This is the only time the secret key is shown. Losing it means re-pairing every site; '
+            .'back it up with your other application secrets.'
+        );
 
         return self::SUCCESS;
     }
@@ -55,16 +77,15 @@ final class GenerateSigningKeysCommand extends Command
     /**
      * @param  array{public: string, secret: string}  $keypair
      */
-    private function writeToEnvironmentFile(array $keypair): void
+    private function writeToEnvironmentFile(array $keypair): bool
     {
         $path = base_path('.env');
 
-        if (! is_file($path)) {
-            $this->components->warn('No .env file found; printing instead.');
-            $this->line('MANAGER_SIGNING_PUBLIC_KEY='.$keypair['public']);
-            $this->line('MANAGER_SIGNING_SECRET_KEY='.$keypair['secret']);
-
-            return;
+        // No .env is the normal case in a container: the environment arrives from the compose
+        // env_file and the root filesystem is read-only. The keys are printed so the operator can put
+        // them where they belong, and the caller is told not to claim they were saved.
+        if (! is_file($path) || ! is_writable($path)) {
+            return false;
         }
 
         $contents = (string) file_get_contents($path);
@@ -77,6 +98,8 @@ final class GenerateSigningKeysCommand extends Command
                 : rtrim($contents, "\n")."\n".$line."\n";
         }
 
-        file_put_contents($path, $contents);
+        // Checked, because a failed write that reports success is how a signing key gets lost and
+        // every site ends up needing to be paired again.
+        return file_put_contents($path, $contents) !== false;
     }
 }
