@@ -1,0 +1,91 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Verify, build and publish
+    runs-on: ubuntu-latest
+
+    steps:
+      # The full history and the tag object itself. A shallow clone fetches the commit but not the
+      # annotation, and the signature lives on the annotation.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # The gate. An unsigned tag, or one signed by a key not on the published list, stops the release
+      # here — before any artifact exists to be mistaken for a real one.
+      #
+      # This is the whole point of invariant 17: a release is only verifiable if something refuses to
+      # produce an unverifiable one. Left to a human step this check gets skipped on the release that
+      # matters, at the end of a long day.
+      - name: The tag must be signed by a published key
+        run: |
+          git config gpg.ssh.allowedSignersFile .github/allowed_signers
+
+          if ! git tag -v "${GITHUB_REF_NAME}" 2>&1 | tee /tmp/verify.log; then
+            echo "::error::${GITHUB_REF_NAME} is not signed by a key in .github/allowed_signers. Refusing to publish."
+            exit 1
+          fi
+
+          grep -q '^Good' /tmp/verify.log || {
+            echo "::error::Signature verification did not report a good signature. Refusing to publish."
+            exit 1
+          }
+
+      - name: The tag must match the version in the manifest
+        run: |
+          DECLARED=$(php -r 'echo json_decode(file_get_contents("composer.json"), true)["version"] ?? "";' 2>/dev/null || true)
+          EXPECTED="${GITHUB_REF_NAME#v}"
+
+          # The platform manifest carries no version field — the tag is the only statement of it, which
+          # is the arrangement that cannot drift. If one is ever added, it has to agree.
+          if [ -n "$DECLARED" ] && [ "$DECLARED" != "$EXPECTED" ]; then
+            echo "::error::composer.json says ${DECLARED} but the tag is ${EXPECTED}."
+            exit 1
+          fi
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: sodium
+          coverage: none
+
+      - run: composer install --no-interaction --no-progress --prefer-dist
+
+      # A release that fails its own security suite is not a release. CI already ran this on the commit,
+      # but a tag can be moved after CI passed, so it runs again on exactly what is being published.
+      - name: Security invariants
+        run: vendor/bin/pest --testsuite=Invariants
+
+      - name: Build artifacts
+        run: bin/build-release.sh "${GITHUB_REF_NAME}"
+
+      # Proof the operator instructions work, run against the artifacts just built.
+      - name: Verify what was built
+        run: bin/verify-release.sh dist
+
+      - name: Publish
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "${GITHUB_REF_NAME}" \
+            --notes "Verify before installing:
+
+          \`\`\`
+          sha256sum -c SHA256SUMS
+          git config gpg.ssh.allowedSignersFile .github/allowed_signers
+          git tag -v ${GITHUB_REF_NAME}
+          \`\`\`
+
+          The checksum proves the download is intact. The tag signature proves it came from us —
+          whoever could alter the archive could alter the checksum file beside it, so both matter.
+          See [docs/verify.md](docs/verify.md)." \
+            dist/*

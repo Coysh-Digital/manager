@@ -28,7 +28,7 @@ ordinary test output.
 | 14 | Removing a site immediately revokes its credentials | `NoRemoteExecutionTest` |
 | 15 | Security-sensitive actions fail closed | `ConnectorSignatureTest`, `SelfHostedHardeningTest` |
 | 16 | Retries must not cause an action to run twice | `ConnectorSignatureTest`, `BackupPipelineTest` |
-| 17 | Connector and platform updates use verifiable artifacts | **Not yet covered.** Needs signed tags and release checksums in place first; CI builds the SBOM and scans the image today |
+| 17 | Connector and platform updates use verifiable artifacts | `ReleaseArtifactTest` |
 | 18 | No application content or user records collected for monitoring | `DataMinimisationTest` |
 
 The specification's *assumptions* are covered alongside the numbered invariants where they are
@@ -38,12 +38,13 @@ the threat model rather than a configuration detail.
 
 ## What is deliberately not covered yet
 
-Invariant 17 depends on signed release artifacts, which do not exist yet. Writing a test that appeared
-to cover it would be worse than the gap: a green suite that proves nothing is how a regression gets
-through.
+Every numbered invariant now has a test. Two of them got there late, and how they got there is the
+point of this section.
 
-Invariant 7 was in that category until the backup permission landed. It is now covered by
-`BackupPermissionTest`, and the pipeline it guards is covered by `BackupPipelineTest`.
+Invariant 7 was uncovered until the backup permission existed, and invariant 17 until releases did.
+Neither was given a placeholder test in the meantime. A test asserting that a workflow file exists, or
+that a capability string appears in a list, would have turned both rows green while proving nothing —
+and a green row is how a gap stops being noticed.
 
 Invariants 9 and 10 were in this list until the job registry landed. They are now covered by
 `RemoteJobRegistryTest`, which is worth reading for how the four words in invariant 10 —
@@ -73,5 +74,9 @@ registry.
   broken artifact format is only discovered when somebody needs a backup. Worth reading for how the
   upload is authenticated before any of the body is read, and for the division of labour between the
   signature (who sent this) and the checksum (did it survive the journey).
+- `ReleaseArtifactTest` — runs the real build and verify scripts rather than asserting they exist,
+  including that the archive builds to identical bytes twice and that verification exits non-zero on a
+  tampered download. Reproducibility is what lets somebody who is not us confirm a published artifact
+  came from the published source; without it a checksum only proves the download was not corrupted.
 - The protocol package's own suite, which asserts byte-compatibility of the canonical signing string
   against committed fixtures.
