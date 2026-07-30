@@ -191,16 +191,16 @@
         },
         {
             "name": "coysh-digital/manager-protocol",
-            "version": "1.0.0",
+            "version": "1.0.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/Coysh-Digital/manager-protocol.git",
-                "reference": "cf725ea060b182a3c2f978c274c5c443886d3b98"
+                "reference": "2fa70820769d109a33f2c0583c7bd7136528d631"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/Coysh-Digital/manager-protocol/zipball/cf725ea060b182a3c2f978c274c5c443886d3b98",
-                "reference": "cf725ea060b182a3c2f978c274c5c443886d3b98",
+                "url": "https://api.github.com/repos/Coysh-Digital/manager-protocol/zipball/2fa70820769d109a33f2c0583c7bd7136528d631",
+                "reference": "2fa70820769d109a33f2c0583c7bd7136528d631",
                 "shasum": ""
             },
             "require": {
@@ -236,11 +236,11 @@
                 "protocol"
             ],
             "support": {
-                "email": "security@coysh.digital",
+                "email": "hello@coysh.digital",
                 "issues": "https://github.com/Coysh-Digital/manager-protocol/issues",
                 "source": "https://github.com/Coysh-Digital/manager-protocol"
             },
-            "time": "2026-07-30T09:57:05+00:00"
+            "time": "2026-07-30T11:04:01+00:00"
         },
         {
             "name": "dasprid/enum",
