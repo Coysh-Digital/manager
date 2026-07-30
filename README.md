@@ -3,8 +3,11 @@
 A control plane for a fleet of Craft CMS installations. Answers "what version is it, is it patched,
 did the backup run" without logging into ten control panels.
 
-Two editions from one core: **Manager Cloud**, hosted by Coysh Digital, and **Manager Self-Hosted**,
-which runs on your own infrastructure. This repository is the core, and it is what Self-Hosted ships.
+Free software under the **AGPL-3.0-or-later**. Two editions from one core: **Manager Cloud**, hosted by
+Coysh Digital, and **Manager Self-Hosted**, which runs on your own infrastructure. This repository is
+the core, and it is what Self-Hosted ships. Nothing is held back for the paid edition.
+
+Requires PHP 8.3+, PostgreSQL 15+ and Redis 7+.
 
 ## What it holds, and what it does not
 
@@ -25,8 +28,8 @@ Running it means running a security-sensitive service: a patched server, Postgre
 keypairs backed up separately from the database, and a backup store holding a copy of every managed
 site's database. [docs/install.md](docs/install.md) is honest about that before it tells you how.
 
-If you would rather not, **[Manager Cloud](https://coysh.digital/manager)** is the same core hosted by
-Coysh Digital — same connector, same protocol, same security boundaries, with the server, the keys, the
+If you would rather not, **[Manager Cloud](https://managerforcraft.com)** is the same core hosted by
+Coysh Digital: same connector, same protocol, same security boundaries, with the server, the keys, the
 storage and the on-call rota ours rather than yours. The connector is identical, so moving between the
 two means re-pairing sites rather than rebuilding anything.
 
@@ -99,9 +102,10 @@ map the suite to the document.
 
 | | |
 |---|---|
-| `craft-manager-connector` | The Craft 5 plugin installed on managed sites. Public. |
-| `manager-protocol` | The wire contract shared by both. Public, MIT. |
-| `manager-cloud` | Private. Hosting concerns only — billing, provisioning, managed keys, cloud storage. |
+| [`craft-manager-connector`](https://github.com/Coysh-Digital/craft-manager-connector) | The Craft 5 plugin installed on managed sites. Public, MIT. |
+| [`manager-protocol`](https://github.com/Coysh-Digital/manager-protocol) | The wire contract shared by both. Public, MIT. |
+| `manager-cloud` | Private. The marketing site at managerforcraft.com. |
+| `manager-private` | Private. A deployment mirror of this repository, plus the Cloud hosting layer: billing, provisioning, managed key wrapping and per-organisation storage. Nothing in it is required to run Manager. |
 
 ## Security
 
@@ -114,12 +118,23 @@ repository open, because that reader now exists.
 
 ## Licence
 
-Source-available: see [LICENSE.md](LICENSE.md). Running Manager yourself, for your own or your
-clients' sites, is free and always will be. Offering it to third parties as a hosted service is
-reserved — that is Manager Cloud, and Cloud is what funds this.
+**AGPL-3.0-or-later.** Free software: see [LICENSE](LICENSE) for the full text and
+[LICENSE.md](LICENSE.md) for what it means in practice.
 
-This repository is the whole product. Cloud adds no monitoring, findings, jobs or backup features that
-are missing here; it adds the fact that somebody else runs it.
+Run it for your own sites, run it for your clients' sites, run it commercially, fork it. None of that
+asks anything of you. The one obligation is section 13: modify Manager and let other people use your
+modified version over a network, and you owe those users the source of your version. Running an
+unmodified copy triggers nothing, and neither does modifying it for yourself.
+
+That is deliberate rather than a default. This is a control plane holding the keys to other people's
+backups, and the case for publishing it is that its security properties can be verified rather than
+asserted. A fork carrying the trust of this one while hiding what it actually does would undo the only
+reason for publishing in the first place.
+
+The connector and the protocol package are MIT, because they run inside somebody else's codebase.
+
+This repository is the whole product. Manager Cloud adds no monitoring, findings, jobs or backup
+features that are missing here; it adds the fact that somebody else runs it.
 
 ## Contributing
 
