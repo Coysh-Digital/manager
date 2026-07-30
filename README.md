@@ -15,8 +15,25 @@ to keep that true.
 Connectors generate their own keypair on the site and send only the public half, so a stolen copy of
 this database confers no ability to impersonate any site.
 
+## Self-hosted or hosted by us
+
+This repository **is** Manager Self-Hosted, and it is feature-complete. There is no reduced edition and
+nothing held back: every monitoring, findings, jobs and backup feature is here, free to run for your own
+and your clients' sites.
+
+Running it means running a security-sensitive service: a patched server, Postgres and Redis, TLS, two
+keypairs backed up separately from the database, and a backup store holding a copy of every managed
+site's database. [docs/install.md](docs/install.md) is honest about that before it tells you how.
+
+If you would rather not, **[Manager Cloud](https://coysh.digital/manager)** is the same core hosted by
+Coysh Digital — same connector, same protocol, same security boundaries, with the server, the keys, the
+storage and the on-call rota ours rather than yours. The connector is identical, so moving between the
+two means re-pairing sites rather than rebuilding anything.
+
 ## Getting started
 
+- [What it does, and what it deliberately does not](docs/what-it-does.md) — including why it does not
+  install updates
 - [Installation](docs/install.md)
 - [Environment reference](docs/env.md)
 - [Reverse proxy](docs/reverse-proxy.md)

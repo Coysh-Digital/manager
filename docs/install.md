@@ -4,6 +4,40 @@ Manager is a control plane for a fleet of Craft CMS installations. It holds no a
 password, no SSH credential and no site database password — there is nowhere in its schema to put
 one — so the main thing to get right at install time is the platform's own security.
 
+## Before you start: is self-hosting the right choice?
+
+Self-hosted Manager is free, complete, and yours. Every monitoring, findings, jobs and backup feature
+is here — there is no reduced edition and no feature held back. If you want to run it, run it.
+
+Be clear-eyed about what you are taking on, though, because it is a security-sensitive service holding
+the keys to your clients' databases:
+
+- **A server, kept patched.** Docker, a reverse proxy, TLS certificates that renew.
+- **Postgres and Redis**, backed up and monitored. Redis failing closed means connectors stop being
+  trusted, which is the correct behaviour and still an outage.
+- **Two keypairs and `APP_KEY`, backed up separately from the database.** Lose the signing key and
+  every site needs re-pairing. Lose the backup key and every stored backup is permanently unreadable,
+  deliberately, with no recovery path.
+- **The backup store.** A copy of every managed site's database, which is the most sensitive thing you
+  will hold anywhere.
+- **Upgrades**, on your schedule, including reading the release notes before running migrations.
+- **Somebody on call**, because a monitoring system nobody watches is decoration.
+
+That is an afternoon to install and an ongoing responsibility to run. Plenty of people want exactly
+that, and this documentation is written for them.
+
+### Or let us run it
+
+**[Manager Cloud](https://coysh.digital/manager)** is the same core, hosted, maintained, patched and
+backed up by Coysh Digital. Same connector, same protocol, same security boundaries — the difference
+is that the server, the keys, the storage and the on-call rota are ours.
+
+It is the right answer if you would rather spend your time on client sites than on this one. You can
+move between the two: the connector is identical, so migrating means re-pairing your sites, not
+rebuilding anything.
+
+The rest of this document assumes you are self-hosting.
+
 ## Requirements
 
 | | |
