@@ -144,20 +144,23 @@ final class PluginChangelog
                 continue;
             }
 
-            $heading = '## '.$release->version;
-
-            if ($release->released_on !== null) {
-                $heading .= ' — '.$release->released_on;
-            }
-
-            $sections[] = $heading."\n\n".$release->notes;
+            // Heading and body kept apart. What a plugin publishes is HTML — Craft's update API
+            // renders it before the connector ever sees it — so a Markdown heading concatenated
+            // onto the front produced a document that was half one language and half the other, and
+            // the renderer discarded the half it did not recognise. That was the whole bug.
+            $sections[] = [
+                'heading' => $release->released_on === null
+                    ? $release->version
+                    : $release->version.' — '.$release->released_on,
+                'body' => $release->notes,
+            ];
 
             if (count($sections) >= ChangelogMarkdown::MAX_SECTIONS) {
                 break;
             }
         }
 
-        return ChangelogMarkdown::render($sections);
+        return ChangelogMarkdown::renderHtml($sections);
     }
 
     /**

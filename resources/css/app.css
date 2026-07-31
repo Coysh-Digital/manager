@@ -216,11 +216,16 @@
     }
 
     /*
-     * Release notes, rendered from somebody else's markdown.
+     * Release notes, written by somebody else.
      *
-     * Styled here rather than with utility classes because the HTML is produced by commonmark and
-     * there is no template to hang classes on. Scoped to .changelog so it cannot reach anything the
-     * application itself renders.
+     * Styled here rather than with utility classes because there is no template to hang classes on:
+     * the markup is produced by commonmark for Craft's changelog, and by a plugin author for a
+     * plugin's, sanitised against a fixed allowlist on the way in. Scoped to .changelog so it cannot
+     * reach anything the application itself renders.
+     *
+     * The plugin side is why every heading level is covered rather than just the two commonmark
+     * tends to emit. A plugin author is entitled to open their notes with an <h1>, and at the
+     * browser default that is 2em inside a 12.5px panel.
      */
     .changelog h2 {
         font-size: 13px;
@@ -233,11 +238,25 @@
         margin-top: 0;
     }
 
-    .changelog h3 {
+    .changelog h1 {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text);
+        margin-top: 0.5rem;
+    }
+
+    .changelog h3,
+    .changelog h4,
+    .changelog h5,
+    .changelog h6 {
         font-size: 12.5px;
         font-weight: 600;
         color: var(--text-2);
         margin-top: 0.5rem;
+    }
+
+    .changelog p {
+        margin: 0.25rem 0;
     }
 
     .changelog ul {
@@ -245,8 +264,36 @@
         padding-left: 1.1rem;
     }
 
+    .changelog ol {
+        list-style: decimal;
+        padding-left: 1.25rem;
+    }
+
     .changelog li {
         margin: 0.15rem 0;
+    }
+
+    .changelog blockquote {
+        border-left: 2px solid var(--border);
+        padding-left: 0.6rem;
+        color: var(--text-2);
+    }
+
+    .changelog pre {
+        background: var(--surface-2);
+        border-radius: 6px;
+        padding: 0.5rem 0.6rem;
+        overflow-x: auto;
+    }
+
+    .changelog pre code {
+        background: none;
+        padding: 0;
+    }
+
+    .changelog strong {
+        font-weight: 600;
+        color: var(--text);
     }
 
     .changelog code {
