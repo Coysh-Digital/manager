@@ -55,12 +55,26 @@
             at twelve sites, forty at forty, each repeating the same title, the same description and
             the same rule name. The reader was made to notice the repetition and then discount it.
 
-            The rule is stated once. Underneath it, one line per affected site, which is the only
-            part that actually differs.
+            The rule is stated once. Underneath it, one line per affected site.
+
+            What is stated once is the *title*, which is a property of the rule and true of every
+            site in the group. The description is not always. Roughly a third of the rules —
+            disk_almost_full, slow_response_times, certificate_expiring, failed_queue_jobs — build
+            their detail from that site's own measurements, and printing the first site's
+            "90.5% full, with 5.5 GB free" above a list of twelve sites attributes one server's
+            disk to eleven other machines. Reported from a live fleet, where two sites on two
+            different servers were shown the same figure.
+
+            So the description is only hoisted when every finding in the group says the same thing,
+            which is exactly the case the layout was designed for. Otherwise each site carries its
+            own line.
         --}}
         <div class="flex flex-col gap-2.5">
             @foreach ($findings->groupBy('rule') as $rule => $group)
-                @php $lead = $group->first(); @endphp
+                @php
+                    $lead = $group->first();
+                    $sharedDetail = $group->pluck('detail')->unique()->count() === 1 ? $lead->detail : null;
+                @endphp
 
                 <div class="overflow-hidden rounded-[10px] border border-border bg-surface shadow-[var(--shadow)]">
                     <div class="flex flex-wrap items-baseline gap-x-2.5 gap-y-1.5 border-b border-border px-4 py-3">
@@ -72,7 +86,9 @@
                         <span class="ml-auto font-mono text-[11px] text-text-3">{{ $rule }}</span>
                     </div>
 
-                    <p class="max-w-[80ch] px-4 pt-3 text-[13px] text-text-2">{{ $lead->detail }}</p>
+                    @if ($sharedDetail !== null)
+                        <p class="max-w-[80ch] px-4 pt-3 text-[13px] text-text-2">{{ $sharedDetail }}</p>
+                    @endif
 
                     <ul class="mt-2 flex list-none flex-col p-0">
                         @foreach ($group as $finding)
@@ -97,6 +113,12 @@
                                         · resolved {{ $finding->resolved_at->diffForHumans(short: true) }}
                                     @endif
                                 </span>
+
+                                {{-- basis-full on the existing flex-wrap row, so this takes its own
+                                     line without the layout needing to change shape. --}}
+                                @if ($sharedDetail === null)
+                                    <p class="max-w-[80ch] basis-full text-[12.5px] text-text-2">{{ $finding->detail }}</p>
+                                @endif
 
                                 @if ($finding->isAcknowledged() && $finding->acknowledgement_reason)
                                     <span class="basis-full text-[12.5px] text-text-2">
