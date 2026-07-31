@@ -58,10 +58,14 @@ control for it is you running `manager-restore verify` occasionally.
 
 ## Scheduling
 
-Site **Settings → Backups**: off, daily or weekly, at an hour you pick.
+Set it per site, on the site's **Settings** tab: off, daily or weekly, at an hour you pick. A weekly
+schedule also takes a day of the week.
 
-Times are in your organisation's time zone, set in Settings, so "03:00" means the quiet hour where
-the site is rather than where your server is. A weekly schedule also takes a day.
+Per site rather than per organisation, because a busy shop and a brochure site do not warrant the same
+cadence, and one policy across a fleet means picking the more expensive one.
+
+Times are in your organisation's time zone (**Settings → Backup retention**), so "03:00" means the
+quiet hour where the site is rather than where your server is.
 
 The scheduler refuses rather than queues when:
 
@@ -146,7 +150,13 @@ Retention is by **period**, not by count:
 - Then one a week, for *N* weeks.
 - Then one a month, for *N* months.
 
-Defaults are 30 days, 4 weeks, 12 months. Change them per organisation in Settings.
+Defaults are 30 days, 4 weeks, 12 months. Change them in **Settings → Backup retention**, owner only.
+The screen reads the policy back as a sentence — "every backup from the last 30 days, then one a week
+for 4 weeks, then one a month for 12 months" — so you can check it against what you meant rather than
+reading three numbers.
+
+The same form sets your organisation's **time zone**, which is what a site's backup schedule reads.
+That is why "03:00" means the quiet hour where your sites are rather than where your server is.
 
 ### Why not "keep the last 30"
 

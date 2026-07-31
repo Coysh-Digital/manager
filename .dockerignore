@@ -20,6 +20,14 @@ node_modules/
 .git/
 .github/
 
+# A working copy of the private Cloud overlay, if somebody has put one here.
+#
+# The Dockerfile is a single `COPY . .` followed by removing a fixed list of development files, which
+# means anything new in the working directory ships by default. That is the right default for source
+# files and the wrong one for this: the self-hosted image would carry the billing code, the managed
+# key service and the storage implementations, to every customer who runs it.
+cloud/
+
 # Local state.
 storage/logs/*
 storage/framework/cache/*

@@ -271,6 +271,98 @@
             @endif
         </div>
 
+        {{-- Retention and the schedule's time zone.
+
+             Owner-level, because shortening retention decides how far back this organisation can
+             recover from. The policy is rendered back as a sentence so somebody can check it against
+             what they meant rather than reading three numbers. --}}
+        <div class="mb-3.5 overflow-hidden rounded-[10px] border border-border bg-surface shadow-[var(--shadow)]">
+            <div class="border-b border-border px-4 py-3 text-[13.5px] font-medium">Backup retention</div>
+
+            <div class="p-4">
+                <p class="mb-3 max-w-[80ch] text-[12.5px] leading-relaxed text-text-2">
+                    Currently keeping <strong>{{ $retention->describe() }}</strong>.
+                </p>
+
+                <p class="max-w-[80ch] text-[12px] leading-relaxed text-text-3">
+                    Retention is by period rather than by count, and that is deliberate. &ldquo;Keep the
+                    most recent thirty&rdquo; sounds safer and is not: a site that starts producing bad
+                    backups produces them nightly, each one pushing out the oldest good copy, until the
+                    only backups you hold are thirty copies of the problem. The count never drops and
+                    nothing looks wrong. Keeping one a week and one a month means the oldest copy you
+                    have is genuinely old, from before whatever started going wrong.
+                </p>
+            </div>
+
+            @if ($membership->isOwner())
+                <form method="POST" action="{{ route('settings.retention') }}"
+                      class="flex flex-col gap-3 border-t border-border bg-surface-2 p-4">
+                    @csrf
+
+                    <div class="flex flex-col gap-3 sm:flex-row">
+                        <label class="flex flex-1 flex-col gap-1">
+                            <span class="font-mono text-[10.5px] uppercase tracking-[0.07em] text-text-3">Every backup for</span>
+                            <div class="flex items-center gap-2">
+                                <input type="number" name="backup_retention_days" min="0" max="3650" required
+                                       value="{{ old('backup_retention_days', $organisation->backup_retention_days) }}"
+                                       class="h-[34px] w-[90px] rounded-[7px] border border-border bg-surface px-2.5 text-[13px] tabular">
+                                <span class="text-[12.5px] text-text-2">days</span>
+                            </div>
+                            @error('backup_retention_days')<span class="text-[12px] text-danger">{{ $message }}</span>@enderror
+                        </label>
+
+                        <label class="flex flex-1 flex-col gap-1">
+                            <span class="font-mono text-[10.5px] uppercase tracking-[0.07em] text-text-3">Then one a week for</span>
+                            <div class="flex items-center gap-2">
+                                <input type="number" name="backup_retention_weeks" min="0" max="520" required
+                                       value="{{ old('backup_retention_weeks', $organisation->backup_retention_weeks) }}"
+                                       class="h-[34px] w-[90px] rounded-[7px] border border-border bg-surface px-2.5 text-[13px] tabular">
+                                <span class="text-[12.5px] text-text-2">weeks</span>
+                            </div>
+                            @error('backup_retention_weeks')<span class="text-[12px] text-danger">{{ $message }}</span>@enderror
+                        </label>
+
+                        <label class="flex flex-1 flex-col gap-1">
+                            <span class="font-mono text-[10.5px] uppercase tracking-[0.07em] text-text-3">Then one a month for</span>
+                            <div class="flex items-center gap-2">
+                                <input type="number" name="backup_retention_months" min="0" max="120" required
+                                       value="{{ old('backup_retention_months', $organisation->backup_retention_months) }}"
+                                       class="h-[34px] w-[90px] rounded-[7px] border border-border bg-surface px-2.5 text-[13px] tabular">
+                                <span class="text-[12.5px] text-text-2">months</span>
+                            </div>
+                            @error('backup_retention_months')<span class="text-[12px] text-danger">{{ $message }}</span>@enderror
+                        </label>
+                    </div>
+
+                    <label class="flex flex-col gap-1 sm:w-[280px]">
+                        <span class="font-mono text-[10.5px] uppercase tracking-[0.07em] text-text-3">Time zone</span>
+                        <select name="timezone"
+                                class="h-[34px] rounded-[7px] border border-border bg-surface px-2.5 text-[13px]">
+                            @foreach ($timezones as $timezone)
+                                <option value="{{ $timezone }}" @selected(old('timezone', $organisation->timezone) === $timezone)>{{ $timezone }}</option>
+                            @endforeach
+                        </select>
+                        @error('timezone')<span class="text-[12px] text-danger">{{ $message }}</span>@enderror
+                    </label>
+
+                    <p class="max-w-[80ch] text-[12px] leading-relaxed text-text-3">
+                        The time zone is what a site's backup schedule reads, so &ldquo;03:00&rdquo;
+                        means the quiet hour where your sites are rather than where this server is.
+                        Changing retention governs <em>future</em> backups: each one is given an expiry
+                        when it is stored, from the policy in force at that moment, so shortening this
+                        does not reach back and re-date what you already have.
+                    </p>
+
+                    <div>
+                        <button type="submit"
+                                class="h-[34px] rounded-[7px] border border-primary bg-primary px-3.5 text-[12.5px] font-medium text-primary-fg hover:bg-primary-hover">
+                            Save retention
+                        </button>
+                    </div>
+                </form>
+            @endif
+        </div>
+
         {{-- Recovery keys.
 
              The screen where an organisation decides who can read its backups. Two things it must

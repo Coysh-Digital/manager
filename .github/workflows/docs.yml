@@ -1,0 +1,70 @@
+name: docs
+
+# Builds the documentation site and publishes it as a release asset the marketing host pulls.
+#
+# The docs are served from managerforcraft.com/docs so that search authority stays on one hostname,
+# but they are written here, in the repository they document. Those two facts have to be reconciled
+# somewhere, and this is the seam: CI builds, attaches a tarball plus its checksum to a rolling
+# `docs-latest` release, and the marketing deploy script fetches and verifies it.
+#
+# The alternative would have been to install Node on the marketing server and build there. That
+# server deliberately has no Node toolchain, which is the whole reason its compiled assets are
+# committed, and adding one to render markdown would be a poor trade.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: docs
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          # lastUpdated reads the git log for each file. Without full history every page claims to
+          # have been updated on the day CI ran.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # ignoreDeadLinks is false, so a broken cross-reference fails here rather than shipping.
+      - run: npm run docs:build
+
+      - name: Package
+        run: |
+          set -euo pipefail
+          tar -czf docs-site.tar.gz -C docs/.vitepress/dist .
+          sha256sum docs-site.tar.gz > docs-site.tar.gz.sha256
+          cat docs-site.tar.gz.sha256
+
+      # A rolling tag rather than a versioned release: the docs describe main, and pinning them to a
+      # platform version would mean a documentation typo needing a release to reach anyone.
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release delete docs-latest --yes --cleanup-tag || true
+          gh release create docs-latest \
+            --title "Documentation build" \
+            --notes "Static build of docs/, published to managerforcraft.com/docs. Rolling: replaced on every change to the documentation." \
+            docs-site.tar.gz docs-site.tar.gz.sha256

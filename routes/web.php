@@ -217,6 +217,11 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
          |
          | Bound on external_id like everything else, so a sequential identifier is never in a URL.
          */
+        // Retention and the time zone the backup schedule reads. Owner-level, because shortening
+        // retention decides how far back this organisation can recover from.
+        Route::post('settings/retention', [SettingsController::class, 'updateRetention'])
+            ->name('settings.retention');
+
         Route::post('settings/recovery-keys', [RecoveryKeyController::class, 'store'])
             ->name('recovery-keys.store');
         Route::post('settings/recovery-keys/{recoveryKey}/prove', [RecoveryKeyController::class, 'prove'])

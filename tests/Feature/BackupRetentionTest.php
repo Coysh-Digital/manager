@@ -6,8 +6,11 @@ use App\Domain\Backup\BackupService;
 use App\Domain\Backup\RetentionPolicy;
 use App\Models\AuditEvent;
 use App\Models\BackupArtifact;
+use App\Models\Membership;
 use App\Models\Organisation;
 use App\Models\Site;
+use App\Models\User;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -45,6 +48,10 @@ beforeEach(function (): void {
 
         return $artifact;
     };
+});
+
+afterEach(function (): void {
+    Carbon::setTestNow();
 });
 
 it('leaves artifacts inside the retention window alone', function (): void {
@@ -125,6 +132,18 @@ it('does not let a run of bad backups push out the last good one', function (): 
 });
 
 it('thins older backups to one a week and then one a month', function (): void {
+    /*
+     | The clock is frozen, and it has to be.
+     |
+     | Written without this, the test picked artifacts "18 and 20 days ago" and assumed they shared an
+     | ISO week. Whether they do depends on what day of the week it is run, so it passed on a Thursday
+     | and failed on the Friday — which is the worst kind of failing test, because the first instinct
+     | is to distrust the policy rather than the test.
+     |
+     | Wednesday 2026-08-05 is the reference. Every offset below is measured from it.
+     */
+    Carbon::setTestNow(Carbon::parse('2026-08-05 12:00:00', 'UTC'));
+
     $this->organisation->forceFill([
         'backup_retention_days' => 7,
         'backup_retention_weeks' => 4,
@@ -138,13 +157,14 @@ it('thins older backups to one a week and then one a month', function (): void {
     // so a day with several backups keeps all of them while it is still inside the window.
     $daily = collect(range(1, 6))->map(fn (int $d) => ($this->artifact)([...$expired, 'taken_at' => now()->subDays($d)]));
 
-    // Two in the same week, well outside the daily window. One survives, and it is the later one.
-    $earlierInWeek = ($this->artifact)([...$expired, 'taken_at' => now()->subDays(20)]);
-    $laterInWeek = ($this->artifact)([...$expired, 'taken_at' => now()->subDays(18)]);
+    // Two in the same ISO week, well outside the daily window. Named as dates rather than offsets so
+    // the week they share is visible rather than arithmetic: both are in the week of 13 July 2026.
+    $earlierInWeek = ($this->artifact)([...$expired, 'taken_at' => Carbon::parse('2026-07-14 02:00', 'UTC')]);
+    $laterInWeek = ($this->artifact)([...$expired, 'taken_at' => Carbon::parse('2026-07-16 02:00', 'UTC')]);
 
-    // Two in the same month, outside the weekly window.
-    $earlierInMonth = ($this->artifact)([...$expired, 'taken_at' => now()->subDays(100)]);
-    $laterInMonth = ($this->artifact)([...$expired, 'taken_at' => now()->subDays(98)]);
+    // Two in the same calendar month, outside the weekly window.
+    $earlierInMonth = ($this->artifact)([...$expired, 'taken_at' => Carbon::parse('2026-04-08 02:00', 'UTC')]);
+    $laterInMonth = ($this->artifact)([...$expired, 'taken_at' => Carbon::parse('2026-04-22 02:00', 'UTC')]);
 
     $this->artisan('manager:backups:prune')->assertSuccessful();
 
@@ -247,4 +267,93 @@ it('honours a retention of zero days as keep indefinitely', function (): void {
     // expires_at is computed at storage time from the policy then in force, so an artifact stored under
     // an indefinite policy simply has no expiry rather than one in the past.
     expect(app(BackupService::class)->expiryFor($this->organisation->id))->toBeNull();
+});
+
+/*
+|--------------------------------------------------------------------------------------------------
+| Setting the policy
+|--------------------------------------------------------------------------------------------------
+*/
+
+it('lets an owner change retention, and records what it was', function (): void {
+    $owner = User::factory()->create(['email_verified_at' => now()]);
+    Membership::factory()->for($owner)->for($this->organisation)->owner()->create();
+
+    $this->actingAs($owner)
+        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
+        ->post('/settings/retention', [
+            'backup_retention_days' => 14,
+            'backup_retention_weeks' => 8,
+            'backup_retention_months' => 24,
+            'timezone' => 'Europe/London',
+        ])->assertRedirect();
+
+    $this->organisation->refresh();
+
+    expect($this->organisation->backup_retention_days)->toBe(14)
+        ->and($this->organisation->backup_retention_weeks)->toBe(8)
+        ->and($this->organisation->backup_retention_months)->toBe(24)
+        ->and($this->organisation->timezone)->toBe('Europe/London');
+
+    // How far back an organisation can recover from is worth a line in the audit log, with the
+    // previous values, because "we thought we kept a year" is a conversation that happens after.
+    $event = AuditEvent::query()->where('action', 'backup.retention.changed')->firstOrFail();
+
+    expect($event->before['backup_retention_days'])->toBe(30)
+        ->and($event->after['backup_retention_days'])->toBe(14);
+});
+
+it('does not let an administrator change retention', function (): void {
+    $admin = User::factory()->create(['email_verified_at' => now()]);
+    Membership::factory()->for($admin)->for($this->organisation)->admin()->create();
+
+    // Owner-level, like people and notification destinations. Shortening retention is a different
+    // kind of decision from managing a site.
+    $this->actingAs($admin)
+        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
+        ->post('/settings/retention', [
+            'backup_retention_days' => 1,
+            'backup_retention_weeks' => 0,
+            'backup_retention_months' => 0,
+            'timezone' => 'UTC',
+        ])->assertForbidden();
+
+    expect($this->organisation->fresh()->backup_retention_days)->toBe(30);
+});
+
+it('refuses a time zone that is not one', function (): void {
+    $owner = User::factory()->create(['email_verified_at' => now()]);
+    Membership::factory()->for($owner)->for($this->organisation)->owner()->create();
+
+    // The schedule reads this to decide what "03:00" means. A junk value would silently move every
+    // backup in the organisation to a different hour, or to none.
+    $this->actingAs($owner)
+        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
+        ->post('/settings/retention', [
+            'backup_retention_days' => 30,
+            'backup_retention_weeks' => 4,
+            'backup_retention_months' => 12,
+            'timezone' => 'Middle/Earth',
+        ])->assertSessionHasErrors('timezone');
+});
+
+it('does not re-date backups already taken', function (): void {
+    $owner = User::factory()->create(['email_verified_at' => now()]);
+    Membership::factory()->for($owner)->for($this->organisation)->owner()->create();
+
+    $existing = ($this->artifact)(['expires_at' => now()->addDays(300)]);
+
+    $this->actingAs($owner)
+        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
+        ->post('/settings/retention', [
+            'backup_retention_days' => 1,
+            'backup_retention_weeks' => 0,
+            'backup_retention_months' => 0,
+            'timezone' => 'UTC',
+        ])->assertRedirect();
+
+    // An operator shortening retention is saying what should happen to future backups. Deciding it
+    // also applies to the ones they already have is not something a settings form should assume.
+    expect($existing->fresh()->expires_at?->toDateString())
+        ->toBe(now()->addDays(300)->toDateString());
 });

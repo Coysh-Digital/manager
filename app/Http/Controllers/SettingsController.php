@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Domain\Audit\AuditRecorder;
+use App\Domain\Backup\RetentionPolicy;
 use App\Domain\Capability\CapabilityService;
 use App\Domain\Health\Diagnostics;
 use App\Domain\Notifications\NotificationEvent;
@@ -67,6 +68,11 @@ final class SettingsController
              | anybody opening the audit log. It also keeps a fingerprint appearing in an artifact's
              | manifest explicable a year after the key stopped being used.
              */
+            // Rendered as a sentence beside the form, so somebody can check the policy against what
+            // they meant rather than reading three numbers back.
+            'retention' => RetentionPolicy::forOrganisation($organisation),
+            'timezones' => timezone_identifiers_list(),
+
             'recoveryKeys' => RecoveryKey::query()
                 ->where('organisation_id', $organisation->id)
                 ->orderByRaw("case state when 'active' then 0 when 'pending_proof' then 1 else 2 end")
@@ -225,6 +231,68 @@ final class SettingsController
                 ? 'There were no active connectors to revoke.'
                 : "Revoked {$revoked} ".($revoked === 1 ? 'connector' : 'connectors').
                   '. Each site needs a fresh enrolment code before it will report again.',
+        );
+    }
+
+    /**
+     * Retention, and the time zone the schedule reads.
+     *
+     * Owner-level rather than administrator, because shortening retention decides how far back this
+     * organisation can recover from — which is a different kind of decision from managing a site.
+     *
+     * Two things are deliberately not on this form. It cannot lengthen an existing artifact's life:
+     * expiry is computed when a backup is stored, from the policy in force then, so changing this
+     * governs future backups only. And it cannot set a "keep the most recent N", because that is the
+     * rule this replaced — a site producing bad backups on a schedule pushes out the last known-good
+     * copy, the count never drops below N, and nothing looks wrong.
+     */
+    public function updateRetention(Request $request, Organisation $organisation): RedirectResponse
+    {
+        $this->authoriseOwner();
+
+        $validated = $request->validate([
+            // Zero is meaningful in each of these and means "no window of this kind", not "unset".
+            // The policy keeps the newest artifact regardless, so all three at zero still leaves an
+            // organisation with its most recent backup rather than with nothing.
+            'backup_retention_days' => ['required', 'integer', 'min:0', 'max:3650'],
+            'backup_retention_weeks' => ['required', 'integer', 'min:0', 'max:520'],
+            'backup_retention_months' => ['required', 'integer', 'min:0', 'max:120'],
+            'timezone' => ['required', 'string', 'timezone'],
+        ]);
+
+        $before = [
+            'backup_retention_days' => $organisation->backup_retention_days,
+            'backup_retention_weeks' => $organisation->backup_retention_weeks,
+            'backup_retention_months' => $organisation->backup_retention_months,
+            'timezone' => $organisation->timezone,
+        ];
+
+        $after = [
+            'backup_retention_days' => (int) $validated['backup_retention_days'],
+            'backup_retention_weeks' => (int) $validated['backup_retention_weeks'],
+            'backup_retention_months' => (int) $validated['backup_retention_months'],
+            'timezone' => $validated['timezone'],
+        ];
+
+        if ($before === $after) {
+            return back()->with('status', 'Nothing to change.');
+        }
+
+        $organisation->forceFill($after)->save();
+
+        $this->audit->record(
+            action: 'backup.retention.changed',
+            organisation: $organisation,
+            actor: $request->user(),
+            targetType: 'organisation',
+            targetId: $organisation->external_id,
+            before: $before,
+            after: $after,
+        );
+
+        return back()->with(
+            'status',
+            'Retention updated. Backups already taken keep the expiry they were given.',
         );
     }
 

@@ -1,0 +1,78 @@
+/*
+ * Design tokens, matched to the marketing site and the control plane.
+ *
+ * Copied from cloud/resources/css/tokens.css rather than imported, because the docs build runs in a
+ * different repository and adding a cross-repo asset dependency to get four colours would be a poor
+ * trade. If the palette changes, it changes in three places, and cloud's DesignTokenParityTest
+ * documents that this is the third.
+ *
+ * The accent is a Craft red, deliberately not green, so green only ever means healthy.
+ *
+ * Fonts are named rather than loaded. VitePress ships no webfont of its own and adding one here
+ * would mean either a Google Fonts request, which the rest of the product avoids on purpose, or
+ * bundling two families into a docs build to style body copy. The stack falls back to the reader's
+ * system UI font, which is a reasonable second choice and costs nothing.
+ */
+:root {
+  --vp-c-brand-1: #a82814;
+  --vp-c-brand-2: #c9331c;
+  --vp-c-brand-3: #c9331c;
+  --vp-c-brand-soft: rgba(201, 51, 28, 0.14);
+
+  --vp-c-bg: #ffffff;
+  --vp-c-bg-alt: #f7f5f2;
+  --vp-c-bg-soft: #fbf9f7;
+  --vp-c-divider: #e5e1db;
+  --vp-c-border: #d2cdc6;
+
+  --vp-c-text-1: #1c1917;
+  --vp-c-text-2: #5d5854;
+  --vp-c-text-3: #6f6a65;
+
+  --vp-font-family-base: 'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --vp-font-family-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --vp-custom-block-tip-border: #15734f;
+  --vp-custom-block-warning-border: #8a5a00;
+  --vp-custom-block-danger-border: #9e1733;
+}
+
+.dark {
+  --vp-c-brand-1: #ee5836;
+  --vp-c-brand-2: #ee5836;
+  --vp-c-brand-3: #c9331c;
+  --vp-c-brand-soft: rgba(238, 88, 54, 0.16);
+
+  --vp-c-bg: #12100f;
+  --vp-c-bg-alt: #1a1716;
+  --vp-c-bg-soft: #1d1a18;
+  --vp-c-divider: #2b2726;
+  --vp-c-border: #3a3533;
+
+  --vp-c-text-1: #f2eeea;
+  --vp-c-text-2: #b5aea8;
+  --vp-c-text-3: #8d8680;
+}
+
+/* Hairline rules rather than boxes, which is the one structural habit worth carrying across from
+   the marketing site. */
+.vp-doc table {
+  display: table;
+  width: 100%;
+}
+
+.vp-doc th,
+.vp-doc td {
+  border-color: var(--vp-c-divider);
+}
+
+.vp-doc h2 {
+  border-top-color: var(--vp-c-divider);
+}
+
+/* Wide tables and long command lines scroll inside their own box. The page itself never scrolls
+   sideways, which is the rule the marketing site holds to as well. */
+.vp-doc div[class*='language-'],
+.vp-doc table {
+  overflow-x: auto;
+}

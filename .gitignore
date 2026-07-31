@@ -27,3 +27,19 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# The VitePress build and its cache. Unlike public/build, this is NOT committed: the docs are
+# published by CI to the marketing host rather than served from this repository, so a checked-in
+# build would be a large diff on every edit that nothing ever reads.
+/docs/.vitepress/dist
+/docs/.vitepress/cache
+
+# A working copy of the private Cloud overlay, if somebody has put one here.
+#
+# This repository is public. The overlay is not: it holds billing, the managed key service and the
+# per-organisation storage implementations. A `git add -A` in a checkout that happens to contain one
+# would publish the lot, and a force-push does not un-publish anything on GitHub.
+#
+# The overlay is meant to be mounted at /var/www/overlay and installed from a path repository, not
+# copied in here. See .ddev/docker-compose.overlay.yaml.
+/cloud/

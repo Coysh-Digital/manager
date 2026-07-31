@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+>
+    <testsuites>
+        <!--
+            The overlay's own suite, run inside a real core checkout against the same Postgres.
+
+            A separate config rather than a fourth testsuite in phpunit.xml, because that file lives
+            in the public repository and must not mention a private package. This one is written by
+            the console branch and never ships to production, where tests do not run at all.
+
+            The environment below is identical to the core's, with one addition: MANAGER_EDITION.
+            CloudServiceProvider reads it during register(), so it has to be an env value rather than
+            something a test body sets.
+        -->
+        <testsuite name="Cloud">
+            <directory>cloud/tests</directory>
+        </testsuite>
+    </testsuites>
+    <source>
+        <include>
+            <directory>app</directory>
+        </include>
+    </source>
+    <php>
+        <env name="APP_ENV" value="testing"/>
+        <env name="MANAGER_EDITION" value="cloud"/>
+        <env name="APP_MAINTENANCE_DRIVER" value="file"/>
+        <env name="BCRYPT_ROUNDS" value="4"/>
+        <env name="BROADCAST_CONNECTION" value="null"/>
+        <env name="CACHE_STORE" value="array"/>
+        <env name="MAIL_MAILER" value="array"/>
+        <env name="QUEUE_CONNECTION" value="sync"/>
+        <env name="SESSION_DRIVER" value="array"/>
+        <env name="PULSE_ENABLED" value="false"/>
+        <env name="TELESCOPE_ENABLED" value="false"/>
+        <env name="NIGHTWATCH_ENABLED" value="false"/>
+
+        <!--
+            Tests run against Postgres, not SQLite. The audit log depends on a trigger and on
+            revoked table privileges, neither of which SQLite can express, so testing on a
+            different engine would be testing something other than what ships.
+        -->
+        <env name="DB_CONNECTION" value="pgsql"/>
+        <env name="DB_DATABASE" value="db_test"/>
+        <env name="DB_URL" value=""/>
+
+        <!--
+            The replay-nonce store is exercised for real rather than faked. Faking it would hide
+            the fail-closed behaviour that invariant 15 turns on.
+        -->
+        <env name="REDIS_CLIENT" value="predis"/>
+    </php>
+</phpunit>
