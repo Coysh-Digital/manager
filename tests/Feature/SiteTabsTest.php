@@ -576,4 +576,40 @@ it('offers a cron entry for every task the connector runs', function (): void {
     foreach (['heartbeat', 'jobs', 'logins', 'report', 'system', 'updates'] as $task) {
         expect($html)->toContain("php craft manager-connector/{$task}");
     }
+
+    // And the count in the sentence above them matches what is printed. It said "four" against six.
+    expect($html)->toContain('these six lines');
+});
+
+it('does not tell anybody cron is required', function (): void {
+    /*
+     | It is not, and has not been since connector 1.5.0: webTrigger is on by default and drives the
+     | schedule from ordinary traffic, so a paired site reports without anyone touching crontab. The
+     | documentation has said so throughout — "Cron is optional. Everything works out of the box
+     | without it." — while two places on screen still said otherwise, which is the wrong way round
+     | for somebody on hosting where cron is not available deciding whether this product works.
+    */
+    $html = $this->actingAs($this->user)
+        ->get(route('sites.settings', $this->site))
+        ->assertOk()
+        ->getContent();
+
+    expect($html)->not->toContain('required for this site to report');
+    expect($html)->toContain('No cron? Nothing to do.');
+});
+
+it('does not present a scheduled task as an outstanding step on a silent site', function (): void {
+    // The banner fires exactly when somebody has just paired and is waiting, which is the moment they
+    // are most likely to go and configure something they did not need. It now says what will happen
+    // on its own, and offers cron as an improvement rather than as the missing piece.
+    $this->site->forceFill(['craft_version' => null])->save();
+
+    $html = $this->actingAs($this->user)
+        ->get(route('sites.show', $this->site))
+        ->assertOk()
+        ->assertSee('Paired, but nothing reported yet')
+        ->getContent();
+
+    expect($html)->not->toContain('one more step');
+    expect($html)->toContain('cron is optional');
 });
