@@ -16,8 +16,6 @@ on:
     branches: [main]
     paths:
       - 'docs/**'
-      - 'package.json'
-      - 'package-lock.json'
       - '.github/workflows/docs.yml'
   workflow_dispatch:
 
@@ -43,11 +41,19 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          # The documentation toolchain has its own manifest. VitePress pins an older Vite than the
+          # application uses, which pulled a vulnerable esbuild into every install in the repository
+          # and produced a peer conflict that would only worsen; it now lives under docs/ so the
+          # application's own tree audits clean.
+          cache-dependency-path: docs/package-lock.json
 
+      # The application's dependencies are not needed here — this builds markdown, not the app.
       - run: npm ci
+        working-directory: docs
 
       # ignoreDeadLinks is false, so a broken cross-reference fails here rather than shipping.
-      - run: npm run docs:build
+      - run: npm run build
+        working-directory: docs
 
       - name: Package
         run: |
