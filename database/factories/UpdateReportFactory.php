@@ -69,6 +69,45 @@ class UpdateReportFactory extends Factory
         ];
     }
 
+    /**
+     * A report from a 1.8 connector, carrying the release notes `updates.v2` added.
+     *
+     * Used to prove they never reach `update_reports.payload`, so it is deliberately the payload as
+     * a site would send it rather than as the platform would store it.
+     *
+     * @return array<string, mixed>
+     */
+    public static function sampleV2Payload(): array
+    {
+        return [
+            ...self::samplePayload(),
+            'schema_version' => 'updates.v2',
+            'plugins' => [
+                [
+                    'handle' => 'formie',
+                    'name' => 'Formie',
+                    'current' => '3.0.11',
+                    'latest' => '3.0.14',
+                    'update_available' => true,
+                    'security_release_available' => false,
+                    'releases' => [
+                        [
+                            'version' => '3.0.14',
+                            'notes' => "### Fixed\n- Fixed an authentication bypass in the submissions endpoint.",
+                            'critical' => true,
+                            'date' => '2026-07-14',
+                        ],
+                        [
+                            'version' => '3.0.12',
+                            'notes' => "### Added\n- Added a submission retention setting.",
+                            'critical' => false,
+                        ],
+                    ],
+                ],
+            ],
+        ];
+    }
+
     public function upToDate(): static
     {
         return $this->state(fn (): array => [

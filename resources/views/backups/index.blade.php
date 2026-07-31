@@ -94,13 +94,25 @@
                             </div>
 
                             @if ($membership->canAdminister())
-                                <form method="POST" action="{{ route('backups.store', $site) }}">
-                                    @csrf
-                                    <button type="submit"
-                                            class="h-8 whitespace-nowrap rounded-[7px] border border-border-2 bg-surface px-3 text-[12.5px] text-text hover:bg-row-hover">
-                                        Back up now
-                                    </button>
-                                </form>
+                                @php $siteReadiness = $readiness[$site->id] ?? ['ready' => true, 'blockers' => []]; @endphp
+
+                                <div class="flex items-center gap-2.5">
+                                    @unless ($siteReadiness['ready'])
+                                        {{-- The reason, not just a dead button. Most often one
+                                             organisation-wide cause repeated down the column, which
+                                             is itself the useful observation. --}}
+                                        <span class="text-[12px] text-text-3">{{ $siteReadiness['blockers'][0] }}</span>
+                                    @endunless
+
+                                    <form method="POST" action="{{ route('backups.store', $site) }}">
+                                        @csrf
+                                        <button type="submit"
+                                                @disabled(! $siteReadiness['ready'])
+                                                class="h-8 whitespace-nowrap rounded-[7px] border border-border-2 bg-surface px-3 text-[12.5px] text-text hover:bg-row-hover disabled:cursor-not-allowed disabled:border-border disabled:text-text-3 disabled:hover:bg-surface">
+                                            Back up now
+                                        </button>
+                                    </form>
+                                </div>
                             @endif
                         </div>
                     @endforeach

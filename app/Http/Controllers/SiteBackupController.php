@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Domain\Backup\BackupReadiness;
 use App\Domain\Backup\BackupService;
 use App\Domain\Backup\InFlightBackups;
 use App\Domain\Capability\CapabilityService;
@@ -32,6 +33,7 @@ final class SiteBackupController
     public function __construct(
         private readonly BackupService $backups,
         private readonly InFlightBackups $inFlight,
+        private readonly BackupReadiness $readiness,
     ) {}
 
     public function show(Site $site): View
@@ -71,6 +73,10 @@ final class SiteBackupController
 
             'inFlight' => $this->inFlight->forSite($site),
             'checkInWindow' => $this->inFlight->checkInWindow(),
+
+            // Whether the button can do anything, decided here rather than discovered minutes later
+            // when the site checks in and the job is cancelled.
+            'readiness' => $this->readiness->for($site),
         ]);
     }
 

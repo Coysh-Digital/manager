@@ -107,6 +107,13 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
         Route::get('sites/{site}/updates/changelog', [SiteUpdateController::class, 'changelog'])
             ->name('sites.updates.changelog');
 
+        // The same panel for a plugin, served from notes connectors forwarded rather than from
+        // anything fetched. The handle is constrained to the protocol's own pattern here as well as
+        // in the controller, so a malformed one never reaches a query.
+        Route::get('sites/{site}/updates/changelog/plugins/{handle}', [SiteUpdateController::class, 'pluginChangelog'])
+            ->where('handle', '[A-Za-z0-9._-]{1,128}')
+            ->name('sites.updates.changelog.plugin');
+
         Route::get('sites/{site}/security', [SiteSecurityController::class, 'show'])->name('sites.security');
         Route::get('sites/{site}/backups', [SiteBackupController::class, 'show'])->name('sites.backups');
 
@@ -235,6 +242,11 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
         Route::post('settings/retention', [SettingsController::class, 'updateRetention'])
             ->name('settings.retention');
 
+        // Sends to the signed-in owner's own address and nowhere else. A destination field here
+        // would be an open relay on an authenticated page.
+        Route::post('settings/mail/test', [SettingsController::class, 'testMail'])
+            ->name('settings.mail.test');
+
         Route::post('settings/recovery-keys', [RecoveryKeyController::class, 'store'])
             ->name('recovery-keys.store');
         Route::post('settings/recovery-keys/{recoveryKey}/prove', [RecoveryKeyController::class, 'prove'])
@@ -263,6 +275,7 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
         Route::delete('settings/notifications/{destination}', [NotificationDestinationController::class, 'destroy'])
             ->name('notifications.destroy');
 
+        Route::post('account/profile', [AccountController::class, 'updateProfile'])->name('account.profile');
         Route::post('account/password', [AccountController::class, 'updatePassword'])->name('account.password');
 
         Route::post('account/two-factor/start', [AccountController::class, 'startTotp'])->name('account.totp.start');

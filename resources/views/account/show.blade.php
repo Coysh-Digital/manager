@@ -32,10 +32,54 @@
             </div>
         @endif
 
+        <div class="mb-3.5 overflow-hidden rounded-[10px] border border-border bg-surface shadow-[var(--shadow)]">
+            <div class="border-b border-border px-4 py-3 text-[13.5px] font-medium">Your details</div>
+
+            <form method="POST" action="{{ route('account.profile') }}" class="flex flex-col gap-4 p-4">
+                @csrf
+
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <label class="flex flex-col gap-1.5">
+                        <span class="text-[12.5px] font-medium">Name</span>
+                        <input type="text" name="name" required maxlength="191" autocomplete="name"
+                               value="{{ old('name', $user->name) }}"
+                               class="h-[34px] w-full rounded-[7px] border border-border-2 bg-surface px-2.5 text-[13px]">
+                        @error('name')
+                            <span class="text-[12px] text-danger">{{ $message }}</span>
+                        @enderror
+                    </label>
+
+                    {{-- Shown, and not editable. Disabled rather than hidden: somebody looking for
+                         where to change it should find the answer here rather than conclude the
+                         screen is incomplete. --}}
+                    <label class="flex flex-col gap-1.5">
+                        <span class="text-[12.5px] font-medium">Email address</span>
+                        <input type="email" value="{{ $user->email }}" disabled
+                               class="h-[34px] w-full cursor-not-allowed rounded-[7px] border border-border bg-surface-2 px-2.5 text-[13px] text-text-3">
+                    </label>
+                </div>
+
+                <p class="max-w-[80ch] text-[12px] leading-relaxed text-text-3">
+                    Your name appears beside everything this account does in the audit log, so it is
+                    worth keeping current. The email address cannot be changed here — it is how you
+                    sign in, how a password reset reaches you, and what every audit entry already
+                    written is filed against, so moving it is an account recovery process rather than a
+                    field. An owner can invite a new account and revoke this one.
+                </p>
+
+                <div>
+                    <button type="submit"
+                            class="h-[34px] rounded-[7px] border border-border-2 bg-surface px-3.5 text-[12.5px] font-medium text-text hover:bg-row-hover">
+                        Save
+                    </button>
+                </div>
+            </form>
+        </div>
+
         {{--
-            Password first: it is the thing people come here to change, and it was the one thing this
-            screen could not do. Before this the only routes to it were the forgotten-password email
-            or a shell command.
+            Then the password: it is the thing people come here to change, and it was the one thing
+            this screen could not do. Before this the only routes to it were the forgotten-password
+            email or a shell command.
         --}}
         <div class="mb-3.5 overflow-hidden rounded-[10px] border border-border bg-surface shadow-[var(--shadow)]">
             <div class="flex items-center justify-between border-b border-border px-4 py-3">

@@ -12,6 +12,7 @@ use App\Models\RemoteJob;
 use App\Models\Site;
 use App\Models\User;
 use coyshdigital\managerprotocol\Jobs;
+use coyshdigital\managerprotocol\Protocol;
 
 beforeEach(function (): void {
     $this->organisation = Organisation::factory()->create(['name' => 'Coysh Digital']);
@@ -92,24 +93,95 @@ it('queues a backup when an administrator asks for one', function (): void {
         ->and($job->site_id)->toBe($this->site->id);
 });
 
-it('attributes a requested backup and refuses to queue a second one behind it', function (): void {
+it('attributes a requested backup and says so rather than queueing a second one behind it', function (): void {
     // Neither an actor nor an idempotency key was passed, so the audit row for a job that reads an
     // entire production database recorded only that "the system" asked — and a second press queued a
     // second full dump of the same database.
     CapabilityGrant::factory()->for($this->site)->capability('backups:create')->create();
 
-    foreach ([1, 2] as $ignored) {
-        $this->actingAs($this->owner)->withSession($this->recentAuth)
-            ->post("/backups/sites/{$this->site->external_id}")
-            ->assertRedirect();
-    }
+    $this->actingAs($this->owner)->withSession($this->recentAuth)
+        ->post("/backups/sites/{$this->site->external_id}")
+        ->assertRedirect();
+
+    // The second press is now refused with a reason instead of being absorbed by the idempotency
+    // key. Same outcome for the database — one job — but somebody who presses twice because nothing
+    // appeared to happen is told that something did.
+    $this->actingAs($this->owner)->withSession($this->recentAuth)
+        ->post("/backups/sites/{$this->site->external_id}")
+        ->assertRedirect()
+        ->assertSessionHasErrors('site');
 
     $job = RemoteJob::query()->sole();
 
     expect($job->requested_by)->toBe($this->owner->id)
         ->and($job->requested_by_label)->toBe($this->owner->name ?: $this->owner->email);
 
-    expect(BackupEvent::query()->where('event', BackupEvent::REQUESTED)->count())->toBe(2);
+    // One request, one timeline entry. The refused press is not a request.
+    expect(BackupEvent::query()->where('event', BackupEvent::REQUESTED)->count())->toBe(1);
+});
+
+it('will not queue a manual backup on top of a scheduled one', function (): void {
+    /*
+     | The gap the idempotency key never covered.
+     |
+     | Manual presses are keyed 'backup:manual' and scheduled runs are keyed per site and hour, so
+     | they never collided — pressing the button while a nightly backup sat queued produced a second
+     | job and, when the site next checked in, two concurrent dumps of the same database. That is the
+     | outage this whole area is written to avoid, and it was reachable from a button.
+    */
+    CapabilityGrant::factory()->for($this->site)->capability('backups:create')->create();
+
+    RemoteJob::factory()->for($this->site)->create([
+        'type' => Jobs::BACKUP_CREATE,
+        'state' => Jobs::STATE_QUEUED,
+        'idempotency_key' => 'schedule:'.$this->site->external_id.':2026-07-31-03',
+    ]);
+
+    $this->actingAs($this->owner)->withSession($this->recentAuth)
+        ->post("/backups/sites/{$this->site->external_id}")
+        ->assertRedirect()
+        ->assertSessionHasErrors('site');
+
+    expect(RemoteJob::query()->where('type', Jobs::BACKUP_CREATE)->count())->toBe(1);
+});
+
+it('refuses a backup with a reason when the organisation has no recovery key to encrypt to', function (): void {
+    /*
+     | What the screen used to do: flash "Backup requested. It will run when the site next checks
+     | in", write a REQUESTED row, and then have JobService::claimFor() cancel the job minutes later
+     | for a reason stated on a different screen entirely. The worst version of that is somebody
+     | believing a site is backed up when it is not.
+    */
+    CapabilityGrant::factory()->for($this->site)->capability('backups:create')->create();
+    $this->organisation->forceFill(['backup_format_floor' => Protocol::BACKUP_FORMAT_V2])->save();
+
+    $this->actingAs($this->owner)->withSession($this->recentAuth)
+        ->post("/backups/sites/{$this->site->external_id}")
+        ->assertRedirect()
+        ->assertSessionHasErrors('site');
+
+    expect(RemoteJob::query()->count())->toBe(0)
+        ->and(BackupEvent::query()->where('event', BackupEvent::REQUESTED)->count())->toBe(0);
+
+    $this->actingAs($this->owner)
+        ->get(route('sites.backups', $this->site))
+        ->assertOk()
+        ->assertSee('nothing to encrypt a backup to')
+        ->assertSee('Add one in Settings');
+});
+
+it('does not offer a backup from a site whose connector has gone away', function (): void {
+    // Enqueue throws SITE_NOT_CONNECTED here, and nothing caught it — so a routine race between the
+    // screen rendering and the button being pressed was a 500.
+    CapabilityGrant::factory()->for($this->site)->capability('backups:create')->create();
+    $this->site->connectors()->delete();
+
+    $this->actingAs($this->owner)->withSession($this->recentAuth)
+        ->post("/backups/sites/{$this->site->external_id}")
+        ->assertRedirect()
+        ->assertSessionHasErrors('site');
+
+    expect(RemoteJob::query()->count())->toBe(0);
 });
 
 it('shows a requested backup as queued until the site collects it', function (): void {

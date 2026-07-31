@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 use App\Domain\Capability\CapabilityService;
 use App\Domain\Capability\UnknownCapabilityException;
+use App\Domain\Updates\UpdatesIngestService;
 use App\Models\CapabilityGrant;
 use App\Models\Connector;
+use App\Models\InventoryReport;
 use App\Models\Membership;
 use App\Models\Organisation;
 use App\Models\RemoteJob;
@@ -13,6 +15,7 @@ use App\Models\Site;
 use App\Models\UpdateReport;
 use App\Models\User;
 use coyshdigital\managerprotocol\Jobs;
+use Database\Factories\UpdateReportFactory;
 use Illuminate\Support\Facades\Cache;
 
 beforeEach(function (): void {
@@ -248,5 +251,113 @@ it('will not read another organisation’s notes', function (): void {
 
     $this->actingAs($stranger)
         ->get("/sites/{$this->site->external_id}/updates/changelog")
+        ->assertNotFound();
+});
+
+/*
+ | Plugin release notes
+ |-------------------------------------------------------------------------------------------------
+ |
+ | The same panel as Craft's, fed from a different place. Craft's notes are fetched from GitHub; a
+ | plugin's were forwarded by connectors and are read back out of this database, so these tests never
+ | touch the network or the cache.
+ */
+
+it('offers the notes panel only for a plugin that has some', function (): void {
+    app(UpdatesIngestService::class)->store($this->site, UpdateReportFactory::sampleV2Payload());
+    InventoryReport::factory()->for($this->site)->create();
+
+    $this->actingAs($this->user)
+        ->get(route('sites.updates', $this->site))
+        ->assertOk()
+        ->assertSee('What changed between these versions')
+        ->assertSee(route('sites.updates.changelog.plugin', ['site' => $this->site, 'handle' => 'formie']), false);
+});
+
+it('shows no panel for a plugin nobody has reported notes for', function (): void {
+    // The v1 payload carries the same plugin with no releases. A summary that expands to nothing is
+    // worse than the Plugin Store link that was always there.
+    app(UpdatesIngestService::class)->store($this->site, UpdateReportFactory::samplePayload());
+    InventoryReport::factory()->for($this->site)->create();
+
+    $this->actingAs($this->user)
+        ->get(route('sites.updates', $this->site))
+        ->assertOk()
+        ->assertDontSee(route('sites.updates.changelog.plugin', ['site' => $this->site, 'handle' => 'formie']), false);
+});
+
+it('renders only the plugin releases between the one installed and the one available', function (): void {
+    // Same cut as Craft's panel, asserted the same way: a site on 3.0.11 must not be shown what
+    // 3.0.10 fixed, nor a version it cannot yet install.
+    app(UpdatesIngestService::class)->store($this->site, [
+        ...UpdateReportFactory::sampleV2Payload(),
+        'plugins' => [[
+            'handle' => 'formie',
+            'name' => 'Formie',
+            'current' => '3.0.11',
+            'latest' => '3.0.14',
+            'update_available' => true,
+            'releases' => [
+                ['version' => '3.0.15', 'notes' => 'Not offered to this site yet.'],
+                ['version' => '3.0.14', 'notes' => 'Fixed the thing this site is missing.'],
+                ['version' => '3.0.11', 'notes' => 'Already installed here.'],
+                ['version' => '3.0.9', 'notes' => 'Long gone.'],
+            ],
+        ]],
+    ]);
+
+    InventoryReport::factory()->for($this->site)->create();
+
+    $html = $this->actingAs($this->user)
+        ->get(route('sites.updates.changelog.plugin', ['site' => $this->site, 'handle' => 'formie']))
+        ->assertOk()
+        ->getContent();
+
+    expect($html)->toContain('Fixed the thing this site is missing')
+        ->and($html)->not->toContain('Already installed here')
+        ->and($html)->not->toContain('Long gone')
+        ->and($html)->not->toContain('Not offered to this site yet');
+});
+
+it('strips HTML out of a release note before putting it on the page', function (): void {
+    // Third-party text, rendered inside an authenticated session. Whoever publishes the plugin
+    // writes this, and they are not trusted with markup here.
+    app(UpdatesIngestService::class)->store($this->site, [
+        ...UpdateReportFactory::sampleV2Payload(),
+        'plugins' => [[
+            'handle' => 'formie',
+            'current' => '3.0.11',
+            'latest' => '3.0.14',
+            'update_available' => true,
+            'releases' => [[
+                'version' => '3.0.14',
+                // Separate lines on purpose. CommonMark treats a <script> opener as an HTML block
+                // running to the end of its line, so stripping it takes the rest of that line with
+                // it — safe, but it would make this test pass for the wrong reason.
+                'notes' => "Fixed a thing.\n\n<script>alert(1)</script>\n\n[click](javascript:alert(2))",
+            ]],
+        ]],
+    ]);
+
+    InventoryReport::factory()->for($this->site)->create();
+
+    $html = $this->actingAs($this->user)
+        ->get(route('sites.updates.changelog.plugin', ['site' => $this->site, 'handle' => 'formie']))
+        ->assertOk()
+        ->getContent();
+
+    expect($html)->toContain('Fixed a thing')
+        ->and($html)->not->toContain('<script>')
+        ->and($html)->not->toContain('href="javascript:');
+});
+
+it('will not read another organisation’s plugin notes', function (): void {
+    app(UpdatesIngestService::class)->store($this->site, UpdateReportFactory::sampleV2Payload());
+
+    $stranger = User::factory()->create(['email_verified_at' => now()]);
+    Membership::factory()->for($stranger)->for(Organisation::factory()->create())->owner()->create();
+
+    $this->actingAs($stranger)
+        ->get(route('sites.updates.changelog.plugin', ['site' => $this->site, 'handle' => 'formie']))
         ->assertNotFound();
 });

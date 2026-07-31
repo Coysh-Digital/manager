@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Domain\Backup\BackupReadiness;
 use App\Domain\Backup\BackupService;
 use App\Domain\Backup\BackupTimeline;
 use App\Domain\Backup\InFlightBackups;
 use App\Domain\Capability\CapabilityService;
+use App\Domain\Job\JobRejectedException;
 use App\Domain\Job\JobService;
 use App\Models\BackupArtifact;
 use App\Models\BackupEvent;
@@ -40,6 +42,7 @@ final class BackupController
         private readonly JobService $jobs,
         private readonly InFlightBackups $inFlight,
         private readonly BackupTimeline $timeline,
+        private readonly BackupReadiness $readiness,
     ) {}
 
     public function index(Organisation $organisation): View
@@ -61,6 +64,13 @@ final class BackupController
             ->orderBy('name')
             ->get();
 
+        // The same readiness the site screen uses, per row. A fleet where none of these buttons can
+        // do anything is worth seeing as a fleet rather than one site at a time — the usual cause is
+        // one organisation-wide setting.
+        $readiness = $permitted->mapWithKeys(
+            fn (Site $site): array => [$site->id => $this->readiness->for($site)],
+        )->all();
+
         return view('backups.index', [
             'organisation' => $organisation,
             'membership' => app(Membership::class),
@@ -69,6 +79,7 @@ final class BackupController
             // Sites that could be backed up, so somebody who has granted the permission but never seen
             // an artifact can tell which of the two things is missing.
             'permittedSites' => $permitted,
+            'readiness' => $readiness,
 
             'storedBytes' => $artifacts
                 ->where('state', BackupArtifact::STATE_STORED)
@@ -109,12 +120,20 @@ final class BackupController
         abort_if($site->organisation_id !== $organisation->id, 404);
         abort_unless(app(Membership::class)->canAdminister(), 403);
 
-        // Checked here as well as in the job service. A site whose permission was revoked between the
-        // screen rendering and the button being pressed must not get a job queued for it.
-        if (! $site->hasCapability('backups:create')) {
-            return back()->withErrors([
-                'site' => 'That site does not have permission to create backups.',
-            ]);
+        /*
+         | Every reason a backup cannot be taken, asked at the moment of asking.
+         |
+         | This used to check the capability alone. Everything else was enforced further downstream —
+         | most consequentially the recovery key, which JobService::claimFor() checks when the site
+         | next checks in and then cancels the job. So pressing this on an organisation with no key
+         | flashed "Backup requested", wrote a REQUESTED row on the timeline, and produced nothing,
+         | with the actual reason stated on a different screen. The same conditions now decide whether
+         | the button is drawn at all; this is the guard for the gap between the two.
+        */
+        $readiness = $this->readiness->for($site);
+
+        if (! $readiness['ready']) {
+            return back()->withErrors(['site' => $readiness['blockers'][0]]);
         }
 
         /*
@@ -125,12 +144,23 @@ final class BackupController
          | production site. The Refresh button has always passed one. Without an actor, the audit row
          | for a job that reads an entire database says only that the system asked for it.
         */
-        $job = $this->jobs->enqueue(
-            $site,
-            Jobs::BACKUP_CREATE,
-            actor: $request->user(),
-            idempotencyKey: 'backup:manual',
-        );
+        try {
+            $job = $this->jobs->enqueue(
+                $site,
+                Jobs::BACKUP_CREATE,
+                actor: $request->user(),
+                idempotencyKey: 'backup:manual',
+            );
+        } catch (JobRejectedException $e) {
+            // Reachable despite the readiness check above: a connector can go away between the screen
+            // rendering and the button being pressed. Uncaught, that was a 500 on a routine race —
+            // every other caller of enqueue() already handled it.
+            return back()->withErrors(['site' => match ($e->reason) {
+                JobRejectedException::SITE_NOT_CONNECTED => "{$site->name} has no active connector, so it cannot be asked for a backup.",
+                JobRejectedException::CAPABILITY_NOT_GRANTED => "{$site->name} does not have permission to create backups.",
+                default => "Could not request a backup from {$site->name}.",
+            }]);
+        }
 
         // The request itself is now visible on the screen, so the timeline should carry it too. The
         // vocabulary already had a word for this and nothing was writing it.

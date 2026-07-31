@@ -8,6 +8,15 @@
         <x-site-header :site="$site" :connector="$connector" :pending-connector="$pendingConnector" />
         <x-site-tabs :site="$site" :update-count="$updateCount" :finding-count="$findingCount" />
 
+        {{-- This screen had no errors block at all, so its own validation messages — "that site does
+             not have permission", and now the readiness ones — were flashed and then silently
+             discarded. The fleet screen has always rendered them. --}}
+        @if ($errors->any())
+            <div class="mb-4 rounded-lg border border-danger-line bg-danger-bg px-3.5 py-2.5 text-[12.5px] text-danger">
+                {{ $errors->first() }}
+            </div>
+        @endif
+
         @if (! $site->hasCapability('backups:create'))
             {{--
                 Not merely "no backups yet". The permission is off, it is off deliberately, and the
@@ -67,15 +76,44 @@
                     @endforeach
 
                     @if ($membership->canAdminister())
+                        {{-- Disabled with the reason beside it, rather than enabled and disappointing.
+                             The blocking conditions are the ones the job service and the connector
+                             apply anyway; the difference is that they used to apply minutes later,
+                             after this screen had already said "Backup requested". --}}
                         <form method="POST" action="{{ route('backups.store', $site) }}" class="ml-auto">
                             @csrf
                             <button type="submit"
-                                    class="h-[34px] whitespace-nowrap rounded-[7px] border border-border-2 bg-surface px-3.5 text-[13px] text-text hover:bg-row-hover">
+                                    @disabled(! $readiness['ready'])
+                                    class="h-[34px] whitespace-nowrap rounded-[7px] border border-border-2 bg-surface px-3.5 text-[13px] text-text hover:bg-row-hover disabled:cursor-not-allowed disabled:border-border disabled:text-text-3 disabled:hover:bg-surface">
                                 Back up now
                             </button>
                         </form>
                     @endif
                 </div>
+
+                @if (! $readiness['ready'] || $readiness['warnings'] !== [])
+                    <div class="flex flex-col gap-1.5 border-b border-border px-4 py-3 text-[12.5px] leading-relaxed">
+                        @foreach ($readiness['blockers'] as $blocker)
+                            <p class="text-text">
+                                <span class="font-medium">No backup can be taken.</span> {{ $blocker }}
+                            </p>
+                        @endforeach
+
+                        @foreach ($readiness['warnings'] as $warning)
+                            <p class="text-text-2">{{ $warning }}</p>
+                        @endforeach
+
+                        @if ($readiness['needsRecoveryKey'])
+                            <p class="text-text-2">
+                                A backup is encrypted to keys you hold and to nothing else, so until this
+                                organisation has one active recovery key there is nothing to encrypt it to.
+                                <a href="{{ route('settings.show') }}#recovery-keys" class="text-primary hover:text-primary-hover">
+                                    Add one in Settings
+                                </a>.
+                            </p>
+                        @endif
+                    </div>
+                @endif
 
                 @if ($inFlight->isNotEmpty())
                     <div data-backup-progress-list

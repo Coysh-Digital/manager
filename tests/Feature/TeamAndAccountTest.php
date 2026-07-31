@@ -239,3 +239,68 @@ it('refuses a membership belonging to another organisation', function (): void {
         ->post(route('team.role', $elsewhere), ['role' => Membership::ROLE_MEMBER])
         ->assertNotFound();
 });
+
+/*
+ | Your own details
+ |-------------------------------------------------------------------------------------------------
+ |
+ | The name appears beside every audit event the account produces, so a stale one makes the log harder
+ | to read for exactly the person trying to read it. Until now the only way to change it was to edit
+ | the database.
+ */
+
+it('lets somebody change the name their account is shown under', function (): void {
+    $this->actingAs($this->owner)->withSession($this->confirmed)
+        ->post(route('account.profile'), ['name' => 'Tim Coysh'])
+        ->assertRedirect();
+
+    expect($this->owner->fresh()->name)->toBe('Tim Coysh');
+
+    $event = AuditEvent::query()->where('action', 'user.profile.updated')->sole();
+
+    expect($event->after['name'])->toBe('Tim Coysh')
+        ->and($event->actor_id)->toBe($this->owner->id);
+});
+
+it('records nothing when the name did not change', function (): void {
+    $this->actingAs($this->owner)->withSession($this->confirmed)
+        ->post(route('account.profile'), ['name' => $this->owner->name])
+        ->assertRedirect()
+        ->assertSessionHas('status', 'Nothing to change.');
+
+    expect(AuditEvent::query()->where('action', 'user.profile.updated')->exists())->toBeFalse();
+});
+
+it('will not change an email address', function (): void {
+    /*
+     | Not an oversight. The address identifies the account for sign-in, password resets, invitations
+     | and every audit row already written, so changing it is an account-recovery flow — proving the
+     | new address, handling the window where neither is confirmed — and none of that exists. A field
+     | that quietly moved sign-in to an unverified address would be worse than no field.
+    */
+    $was = $this->owner->email;
+
+    $this->actingAs($this->owner)->withSession($this->confirmed)
+        ->post(route('account.profile'), ['name' => 'Tim Coysh', 'email' => 'someone-else@example.org'])
+        ->assertRedirect();
+
+    expect($this->owner->fresh()->email)->toBe($was);
+
+    // And the screen says why rather than leaving somebody hunting for the field.
+    $this->actingAs($this->owner)
+        ->get(route('account.show'))
+        ->assertOk()
+        ->assertSee('cannot be changed here');
+});
+
+it('refuses an empty name', function (): void {
+    $this->actingAs($this->owner)->withSession($this->confirmed)
+        ->post(route('account.profile'), ['name' => '  '])
+        ->assertSessionHasErrors('name');
+});
+
+it('needs recent authentication to change your details', function (): void {
+    $this->actingAs($this->owner)
+        ->post(route('account.profile'), ['name' => 'Tim Coysh'])
+        ->assertRedirect(route('password.confirm'));
+});

@@ -8,9 +8,11 @@ use App\Domain\Audit\AuditRecorder;
 use App\Domain\Backup\RetentionPolicy;
 use App\Domain\Capability\CapabilityService;
 use App\Domain\Health\Diagnostics;
+use App\Domain\Notifications\EmailTransport;
 use App\Domain\Notifications\NotificationEvent;
 use App\Domain\Notifications\Notifier;
 use App\Domain\Team\TeamService;
+use App\Models\AuditEvent;
 use App\Models\Connector;
 use App\Models\Membership;
 use App\Models\NotificationDestination;
@@ -20,7 +22,10 @@ use App\Models\Site;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Mail\Message;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use Throwable;
 
 /**
  * Platform settings.
@@ -292,6 +297,64 @@ final class SettingsController
         return back()->with(
             'status',
             'Retention updated. Backups already taken keep the expiry they were given.',
+        );
+    }
+
+    /**
+     * Send a test message to the signed-in owner's own address.
+     *
+     * Deliberately to *their* address and nowhere else. A field here would be a form on an
+     * authenticated page that sends arbitrary mail to an arbitrary address from this installation's
+     * relay, which is an open relay with extra steps and a reputation problem waiting to happen.
+     *
+     * Not queued. A queued send reports success the moment the job is accepted, which proves the
+     * queue works and says nothing about mail. The point is to fail here, now, where somebody is
+     * looking.
+     *
+     * The failure is reported as a class name rather than a message, matching
+     * {@see EmailTransport}: a mail exception can carry the transport
+     * configuration, credentials included, and this response is a web page. `manager:mail-test`
+     * prints the whole thing, because a shell on the server is a different audience.
+     */
+    public function testMail(Request $request): RedirectResponse
+    {
+        $this->authoriseOwner();
+
+        $user = $request->user();
+
+        try {
+            Mail::raw(
+                "This is a test message from Manager.\n\n"
+                    .'If you are reading it, this installation can send email — which means password '
+                    .'resets, invitations and notification emails will reach people.',
+                static fn (Message $message) => $message->to($user->email)->subject('Manager test message'),
+            );
+        } catch (Throwable $e) {
+            $this->audit->record(
+                action: 'settings.mail.tested',
+                organisation: app(Organisation::class),
+                actor: $user,
+                outcome: AuditEvent::OUTCOME_FAILURE,
+                failureReason: $e::class,
+            );
+
+            return back()->with('warning', sprintf(
+                'The message was not sent (%s). Check the MAIL_* variables in .env, or run '
+                    .'`php artisan manager:mail-test %s` for the full error.',
+                class_basename($e),
+                $user->email,
+            ));
+        }
+
+        $this->audit->record(
+            action: 'settings.mail.tested',
+            organisation: app(Organisation::class),
+            actor: $user,
+        );
+
+        return back()->with(
+            'status',
+            "Sent to {$user->email}. The transport accepted it, which is not the same as it arriving — check your inbox.",
         );
     }
 

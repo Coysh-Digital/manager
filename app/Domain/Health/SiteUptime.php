@@ -83,6 +83,12 @@ final class SiteUptime
          |
          | $span is measured from the same $from the beats were counted from, so the two figures
          | describe the same window rather than two overlapping ones.
+         |
+         | What this still cannot do is predict the count exactly, and the tilde is load-bearing.
+         | `expected` models a single producer beating on a fixed interval, where a connector has two
+         | that throttle independently — the cron task and the web trigger — so a site running both
+         | reports somewhat more often than asked. The screen says so rather than clamping the count,
+         | because the raw figure is the one worth having when a week reads thin.
          */
         return new UptimeWindow(
             from: $from,
@@ -94,6 +100,7 @@ final class SiteUptime
             longest: $longest,
             buckets: $this->buckets($beats, $from, $to, $windowHours, $interval),
             lastSeenAt: $beats === [] ? $site->last_seen_at : end($beats),
+            interval: $interval,
         );
     }
 

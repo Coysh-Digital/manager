@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Domain\Updates\ChangelogFetcher;
 use App\Domain\Updates\ChangelogLink;
+use App\Domain\Updates\PluginChangelog;
 use App\Domain\Updates\PluginInventory;
 use App\Http\Controllers\Concerns\ResolvesSiteContext;
 use App\Models\Membership;
@@ -26,18 +27,25 @@ final class SiteUpdateController
     public function __construct(
         private readonly PluginInventory $plugins,
         private readonly ChangelogFetcher $changelogs,
+        private readonly PluginChangelog $pluginChangelog,
     ) {}
 
     public function show(Site $site): View
     {
         $inventory = $this->latestInventoryReport($site);
         $updates = $this->latestUpdateReport($site);
+        $plugins = $this->plugins->assemble($inventory, $updates);
 
         return view('sites.updates', [
             ...$this->siteContext($site),
             'inventoryReport' => $inventory,
             'updateReport' => $updates,
-            'plugins' => $this->plugins->assemble($inventory, $updates),
+            'plugins' => $plugins,
+
+            // Which plugin rows can offer a panel. One query for the lot rather than one per row,
+            // and it asks only whether notes exist — the text itself is loaded when somebody opens
+            // one, the same way Craft's are.
+            'pluginNotes' => $this->pluginChangelog->handlesWithNotes($plugins),
 
             // Requesting a check is behind recent authentication, so the button is only offered to
             // somebody who could actually use it. Showing a control that returns a redirect to a
@@ -69,6 +77,33 @@ final class SiteUpdateController
                 $updates?->craft_latest,
             ),
             'link' => ChangelogLink::craft(),
+            'source' => 'craft',
+        ]);
+    }
+
+    /**
+     * One plugin's release notes, for the versions between where this site is and where it could be.
+     *
+     * Nothing is fetched here either, and for a stronger reason than the Craft panel: these notes
+     * were forwarded by connectors and are stored against a plugin and a version, so serving them
+     * touches no network and reads no table that knows what a site is. The versions come from this
+     * site's own report and decide which stored notes to show.
+     *
+     * A handle that is not one produces the fallback panel rather than a 404 — it is a plugin whose
+     * report was odd, not a route somebody has no business calling.
+     */
+    public function pluginChangelog(Site $site, string $handle): View
+    {
+        $updates = $this->latestUpdateReport($site);
+        $plugin = collect($this->plugins->assemble($this->latestInventoryReport($site), $updates))
+            ->firstWhere('handle', $handle);
+
+        return view('sites.partials.changelog', [
+            'notes' => $plugin === null
+                ? null
+                : $this->pluginChangelog->between($handle, $plugin['current'], $plugin['latest']),
+            'link' => ChangelogLink::plugin($handle),
+            'source' => 'plugin',
         ]);
     }
 }

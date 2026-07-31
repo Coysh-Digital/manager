@@ -7,7 +7,6 @@ namespace App\Domain\Updates;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Str;
 
 /**
  * Craft's own release notes, read here instead of in another tab.
@@ -23,11 +22,11 @@ use Illuminate\Support\Str;
  * reaches the network, and the result is the same bytes whether an installation manages one site or
  * a hundred. It is closer to reading the documentation than to reporting an inventory.
  *
- * Only Craft, and that is a limit rather than a first step. The update report carries a plugin's
- * Craft handle and nothing else — no repository, no packagist name, not even a vendor prefix, and
- * `updates.v1.json` rejects unknown fields rather than dropping them. Resolving a handle to a
- * repository would mean asking a third party about every plugin in the fleet, which is the leak this
- * class exists to avoid. Plugins keep their Plugin Store link.
+ * Only Craft, and it stays that way. Plugin notes arrive by a different route entirely — connectors
+ * forward what their own Craft install already downloaded, and {@see PluginChangelog} serves them —
+ * precisely so that this class never has to resolve a handle to a destination. Doing that would mean
+ * asking a third party about every plugin in the fleet, which is the leak this class exists to avoid,
+ * and it is why {@see SOURCES} is a constant map with nothing interpolated into it.
  */
 final class ChangelogFetcher
 {
@@ -54,13 +53,6 @@ final class ChangelogFetcher
      */
     private const MAX_BYTES = 4194304;
 
-    /**
-     * How many released versions to render at once, and how much text.
-     */
-    private const MAX_SECTIONS = 20;
-
-    private const MAX_CHARACTERS = 60000;
-
     public function __construct(private readonly Client $client) {}
 
     public function enabled(): bool
@@ -86,26 +78,9 @@ final class ChangelogFetcher
             return null;
         }
 
-        $sections = $this->sections($markdown, $current, $latest);
-
-        if ($sections === []) {
-            return null;
-        }
-
-        $text = Str::limit(implode("\n\n", $sections), self::MAX_CHARACTERS, ' …');
-
-        /*
-         | Rendered with HTML stripped rather than escaped.
-         |
-         | This is third-party text arriving over the network and being put on a page inside an
-         | authenticated session. league/commonmark ships with the framework, and its unsafe-input
-         | defaults are exactly the two that matter: raw HTML in the source is discarded rather than
-         | passed through, and javascript: links are not turned into anchors.
-        */
-        return Str::markdown($text, [
-            'html_input' => 'strip',
-            'allow_unsafe_links' => false,
-        ]);
+        // Rendered with HTML stripped rather than escaped, by the one component that does that for
+        // every source of release notes here. See ChangelogMarkdown for why it is not done inline.
+        return ChangelogMarkdown::render($this->sections($markdown, $current, $latest));
     }
 
     /**
@@ -164,19 +139,13 @@ final class ChangelogFetcher
                 continue;
             }
 
-            $version = $matches[1];
-
-            if ($current !== null && version_compare($version, $current, '<=')) {
-                continue;
-            }
-
-            if ($latest !== null && version_compare($version, $latest, '>')) {
+            if (! ChangelogMarkdown::isBetween($matches[1], $current, $latest)) {
                 continue;
             }
 
             $sections[] = '## '.rtrim($part);
 
-            if (count($sections) >= self::MAX_SECTIONS) {
+            if (count($sections) >= ChangelogMarkdown::MAX_SECTIONS) {
                 break;
             }
         }

@@ -168,9 +168,18 @@
                     </thead>
                     <tbody>
                         @forelse ($plugins as $plugin)
-                            @php $badge = PluginInventory::badge($plugin['state']); @endphp
+                            @php
+                                $badge = PluginInventory::badge($plugin['state']);
 
-                            <tr class="border-b border-border last:border-b-0 hover:bg-row-hover">
+                                // Whether this plugin has anything to expand. Decided once for the
+                                // whole table by PluginChangelog::handlesWithNotes(), so a hundred
+                                // plugins is still one query.
+                                $hasNotes = isset($pluginNotes[$plugin['handle']]);
+                            @endphp
+
+                            {{-- The rule goes under the notes row when there is one, so a plugin and
+                                 its own notes read as one block rather than two. --}}
+                            <tr class="{{ $hasNotes ? '' : 'border-b border-border last:border-b-0' }} hover:bg-row-hover">
                                 <td class="py-2.5 pl-3.5 pr-3">
                                     <div class="flex flex-col gap-0.5">
                                         <span class="text-[13px] {{ $plugin['enabled'] ? '' : 'text-text-2' }}">{{ $plugin['name'] }}</span>
@@ -217,13 +226,37 @@
                                         {{-- Only where there is something to read about. A plugin the
                                              store has never heard of gets no link rather than one that
                                              404s — a broken link teaches people not to trust the
-                                             working ones. --}}
+                                             working ones. Kept even when the panel below exists: the
+                                             store listing is the fuller record, and the panel only
+                                             covers releases a site has actually reported. --}}
                                         @if ($plugin['latest'] !== null)
-                                            <x-changelog-link :href="ChangelogLink::plugin($plugin['handle'])" label="Notes" />
+                                            <x-changelog-link :href="ChangelogLink::plugin($plugin['handle'])" label="Plugin Store" />
                                         @endif
                                     </div>
                                 </td>
                             </tr>
+
+                            @if ($hasNotes)
+                                {{-- Its own row rather than a cell, so the notes get the full width
+                                     of the table instead of the Status column. Same <details> and
+                                     the same script as Craft's panel above; the fetch happens on
+                                     first open, though for a plugin that fetch reaches no further
+                                     than this database. --}}
+                                <tr class="border-b border-border last:border-b-0">
+                                    <td colspan="4" class="px-3.5 pb-2.5">
+                                        <details data-changelog
+                                                 data-changelog-url="{{ route('sites.updates.changelog.plugin', ['site' => $site, 'handle' => $plugin['handle']]) }}">
+                                            <summary class="cursor-pointer text-[12.5px] text-text-2 hover:text-primary">
+                                                What changed between these versions
+                                            </summary>
+
+                                            <div class="pt-2.5" data-changelog-body>
+                                                <p class="text-[12.5px] text-text-3">Reading the notes…</p>
+                                            </div>
+                                        </details>
+                                    </td>
+                                </tr>
+                            @endif
                         @empty
                             <tr>
                                 <td colspan="4" class="px-4 py-10 text-center text-[13px] text-text-2">
@@ -240,13 +273,13 @@
             </div>
 
             <div class="bg-surface-2 px-3.5 py-2.5 text-[12px] leading-relaxed text-text-3">
-                Manager reports that an update exists and whether it is a security release. No site
-                ever sends release notes, and none are stored against a site: those describe what a
-                version fixes, and holding that beside the name of an unpatched site is a liability
-                rather than a feature. Craft's changelog above is read from Craft's own repository,
-                once for this installation and cached — the request says nothing about this site.
-                Plugin notes stay on the Plugin Store, because a plugin's report carries a handle and
-                no repository to read.
+                Release notes are held against a plugin and a version, never against a site. What a
+                version fixes is public — the Plugin Store hands it to anyone — but "this site is
+                behind on these fixes" is not, so that pairing is made on this screen and stored
+                nowhere. Craft's changelog above is read from Craft's own repository, once for this
+                installation and cached; plugin notes are forwarded by the sites already running the
+                plugin, so showing them asks nothing of anybody and tells no plugin author which of
+                your sites are behind.
                 <strong>Not checked</strong> means exactly that — a plugin the site's update service
                 knows nothing about, usually a private or VCS-installed one. It is not the same as up
                 to date.
