@@ -132,20 +132,27 @@ are written to fail rather than warn, and every one of them exists because somet
 
 The packages depend on each other, so releases have an order:
 
-1. `protocol` — tag and publish first. Everything else resolves against it.
+1. `protocol` — tag and publish first. Everything else resolves against it. **v1.2.0 is published.**
 2. `restore` and `connector` — both require `manager-protocol ^1.2`.
 3. `platform` — regenerate `composer.lock`, which cannot satisfy `^1.2` until step 1 is done.
 4. `private/console` — merge `main`, resolve the `.gitignore` conflict deliberately, deploy.
 
-Tags must be signed. `platform`'s release workflow refuses to publish one that is not, verified
-against `.github/allowed_signers`.
+`platform`'s release workflow requires a **signed** tag, verified against `.github/allowed_signers`,
+and refuses to publish one that is not. `protocol` and `connector` have no such gate — v1.0.1 and
+v1.2.0 were cut unsigned.
+
+Nothing in `platform/` needs a local path repository any more. Before v1.2.0 was published, the
+protocol had to be symlinked from a sibling checkout via an uncommitted `repositories` block; that is
+gone, and `composer install` resolves everything from Packagist. If you find yourself adding one back,
+it means a package needs releasing.
 
 ## Currently outstanding
 
-- `manager-protocol` 1.2.0 is committed but **not tagged or published**. Until it is, `platform`'s and
-  `console`'s lock files cannot be regenerated and `connector` 1.7.0 cannot build.
-- `connector` and `protocol` both have manifests ahead of their newest tags.
-- `console`'s `composer.lock` does not yet list the Cloud layer, for the same reason.
+- `connector` 1.7.0 and `manager-restore` 1.0.0 are committed but **not tagged**. `manager-protocol`
+  v1.2.0 is published, so nothing blocks them.
+- `platform` has no tags at all. Its release workflow requires a signed one.
+- `console`'s `composer.lock` does not list the Cloud layer yet. Now unblocked:
+  `composer update coysh-digital/manager-cloud-overlay -W` on that branch.
 
 ## Local development
 
