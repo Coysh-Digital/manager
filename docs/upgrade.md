@@ -1,7 +1,7 @@
 # Upgrading
 
-Manager upgrades are a new image and a migration. There is no build step on the server and Node is
-not required there: compiled assets are committed.
+Manager for Craft upgrades are a new image and a migration. There is no build step on the server and
+Node is not required there: compiled assets are committed.
 
 ## Before you start
 
@@ -50,7 +50,7 @@ Bring up the new web container before retiring the old one, and let the orchestr
 rather than `/up`: `/up` says PHP is running, `/ready` says this instance can actually serve a
 request.
 
-Migrations are written to be safe against the previous version running concurrently — additive
+Migrations are written to be safe against the previous version running concurrently - additive
 first, destructive changes only in a later release. Where that is not possible the release notes say
 so and the upgrade needs a brief outage.
 

@@ -1,19 +1,19 @@
 # Verifying a release
 
-Before you install Manager, or upgrade it, check that what you have is what was published. This takes
-about thirty seconds and it is the only part of the install that protects you against everything
-between our repository and your server.
+Before you install Manager for Craft, or upgrade it, check that what you have is what was published.
+This takes about thirty seconds and it is the only part of the install that protects you against
+everything between our repository and your server.
 
 ## What you are checking, and why it is two things
 
-**Integrity** — is this file the one whose checksum was published? A corrupted download or an
+**Integrity** - is this file the one whose checksum was published? A corrupted download or an
 altered mirror fails here.
 
-**Authenticity** — was that checksum published by us? A checksum on its own cannot answer this.
+**Authenticity** - was that checksum published by us? A checksum on its own cannot answer this.
 Somebody who could replace the archive could replace `SHA256SUMS` beside it, and both would agree.
 
-So integrity is checked against the published checksum, and authenticity against the signature on the
-git tag the release was built from. Doing only the first is common and is not enough.
+So integrity is checked against the published checksum, and authenticity against the signature on
+the git tag the release was built from. Doing only the first is common and is not enough.
 
 ## Checking integrity
 
@@ -44,7 +44,7 @@ Expect `Good "git" signature for tim@timcoysh.co.uk`.
 its own it is trust-on-first-use: whoever could replace a tag could replace that file too. Two
 independent places to compare it against, both outside this repository:
 
-- <https://github.com/timcoysh.keys> — served by GitHub, not by us.
+- <https://github.com/timcoysh.keys> - served by GitHub, not by us.
 - The **Verified** badge GitHub shows on the tag, computed from keys held in your account settings.
 
 If the key in `.github/allowed_signers` matches those, the signature means what it appears to mean.
@@ -52,9 +52,9 @@ If the key in `.github/allowed_signers` matches those, the signature means what 
 ## Reproducing the archive yourself
 
 The release archive is built to be reproducible: entry timestamps come from the commit rather than
-from the clock, and gzip is told not to stamp its header. So you can rebuild it and compare, which is
-stronger than trusting either the checksum or the signature alone — it shows the published artifact
-really was built from the published source.
+from the clock, and gzip is told not to stamp its header. So you can rebuild it and compare, which
+is stronger than trusting either the checksum or the signature alone - it shows the published
+artifact really was built from the published source.
 
 ```bash
 git checkout v1.0.0
@@ -67,14 +67,14 @@ artifact contains something the tag does not, and we would like to hear about it
 
 ## The bill of materials
 
-Each release carries `sbom.json`, a CycloneDX inventory of the dependency tree at that tag. Useful for
-answering "are we affected" when an advisory lands, without installing anything first.
+Each release carries `sbom.json`, a CycloneDX inventory of the dependency tree at that tag. Useful
+for answering "are we affected" when an advisory lands, without installing anything first.
 
 ## What CI refuses to publish
 
-The release workflow will not produce artifacts for a tag that is unsigned, or signed by a key that is
-not in `.github/allowed_signers`. It also re-runs the security invariant suite against the exact tree
-being published, because a tag can be moved after ordinary CI has passed.
+The release workflow will not produce artifacts for a tag that is unsigned, or signed by a key that
+is not in `.github/allowed_signers`. It also re-runs the security invariant suite against the exact
+tree being published, because a tag can be moved after ordinary CI has passed.
 
 That refusal is the part that matters. A release process that *can* publish something unverifiable
 eventually will, on the release made in a hurry.

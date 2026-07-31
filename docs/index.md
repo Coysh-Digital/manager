@@ -5,8 +5,8 @@ without holding a single administrator password, SSH key or database credential.
 
 ## Is this for you?
 
-Manager is built for the person looking after ten to forty Craft sites who wants to answer "what
-changed since last week?" before the client call, without logging into ten control panels.
+Manager for Craft is built for the person looking after ten to forty Craft sites who wants to answer
+"what changed since last week?" before the client call, without logging into ten control panels.
 
 It watches. It does not deploy, it does not run updates, and it cannot execute anything on a site.
 That is a design decision rather than a roadmap gap, and [What it does, and does
@@ -19,8 +19,8 @@ credential anywhere in the schema. Not encrypted, not hidden: there is no column
 live database on every run to keep it that way.
 
 **Backups only you can open.** A site encrypts its own database to keys you generated on your own
-machine, then uploads it. What gets stored is ciphertext, and so is what anyone who steals the server
-gets. See [Recovery keys](/recovery-keys).
+machine, then uploads it. What gets stored is ciphertext, and so is what anyone who steals the
+server gets. See [Recovery keys](/recovery-keys).
 
 **Sites come to it, not the other way round.** Every exchange starts at the Craft site and goes
 outbound. Nothing listens, nothing gets pushed, and a site behind NAT works with no inbound firewall

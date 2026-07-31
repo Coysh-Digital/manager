@@ -8,7 +8,7 @@ We aim to acknowledge within two working days, and to publish an advisory once a
 after 90 days, whichever comes first. If something is being actively exploited we move faster and
 say so.
 
-## What Manager can and cannot do
+## What Manager for Craft can and cannot do
 
 The point of the design is that these are properties of the code rather than promises.
 
@@ -24,7 +24,7 @@ The point of the design is that these are properties of the code rather than pro
 ## How a connector authenticates
 
 Every request carries the site identifier, connector version, timestamp, a random nonce, the method,
-the canonical path and a hash of the body — all of it covered by an Ed25519 signature. Change any of
+the canonical path and a hash of the body - all of it covered by an Ed25519 signature. Change any of
 those and the signature stops verifying.
 
 On receipt the platform enforces, in order: a payload size cap before parsing, required headers, a
@@ -56,21 +56,21 @@ Also permitted, each behind a capability of its own that must be granted deliber
 
 | What | Capability | Detail |
 |---|---|---|
-| Disk usage | `runtime:read` | Byte and file **counts** per asset volume, by handle, plus free and total space on the volume. Never a path, a file name or a directory listing — a byte count says how much is there and nothing about what. A volume that cannot be walked inside the time budget, or that lives on remote storage, is reported as *unmeasured* rather than as empty. |
+| Disk usage | `runtime:read` | Byte and file **counts** per asset volume, by handle, plus free and total space on the volume. Never a path, a file name or a directory listing - a byte count says how much is there and nothing about what. A volume that cannot be walked inside the time budget, or that lives on remote storage, is reported as *unmeasured* rather than as empty. |
 | PHP limits | `runtime:read` | Numeric limits: memory, execution time, upload and post size, input vars, opcache state and memory, and a count of loaded extensions. Never `phpinfo()`, never an ini path, never the list of extensions, and never a setting whose value would name the host. |
-| Response times | `runtime:read` | Mean, median, 95th percentile and slowest, sampled from up to 200 requests the site was serving anyway. A duration and nothing else: no URL, no visitor, no address, no user agent. This is **server render time, not time to first byte** — it excludes DNS, TLS, queueing in front of PHP and the network — and the interface says so wherever it appears. |
+| Response times | `runtime:read` | Mean, median, 95th percentile and slowest, sampled from up to 200 requests the site was serving anyway. A duration and nothing else: no URL, no visitor, no address, no user agent. This is **server render time, not time to first byte** - it excludes DNS, TLS, queueing in front of PHP and the network - and the interface says so wherever it appears. |
 | Failed sign-ins | `logins:read` | Four counts and one timestamp: attempts, accounts affected, accounts locked out, and how many of those are administrators. **Never a username, an email address, a user id or a source address.** Read from Craft's own counters rather than by logging attempts, because a record of who tried to sign in as whom is a log of real people's behaviour on somebody else's website. |
 
 The sign-in counts carry a caveat that is repeated on every screen showing them: Craft resets an
 account's failed-attempt counter on a successful sign-in, so the totals are a **floor, not a total**
-— somebody who eventually guessed correctly leaves nothing behind in them.
+- somebody who eventually guessed correctly leaves nothing behind in them.
 
 Never: entries, assets, user records, password hashes, sessions, complete logs,
 environment-variable values, security keys, licence keys, API credentials, database credentials,
 complete configuration files, arbitrary file contents, file names, filesystem paths, request URLs,
 visitor addresses, or the identity of anybody who signed in or failed to.
 
-A rejected payload is never stored, not even to help debugging — a report that failed validation is
+A rejected payload is never stored, not even to help debugging - a report that failed validation is
 precisely where forbidden data would be. Only the field paths are recorded.
 
 To see what a given site would send:
@@ -83,11 +83,11 @@ php craft manager-connector/preview
 
 Append-only, enforced two ways. A database trigger rejects `UPDATE`, `DELETE` and `TRUNCATE`, which
 holds even for the table owner; and deployments are documented to connect as a role without those
-privileges. `manager:doctor` warns if Manager connects as a superuser, because a superuser bypasses
-privilege checks entirely.
+privileges. `manager:doctor` warns if Manager for Craft connects as a superuser, because a superuser
+bypasses privilege checks entirely.
 
-Events are hash-chained per organisation, so anyone who does get past both still cannot alter history
-without leaving a detectable break:
+Events are hash-chained per organisation, so anyone who does get past both still cannot alter
+history without leaving a detectable break:
 
 ```bash
 php artisan manager:audit:verify
@@ -106,7 +106,7 @@ Password plus TOTP, with hashed single-use recovery codes. A user with a second 
 in by the password step: their identifier is parked in the session and the session is only upgraded
 once the factor is satisfied, so no window exists in which one factor was enough.
 
-Sensitive actions need the password to have been confirmed within the last fifteen minutes —
+Sensitive actions need the password to have been confirmed within the last fifteen minutes:
 changing capabilities, revoking a connector, disabling a second factor, reading out fresh recovery
 codes. A session left open on an unlocked machine is not enough.
 
@@ -122,34 +122,35 @@ wrong:
 
 - The authentication guard uses the plain Eloquent provider, so no code path anywhere resolves a
   credential other than a password into a session.
-- The passkey package's own routes — including its passwordless login endpoint — are not registered.
+- The passkey package's own routes - including its passwordless login endpoint - are not registered.
 - The challenge endpoint verifies the assertion against the user the password step named, and issues
   the session for that user rather than for whoever the credential resolves to.
 
-Registration sits behind the same fifteen-minute password confirmation as any other sensitive action,
-and the last remaining second factor cannot be removed while the organisation requires one.
+Registration sits behind the same fifteen-minute password confirmation as any other sensitive
+action, and the last remaining second factor cannot be removed while the organisation requires one.
 
 Note for operators: the WebAuthn user handle is derived from `APP_KEY` unless
 `PASSKEYS_USER_HANDLE_SECRET` is set. Rotating `APP_KEY` without having set that variable first
-changes every derived handle and orphans every registered passkey — an account with no authenticator
+changes every derived handle and orphans every registered passkey - an account with no authenticator
 app would be locked out. Set it explicitly before any key rotation.
 
 ## Runbooks
 
 ### A connector's key may have leaked
 
-On the site: `php craft manager-connector/disconnect` — this deletes the key locally. Then revoke the
-connector in Manager, which stops the platform accepting anything signed with it. Both steps matter:
-the first stops the key being used from that server, the second stops it being used from anywhere.
+On the site: `php craft manager-connector/disconnect` - this deletes the key locally. Then revoke
+the connector in Manager for Craft, which stops the platform accepting anything signed with it. Both
+steps matter: the first stops the key being used from that server, the second stops it being used
+from anywhere.
 
 Re-pair with a fresh enrolment code. The old key can never be reinstated.
 
 ### A managed site may be compromised
 
-Revoke the connector first — that stops the site reporting and removes its capabilities in the same
+Revoke the connector first - that stops the site reporting and removes its capabilities in the same
 transaction. Read the site's entries in the activity log for what it did while trusted. Since
-capabilities are read-only by default, a compromised site could not have used Manager to change
-anything.
+capabilities are read-only by default, a compromised site could not have used Manager for Craft to
+change anything.
 
 ### A platform account may be compromised
 
@@ -159,7 +160,7 @@ permission history on each affected site shows exactly what and when.
 
 ### The audit chain fails to verify
 
-Treat it as an incident. Establish first whether a restore happened — that produces an intact but
+Treat it as an incident. Establish first whether a restore happened - that produces an intact but
 shorter chain, which is expected. A chain reporting *altered* events with no restore means somebody
 had enough database access to drop a trigger, and the appropriate response is a full compromise
 assessment, not a repair.
@@ -167,8 +168,8 @@ assessment, not a repair.
 ### The platform signing key may have leaked
 
 Generate a new one with `manager:keys:generate --force`. Every connector then rejects platform
-responses until it learns the new public key, which means re-pairing each site. Disruptive by design:
-the alternative is a platform whose instructions cannot be trusted.
+responses until it learns the new public key, which means re-pairing each site. Disruptive by
+design: the alternative is a platform whose instructions cannot be trusted.
 
 ## Supported versions
 
