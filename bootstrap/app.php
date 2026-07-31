@@ -2,12 +2,14 @@
 
 declare(strict_types=1);
 
+use App\Exceptions\ConnectorErrorResponse;
 use App\Http\Middleware\EnsureSecondFactorWhenRequired;
 use App\Http\Middleware\EnsureSetupIsAvailable;
 use App\Http\Middleware\EnsureSiteBelongsToOrganisation;
 use App\Http\Middleware\RequiresCapability;
 use App\Http\Middleware\ResolveOrganisation;
 use App\Http\Middleware\VerifyConnectorSignature;
+use App\Support\CorrelationId;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -68,4 +70,24 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*'),
         );
+
+        // Handled rejections carry a correlation identifier already. This puts one on the responses
+        // that were never shaped by our own code, so an unhandled 500 stops arriving at a connector
+        // as "Correlation ID: unknown" with nothing to look up. See ConnectorErrorResponse.
+        $exceptions->respond(new ConnectorErrorResponse);
+
+        /*
+         | The same identifier, attached to every logged exception, so the value the connector
+         | reports can be found in the log.
+         |
+         | Wrapped in rescue() because context() also runs for console and queue failures, where the
+         | container may be part-torn-down: a context builder that threw would replace the original
+         | exception with its own, which is the opposite of what this is for. report: false so a
+         | failure to describe an error does not itself get reported.
+        */
+        $exceptions->context(fn (): array => rescue(
+            fn (): array => ['correlation_id' => app(CorrelationId::class)->get()],
+            [],
+            report: false,
+        ));
     })->create();
