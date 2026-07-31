@@ -150,8 +150,9 @@ it('verifies a good download', function (): void {
     expect($result['ok'])->toBeTrue($result['output'])
         ->and($result['output'])->toContain('Integrity confirmed')
         // And it tells the operator that integrity is not authenticity, because a script that implied
-        // otherwise would be worse than no script.
-        ->and($result['output'])->toContain('git tag -v');
+        // otherwise would be worse than no script. It used to answer the second question by pointing
+        // at a signed tag; there is no longer one, so it says so rather than going quiet.
+        ->and($result['output'])->toContain('not authenticity');
 });
 
 it('refuses a download that does not match its checksum', function (): void {
@@ -192,26 +193,11 @@ it('refuses to build from something that is not a tag', function (): void {
 
 // --------------------------------------------------------------------------------------------------
 // The release workflow's own refusals
+//
+// Release signature verification was removed deliberately: there is no signed tag, no allowed_signers
+// and no key to cross-check, so a release now proves integrity and not authorship. The tests that
+// asserted the signing gate went with it rather than being softened into warnings.
 // --------------------------------------------------------------------------------------------------
-
-it('refuses to publish a tag that is not signed', function (): void {
-    $workflow = (string) file_get_contents(base_path('.github/workflows/release.yml'));
-
-    // Asserted structurally, because running the workflow here is not possible. What is being pinned is
-    // that verification happens *before* anything is built: a workflow that produced artifacts and then
-    // checked the signature would leave something publishable lying around on failure.
-    $verifyAt = strpos($workflow, 'git tag -v');
-    $buildAt = strpos($workflow, 'bin/build-release.sh');
-
-    expect($verifyAt)->not->toBeFalse()
-        ->and($buildAt)->not->toBeFalse()
-        ->and($verifyAt)->toBeLessThan($buildAt);
-
-    // And that a failure stops it rather than warning.
-    expect($workflow)->toContain('Refusing to publish')
-        ->and($workflow)->toContain('exit 1')
-        ->and($workflow)->toContain('allowed_signers');
-});
 
 it('re-runs the security suite against the tree being published', function (): void {
     $workflow = (string) file_get_contents(base_path('.github/workflows/release.yml'));
@@ -219,18 +205,4 @@ it('re-runs the security suite against the tree being published', function (): v
     // Ordinary CI runs on the commit, but a tag can be moved afterwards. The release has to check the
     // thing it is actually publishing.
     expect($workflow)->toContain('--testsuite=Invariants');
-});
-
-it('publishes a key anybody can verify the signature against', function (): void {
-    $signers = base_path('.github/allowed_signers');
-
-    expect($signers)->toBeFile();
-
-    $contents = (string) file_get_contents($signers);
-
-    expect($contents)->toContain('ssh-ed25519')
-        // Honest about being trust-on-first-use, and pointing somewhere outside this repository to
-        // cross-check. A published key that claimed more than it proves would be worse than none.
-        ->and($contents)->toContain('trust-on-first-use')
-        ->and($contents)->toContain('github.com/timcoysh.keys');
 });

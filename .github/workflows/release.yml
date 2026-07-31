@@ -16,31 +16,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # The full history and the tag object itself. A shallow clone fetches the commit but not the
-      # annotation, and the signature lives on the annotation.
+      # Full history, because the release is built from the tag rather than from the checkout.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-
-      # The gate. An unsigned tag, or one signed by a key not on the published list, stops the release
-      # here — before any artifact exists to be mistaken for a real one.
-      #
-      # This is the whole point of invariant 17: a release is only verifiable if something refuses to
-      # produce an unverifiable one. Left to a human step this check gets skipped on the release that
-      # matters, at the end of a long day.
-      - name: The tag must be signed by a published key
-        run: |
-          git config gpg.ssh.allowedSignersFile .github/allowed_signers
-
-          if ! git tag -v "${GITHUB_REF_NAME}" 2>&1 | tee /tmp/verify.log; then
-            echo "::error::${GITHUB_REF_NAME} is not signed by a key in .github/allowed_signers. Refusing to publish."
-            exit 1
-          fi
-
-          grep -q '^Good' /tmp/verify.log || {
-            echo "::error::Signature verification did not report a good signature. Refusing to publish."
-            exit 1
-          }
 
       - name: The tag must match the version in the manifest
         run: |
@@ -84,10 +63,8 @@ jobs:
 
           \`\`\`
           sha256sum -c SHA256SUMS
-          git config gpg.ssh.allowedSignersFile .github/allowed_signers
-          git tag -v ${GITHUB_REF_NAME}
           \`\`\`
 
-          The checksum proves the download is intact. The tag signature proves it came from us:
-          whoever could alter the archive could alter the checksum file beside it, so both matter." \
+          The checksum proves the download is intact. It does not prove who published it: whoever
+          could alter the archive could alter the checksum file beside it." \
             dist/*
