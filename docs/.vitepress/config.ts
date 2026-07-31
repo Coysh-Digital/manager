@@ -14,7 +14,7 @@ import { defineConfig } from 'vitepress'
  * see cloud/deploy/ploi/README.md in the private cloud repository.
  *
  * Every page stays at the path it already had. `install.md`, `env.md`, `backup.md`, `security.md`,
- * `reverse-proxy.md`, `upgrade.md`, `rollback.md` and `verify.md` are referenced from README.md,
+ * `reverse-proxy.md`, `upgrade.md` and `rollback.md` are referenced from README.md,
  * LICENSE.md, .env.example, compose.yaml, the release workflow and the output of four console
  * commands. Rearranging them into folders for tidier URLs would break every one of those, including
  * messages printed to an operator in the middle of an incident. The sidebar groups them without
@@ -76,7 +76,7 @@ export default defineConfig({
     nav: [
       { text: 'Guide', link: '/getting-started', activeMatch: '^/(getting-started|craft-plugin|pairing|capabilities|monitoring)' },
       { text: 'Backups', link: '/backups', activeMatch: '^/(backups|recovery-keys|restoring)' },
-      { text: 'Self-hosting', link: '/install', activeMatch: '^/(install|env|reverse-proxy|upgrade|rollback|backup|verify|security)' },
+      { text: 'Self-hosting', link: '/install', activeMatch: '^/(install|env|reverse-proxy|upgrade|rollback|backup|security)' },
       { text: 'Product', link: `${SITE}/features` },
       { text: 'Pricing', link: `${SITE}/pricing` },
     ],
@@ -117,7 +117,6 @@ export default defineConfig({
           { text: 'Upgrading', link: '/upgrade' },
           { text: 'Rolling back', link: '/rollback' },
           { text: 'Platform backups', link: '/backup' },
-          { text: 'Verifying a release', link: '/verify' },
           { text: 'Security', link: '/security' },
         ],
       },

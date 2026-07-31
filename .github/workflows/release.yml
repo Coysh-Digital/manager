@@ -88,7 +88,6 @@ jobs:
           git tag -v ${GITHUB_REF_NAME}
           \`\`\`
 
-          The checksum proves the download is intact. The tag signature proves it came from us —
-          whoever could alter the archive could alter the checksum file beside it, so both matter.
-          See [docs/verify.md](docs/verify.md)." \
+          The checksum proves the download is intact. The tag signature proves it came from us:
+          whoever could alter the archive could alter the checksum file beside it, so both matter." \
             dist/*
