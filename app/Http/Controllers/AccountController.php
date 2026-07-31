@@ -210,6 +210,52 @@ final class AccountController
         return back()->with('status', 'Password changed. Every other session has been signed out.');
     }
 
+    /**
+     * Change the name this account is shown under.
+     *
+     * The name appears beside every audit event the account produces and on every backup it requests,
+     * so a stale one makes the audit log harder to read for exactly the person trying to read it —
+     * which is why "ask an administrator to change it in the database" was not a good enough answer.
+     *
+     * The email address is deliberately not editable here, and that is a decision rather than an
+     * omission. It identifies the account for sign-in, password resets, invitations and every audit
+     * row already written, so changing it is an account-recovery flow — proving the new address,
+     * handling the window where neither is confirmed, deciding what happens to a pending invitation —
+     * and none of that exists. A field that quietly moved sign-in to an unverified address would be
+     * worse than no field.
+     */
+    public function updateProfile(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:191'],
+        ]);
+
+        $name = trim($validated['name']);
+
+        // Same early return as the organisation settings use. An audit log full of "changed the name
+        // to the name it already was" is a log nobody reads.
+        if ($name === $user->name) {
+            return back()->with('status', 'Nothing to change.');
+        }
+
+        $before = ['name' => $user->name];
+
+        $user->forceFill(['name' => $name])->save();
+
+        $this->audit->record(
+            action: 'user.profile.updated',
+            actor: $user,
+            targetType: 'user',
+            targetId: $user->external_id,
+            before: $before,
+            after: ['name' => $name],
+        );
+
+        return back()->with('status', 'Your name has been updated.');
+    }
+
     public function regenerateRecoveryCodes(Request $request): RedirectResponse
     {
         $codes = $this->recoveryCodes->regenerate($request->user());

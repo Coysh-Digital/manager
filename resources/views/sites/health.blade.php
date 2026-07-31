@@ -56,20 +56,37 @@
 
                     @php
                         $figures = [
-                            'Check-ins' => $uptime->received.' of ~'.$uptime->expected,
-                            'Gaps' => (string) count($uptime->outages),
-                            'Longest gap' => $uptime->longest?->duration() ?? 'None',
-                            'Last check-in' => $uptime->lastSeenAt?->diffForHumans(short: true) ?? 'never',
+                            'Check-ins' => [
+                                $uptime->received.' of ~'.$uptime->expected,
+                                'Approximate because the period is measured from whichever is later, the start of the window or the site being added — and because a site may report from more than one trigger.',
+                            ],
+                            'Gaps' => [(string) count($uptime->outages), null],
+                            'Longest gap' => [$uptime->longest?->duration() ?? 'None', null],
+                            'Last check-in' => [$uptime->lastSeenAt?->diffForHumans(short: true) ?? 'never', null],
                         ];
                     @endphp
 
-                    @foreach ($figures as $label => $value)
+                    @foreach ($figures as $label => [$value, $explanation])
                         <div class="flex flex-col gap-1">
-                            <span class="font-mono text-[10px] uppercase tracking-[0.07em] text-text-3">{{ $label }}</span>
+                            <span class="font-mono text-[10px] uppercase tracking-[0.07em] text-text-3"
+                                  @if ($explanation) title="{{ $explanation }}" @endif>{{ $label }}</span>
                             <span class="font-mono text-[13px] tabular">{{ $value }}</span>
                         </div>
                     @endforeach
                 </div>
+
+                @if ($uptime->reportsMoreOftenThanExpected())
+                    {{-- More check-ins than intervals is the normal result of running cron *and*
+                         leaving the connector's web trigger on: the two throttle separately and
+                         neither knows about the other. Without this line the figure reads as a
+                         broken counter. --}}
+                    <p class="border-b border-border px-4 py-2.5 text-[12.5px] text-text-2">
+                        This site checks in more often than the {{ $uptime->intervalMinutes() }}-minute schedule asks for,
+                        which usually means cron and the connector's web trigger are both reporting. Not a fault —
+                        reporting above is measured from time covered, not from check-ins counted, so the extra ones
+                        change nothing.
+                    </p>
+                @endif
 
                 <div class="px-4 py-4">
                     @php

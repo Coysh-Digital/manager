@@ -80,7 +80,61 @@ one-time setup flow.
 
 ## Mail
 
-Standard Laravel `MAIL_*` variables. Used for password resets and verification.
+Standard Laravel `MAIL_*` variables, configured here and nowhere else — there is no mail settings
+screen, and nothing about this configuration is displayed in the interface. Whoever can reach the
+Settings page is not necessarily whoever holds the relay's credentials.
+
+**Set this up.** Password resets and invitations are how anybody other than the first account gets in,
+and the default writes them to the log instead of sending them. The failure mode is silence: somebody
+invites a colleague, nothing arrives, and nothing reports a problem. `manager:doctor` warns while this
+is unconfigured, and `manager:user:password` exists as the way in when it is.
+
+| Variable | Default | Notes |
+|---|---|---|
+| `MAIL_MAILER` | `log` | The transport. `smtp`, `postmark`, `resend`, `ses`, `sendmail`, or `log` to write messages to `storage/logs` instead of sending them. |
+| `MAIL_FROM_ADDRESS` | empty | The envelope sender. Most relays reject a message without one, and most spam filters distrust one that does not match the sending domain. |
+| `MAIL_FROM_NAME` | `${APP_NAME}` | What recipients see in the From line. |
+
+### SMTP
+
+Any relay — Fastmail, Mailgun, Postmark's SMTP interface, your own Postfix. Set `MAIL_MAILER=smtp`
+and:
+
+| Variable | Default | Notes |
+|---|---|---|
+| `MAIL_HOST` | `127.0.0.1` | The relay's hostname. |
+| `MAIL_PORT` | `2525` | Usually 587 for submission with STARTTLS, or 465 for implicit TLS. |
+| `MAIL_USERNAME` | empty | |
+| `MAIL_PASSWORD` | empty | |
+| `MAIL_SCHEME` | empty | `smtps` forces implicit TLS. Leave unset for STARTTLS on 587. |
+| `MAIL_EHLO_DOMAIN` | app host | What this server calls itself when greeting the relay. Some relays check it against your SPF record. |
+
+### API transports
+
+No host or port; each takes one key, set in `config/services.php`'s block for it.
+
+| Transport | Set |
+|---|---|
+| `postmark` | `MAIL_MAILER=postmark`, `POSTMARK_TOKEN` |
+| `resend` | `MAIL_MAILER=resend`, `RESEND_API_KEY` |
+| `ses` | `MAIL_MAILER=ses`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION` |
+
+### Proving it works
+
+```bash
+php artisan manager:mail-test you@example.org
+```
+
+Sends immediately rather than queueing — a queued test reports success as soon as the job is accepted,
+which is the one thing already known — and prints the transport's error in full if it fails. That is
+usually the useful part: `535 authentication failed` and `certificate verify failed` want different
+fixes.
+
+An owner can do the same from the Settings screen, which sends to their own address. That path reports
+only the exception's class name, because it renders into a web page and a mail exception can carry the
+credentials it was using. Run the command when you need the detail.
+
+Either way, "sent without error" means the relay accepted the message, not that it arrived.
 
 ## Site backups
 

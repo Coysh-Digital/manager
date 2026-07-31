@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Domain\Findings\Severity;
+use App\Domain\Health\Diagnostics;
 use App\Models\AuditEvent;
 use App\Models\CapabilityGrant;
 use App\Models\Connector;
@@ -11,6 +12,10 @@ use App\Models\Membership;
 use App\Models\Organisation;
 use App\Models\Site;
 use App\Models\User;
+use Illuminate\Mail\Message;
+use Illuminate\Support\Facades\Mail;
+use Symfony\Component\Mime\Address;
+use Symfony\Component\Mime\Email;
 
 beforeEach(function (): void {
     $this->organisation = Organisation::factory()->create(['name' => 'Coysh Digital']);
@@ -251,4 +256,100 @@ it('hides the irreversible actions from a non-owner', function (): void {
         ->get('/settings')
         ->assertOk()
         ->assertDontSee('Actions that cannot be undone');
+});
+
+/*
+ | Mail
+ |-------------------------------------------------------------------------------------------------
+ |
+ | Configured in the environment and displayed nowhere. "A transport is configured" and "mail leaves
+ | this server" are different claims, and only one of them can be tested from a button.
+ */
+
+it('sends a test message to the owner and nobody else', function (): void {
+    // Asserted against the callback rather than through Mail::fake(). Mail::raw() builds no Mailable,
+    // so there is nothing for assertSent() to inspect — the same limitation EmailTransport documents,
+    // and the reason its body is a public method.
+    $addressed = null;
+
+    Mail::shouldReceive('raw')->once()->andReturnUsing(function (string $body, callable $callback) use (&$addressed): void {
+        $message = new Message(new Email);
+        $callback($message);
+
+        $addressed = array_map(
+            static fn (Address $address): string => $address->getAddress(),
+            $message->getSymfonyMessage()->getTo(),
+        );
+    });
+
+    $this->actingAs($this->owner)->withSession(['auth.password_confirmed_at' => now()->timestamp])
+        ->post(route('settings.mail.test'))
+        ->assertRedirect()
+        ->assertSessionHas('status');
+
+    // No destination field, so no way to point this installation's relay at an arbitrary address.
+    expect($addressed)->toBe([$this->owner->email]);
+
+    expect(AuditEvent::query()->where('action', 'settings.mail.tested')->sole()->outcome)
+        ->toBe(AuditEvent::OUTCOME_SUCCESS);
+});
+
+it('never puts mail configuration on the settings screen', function (): void {
+    config()->set('mail.default', 'smtp');
+    config()->set('mail.mailers.smtp.host', 'smtp.internal.example');
+    config()->set('mail.mailers.smtp.username', 'postmaster@example.org');
+    config()->set('mail.mailers.smtp.password', 'hunter2');
+    config()->set('mail.from.address', 'manager@example.org');
+
+    $html = $this->actingAs($this->owner)->get(route('settings.show'))->assertOk()->getContent();
+
+    // Whoever can reach this screen is not necessarily whoever holds the relay's credentials, and the
+    // health check answers the only question the screen needs to: will a password reset arrive.
+    expect($html)->not->toContain('smtp.internal.example')
+        ->and($html)->not->toContain('postmaster@example.org')
+        ->and($html)->not->toContain('hunter2')
+        ->and($html)->not->toContain('manager@example.org')
+        ->and($html)->toContain('Send a test email');
+});
+
+it('warns rather than failing when no mail transport is configured', function (): void {
+    config()->set('mail.default', 'log');
+
+    $mail = collect(app(Diagnostics::class)->all())->firstWhere('name', 'Mail');
+
+    expect($mail->warned())->toBeTrue()
+        ->and($mail->remedy)->toContain('MAIL_MAILER');
+
+    // Deliberately not a readiness probe: an orchestrator must not pull a working instance out of
+    // rotation because nobody set up a relay.
+    expect(collect(app(Diagnostics::class)->readiness())->pluck('name'))->not->toContain('Mail');
+});
+
+it('reports a failing transport without repeating what it was configured with', function (): void {
+    Mail::shouldReceive('raw')->once()->andThrow(new RuntimeException('535 auth failed for postmaster@example.org with hunter2'));
+
+    $response = $this->actingAs($this->owner)->withSession(['auth.password_confirmed_at' => now()->timestamp])
+        ->post(route('settings.mail.test'))
+        ->assertRedirect();
+
+    $warning = session('warning');
+
+    // A mail exception can carry the transport configuration, credentials included, and this response
+    // is a web page. The class name is enough to tell somebody where to look; the command prints the
+    // rest.
+    expect($warning)->toContain('RuntimeException')
+        ->and($warning)->not->toContain('hunter2')
+        ->and($warning)->not->toContain('535 auth failed');
+
+    expect(AuditEvent::query()->where('action', 'settings.mail.tested')->sole()->outcome)
+        ->toBe(AuditEvent::OUTCOME_FAILURE);
+});
+
+it('keeps the test send to owners', function (): void {
+    $member = User::factory()->create(['email_verified_at' => now()]);
+    Membership::factory()->for($member)->for($this->organisation)->create();
+
+    $this->actingAs($member)->withSession(['auth.password_confirmed_at' => now()->timestamp])
+        ->post(route('settings.mail.test'))
+        ->assertForbidden();
 });

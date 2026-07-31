@@ -223,6 +223,58 @@ it('does not expect fewer check-ins than a well-behaved site sends', function ()
         ->and($window->expected)->toBe(8);
 });
 
+it('explains a site that checks in more often than the schedule asks for', function (): void {
+    /*
+     | The sibling of the case above, and the opposite mistake to make about it.
+     |
+     | "37 of ~35" is not a counting error. `expected` models one producer beating on a fixed
+     | interval; a connector has two that throttle independently — the cron task and the web trigger
+     | that fires off ordinary traffic — so a busy site with both enabled sits above the estimate
+     | permanently. Clamping the count would hide a figure worth having; the screen explains it
+     | instead.
+     */
+    $this->site->forceFill(['created_at' => now()->subMinutes(30)])->save();
+
+    // Every five minutes as asked, plus a handful of extra beats from the web trigger.
+    for ($minute = 0; $minute <= 30; $minute += 5) {
+        Heartbeat::factory()->for($this->site)->create(['received_at' => now()->subMinutes(30 - $minute)]);
+    }
+
+    foreach ([27, 18, 9] as $minutesAgo) {
+        Heartbeat::factory()->for($this->site)->create(['received_at' => now()->subMinutes($minutesAgo)]);
+    }
+
+    $window = app(SiteUptime::class)->for($this->site->fresh(), 24);
+
+    expect($window->received)->toBe(10)
+        ->and($window->expected)->toBe(7)
+        ->and($window->reportsMoreOftenThanExpected())->toBeTrue()
+
+        // The extra beats must not flatter the figure the badge is drawn from.
+        ->and($window->availability)->toBeLessThanOrEqual(100.0);
+
+    $this->actingAs($this->user)
+        ->get(route('sites.health', $this->site))
+        ->assertOk()
+        ->assertSee('10 of ~7')
+        ->assertSee('checks in more often than the 5-minute schedule', false);
+});
+
+it('says nothing about the schedule when a site keeps to it', function (): void {
+    $this->site->forceFill(['created_at' => now()->subMinutes(35)])->save();
+
+    for ($minute = 0; $minute <= 35; $minute += 5) {
+        Heartbeat::factory()->for($this->site)->create(['received_at' => now()->subMinutes(35 - $minute)]);
+    }
+
+    expect(app(SiteUptime::class)->for($this->site->fresh(), 24)->reportsMoreOftenThanExpected())->toBeFalse();
+
+    $this->actingAs($this->user)
+        ->get(route('sites.health', $this->site))
+        ->assertOk()
+        ->assertDontSee('checks in more often than');
+});
+
 it('does not describe an hour in progress as though it were over', function (): void {
     // The same off-by-one in the chart: a bucket still filling was measured against a whole hour's
     // worth of check-ins, so it read "3 of 12" while the bar beside it — already scaled by elapsed

@@ -45,6 +45,35 @@
                     </div>
                 @endforeach
             </div>
+
+            {{--
+                Mail is configured in the environment and nothing about it is displayed here — not the
+                host, not the port, not the sender address. Whoever can reach this screen is not
+                necessarily whoever holds those credentials, and the check above already answers the
+                only question this screen needs to: will a password reset arrive.
+
+                What is offered instead is proof. "A transport is configured" and "mail leaves this
+                server" are different claims, and only one of them can be tested from a button.
+            --}}
+            @if ($membership->isOwner())
+                <div class="flex flex-wrap items-center justify-between gap-3 border-t border-border bg-surface-2 px-4 py-3">
+                    <p class="max-w-[70ch] text-[12px] leading-relaxed text-text-2">
+                        Mail is configured with the <span class="font-mono text-[11.5px]">MAIL_*</span>
+                        variables in <span class="font-mono text-[11.5px]">.env</span> — SMTP, Postmark,
+                        Resend and SES all work out of the box. See
+                        <span class="font-mono text-[11.5px]">docs/env.md</span> for the full list. Sending
+                        a test proves delivery in a way a configuration check cannot.
+                    </p>
+
+                    <form method="POST" action="{{ route('settings.mail.test') }}">
+                        @csrf
+                        <button type="submit"
+                                class="h-[34px] whitespace-nowrap rounded-[7px] border border-border-2 bg-surface px-3.5 text-[12.5px] font-medium text-text hover:bg-row-hover">
+                            Send a test email
+                        </button>
+                    </form>
+                </div>
+            @endif
         </div>
 
         <div class="mb-3.5 overflow-hidden rounded-[10px] border border-border bg-surface shadow-[var(--shadow)]">

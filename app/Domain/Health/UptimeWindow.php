@@ -28,7 +28,32 @@ final class UptimeWindow
         public readonly ?Outage $longest,
         public readonly array $buckets,
         public readonly ?Carbon $lastSeenAt,
+        public readonly int $interval = 300,
     ) {}
+
+    /**
+     * Whether the site checked in more often than the schedule asks for.
+     *
+     * Not a fault, and not a counting error either, which is why it needs saying rather than fixing.
+     * `expected` models one producer beating on a fixed interval; `received` counts the reports that
+     * arrived, and a connector has two independent ways of sending them — the cron task, and the web
+     * trigger that fires off ordinary traffic. They throttle separately and neither knows about the
+     * other, so a busy site with both enabled lands somewhere above the estimate and stays there.
+     *
+     * Reading "37 of ~35" with no explanation, people reasonably conclude the counter is broken.
+     */
+    public function reportsMoreOftenThanExpected(): bool
+    {
+        return $this->received > $this->expected;
+    }
+
+    /**
+     * The check-in schedule in minutes, for saying so on screen.
+     */
+    public function intervalMinutes(): int
+    {
+        return max(1, (int) round($this->interval / 60));
+    }
 
     /**
      * Whether there is enough here to say anything at all.

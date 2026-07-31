@@ -134,7 +134,43 @@ final class Diagnostics
             $this->nonceStore(),
             $this->storageWritable(),
             $this->queue(),
+            $this->mail(),
         ];
+    }
+
+    /**
+     * Whether outbound mail is configured at all.
+     *
+     * Not in {@see readiness()}, deliberately, for the reason given there: an orchestrator must not
+     * pull a working instance out of rotation because nobody set up a mail relay.
+     *
+     * Reports a status and no values. Everything this reads comes from the environment, and an
+     * operator who can see this screen may not be the operator who holds the credentials — so the
+     * host, the port, the username and the from-address are all things this check knows and never
+     * says. What matters is the answer to "will a password reset arrive", and that is a yes or a no.
+     */
+    private function mail(): Check
+    {
+        $mailer = (string) config('mail.default');
+
+        if ($mailer === '' || in_array($mailer, ['log', 'array'], true)) {
+            return Check::warn(
+                'Mail',
+                'No mail transport is configured, so nothing is delivered.',
+                'Set MAIL_MAILER and the matching MAIL_* variables. Password resets, invitations and '
+                    .'notification emails cannot reach anybody until you do. See docs/env.md.',
+            );
+        }
+
+        if (! is_string(config('mail.from.address')) || config('mail.from.address') === '') {
+            return Check::warn(
+                'Mail',
+                'A transport is configured but no sender address is set.',
+                'Set MAIL_FROM_ADDRESS. Most relays reject a message with no envelope sender.',
+            );
+        }
+
+        return Check::pass('Mail', 'A transport and a sender address are configured. Send a test from Settings to prove delivery.');
     }
 
     private function database(): Check
