@@ -46,7 +46,6 @@ final class SettingsController
         return view('settings.index', [
             'organisation' => $organisation,
             'checks' => $this->diagnostics->all(),
-            'edition' => config('manager.edition'),
             'membership' => app(Membership::class),
 
             'siteCount' => $organisation->sites()->active()->count(),

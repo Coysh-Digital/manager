@@ -114,21 +114,37 @@ it('rolls the organisation back when provisioning fails', function (): void {
         ->and(Membership::query()->count())->toBe(0);
 });
 
-it('fails the doctor when an installation calls itself cloud but still wraps keys from APP_KEY', function (): void {
-    config()->set('manager.edition', 'cloud');
+it('has no notion of an edition at all', function (): void {
+    /*
+     | This repository is the self-hosted product, full stop.
+     |
+     | It used to carry a MANAGER_EDITION variable and a doctor check that failed when an installation
+     | called itself "cloud" while still wrapping backup keys from APP_KEY. That check was useful, and
+     | it was useful to *Cloud* — a self-hosted operator could never trip it, and the variable was not
+     | even in .env.example, because there was nothing for them to set it to.
+     |
+     | Carrying it here meant somebody reading the health checks found one about a key service they
+     | cannot have, and a settings screen with a badge that is always the same word. The check now
+     | lives in the hosting layer, which is the thing it is actually about.
+     |
+     | What stays is the seam itself: contracts with self-hosted implementations bound behind
+     | singletonIf. That is not Cloud scaffolding, it is how the core avoids caring.
+     */
+    expect(config()->has('manager.edition'))->toBeFalse();
 
-    $checks = collect(app(Diagnostics::class)->all())
-        ->filter(fn ($check): bool => $check->name === 'Edition');
+    $names = collect(app(Diagnostics::class)->all())->pluck('name');
 
-    expect($checks)->toHaveCount(1)
-        ->and($checks->first()->status)->toBe('fail');
+    expect($names)->not->toContain('Edition');
 });
 
-it('passes the doctor on a self-hosted installation', function (): void {
-    config()->set('manager.edition', 'self-hosted');
+it('runs every check without one', function (): void {
+    // The removal must not have left a doctor that half-works. Every check still reports, and none of
+    // them reaches for a config key that is gone.
+    $checks = app(Diagnostics::class)->all();
 
-    $check = collect(app(Diagnostics::class)->all())
-        ->first(fn ($c): bool => $c->name === 'Edition');
+    expect($checks)->not->toBeEmpty();
 
-    expect($check->status)->toBe('pass');
+    foreach ($checks as $check) {
+        expect($check->status)->toBeIn(['pass', 'warn', 'fail']);
+    }
 });

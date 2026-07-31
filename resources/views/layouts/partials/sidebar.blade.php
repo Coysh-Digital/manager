@@ -17,7 +17,7 @@
         <div class="flex flex-col gap-px">
             <span class="text-sm font-semibold tracking-[-0.01em]">Manager</span>
             <span class="font-mono text-[9.5px] uppercase tracking-[0.04em] text-text-3">
-                {{ config('manager.edition') === 'cloud' ? 'Cloud' : 'Self-hosted' }}
+                Self-hosted
             </span>
         </div>
 

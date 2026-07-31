@@ -8,18 +8,6 @@ return [
 
     /*
     |---------------------------------------------------------------------------------------------
-    | Edition
-    |---------------------------------------------------------------------------------------------
-    |
-    | "self-hosted" or "cloud". The same core runs both; this only selects which implementations
-    | are bound for the cloud-specific contracts, and which hardening checks apply.
-    |
-    */
-
-    'edition' => env('MANAGER_EDITION', 'self-hosted'),
-
-    /*
-    |---------------------------------------------------------------------------------------------
     | Pairing
     |---------------------------------------------------------------------------------------------
     |

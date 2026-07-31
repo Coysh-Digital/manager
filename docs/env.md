@@ -13,7 +13,6 @@ request.
 | `APP_URL` | — | **Required.** The address browsers and connectors actually use. Cookie security and generated links depend on it. |
 | `APP_ENV` | `production` | |
 | `APP_DEBUG` | `false` | The container **refuses to start** with this on in production. |
-| `MANAGER_EDITION` | `self-hosted` | Selects which implementations are bound for cloud-specific contracts. |
 
 ## Database
 

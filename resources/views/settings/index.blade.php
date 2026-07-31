@@ -8,11 +8,7 @@
         <div class="mb-5 flex flex-col gap-1.5">
             <h1 class="text-[22px] font-semibold tracking-[-0.015em]">Settings</h1>
             <p class="text-[13px] text-text-2">
-                @if ($edition === 'cloud')
-                    This installation is hosted by Coysh Digital.
-                @else
-                    This installation runs on your own infrastructure. Coysh Digital has no access to it.
-                @endif
+                This installation runs on your own infrastructure. Coysh Digital has no access to it.
             </p>
         </div>
 
@@ -115,10 +111,6 @@
                 <div class="flex flex-col gap-1 bg-surface-2 px-4 py-3">
                     <span class="font-mono text-[9.5px] uppercase tracking-[0.07em] text-text-3">Active connectors</span>
                     <span class="text-[13px] tabular">{{ $connectorCount }}</span>
-                </div>
-                <div class="flex flex-col gap-1 bg-surface-2 px-4 py-3">
-                    <span class="font-mono text-[9.5px] uppercase tracking-[0.07em] text-text-3">Edition</span>
-                    <span class="text-[13px]">{{ $edition === 'cloud' ? 'Cloud' : 'Self-hosted' }}</span>
                 </div>
             </div>
         </div>
