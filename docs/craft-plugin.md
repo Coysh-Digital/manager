@@ -247,13 +247,7 @@ The plugin's own docs go deeper:
 
 ## Verifying what you installed
 
-The plugin is source-available and its releases are signed:
-
-```bash
-git tag -v v1.7.0
-```
-
-Every release also runs a set of build checks that fail the release rather than warning - no URL
+The plugin is source-available, and every release runs a set of build checks that fail the release rather than warning - no URL
 rules, no shell execution, no dependency outside a fixed allowlist, no destination or recovery key
 accepted from Manager for Craft. They are in `bin/verify-invariants.php` and they are short enough
 to read.

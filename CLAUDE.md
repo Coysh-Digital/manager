@@ -137,9 +137,11 @@ The packages depend on each other, so releases have an order:
 3. `platform` — regenerate `composer.lock`, which cannot satisfy `^1.2` until step 1 is done.
 4. `private/console` — merge `main`, resolve the `.gitignore` conflict deliberately, deploy.
 
-`platform`'s release workflow requires a **signed** tag, verified against `.github/allowed_signers`,
-and refuses to publish one that is not. `protocol` and `connector` have no such gate — v1.0.1 and
-v1.2.0 were cut unsigned.
+No repository verifies a release signature any more. `platform`'s workflow used to require a signed
+tag checked against `.github/allowed_signers` and refuse to publish an unsigned one; that gate, the
+signer files in all three repositories and the invariants asserting them were removed deliberately.
+A release still carries a SHA256 manifest and is built reproducibly, so integrity is checkable;
+authorship is not.
 
 Nothing in `platform/` needs a local path repository any more. Before v1.2.0 was published, the
 protocol had to be symlinked from a sibling checkout via an uncommitted `repositories` block; that is

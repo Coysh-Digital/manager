@@ -6,14 +6,12 @@
 # it must run on a machine that has only the download, with no repository, no toolchain and no trust
 # in anything already present.
 #
-# It answers two questions, and it is worth being clear that they are different:
+# It answers one question: is this the artifact whose checksum was published?  (integrity)
 #
-#   1. Is this the artifact whose checksum was published?  (integrity)
-#   2. Was that checksum published by whoever holds the signing key?  (authenticity)
-#
-# A checksum alone answers only the first. Somebody who could replace the download could replace the
-# checksum file beside it, so the second question is answered by the signed tag — which is why this
-# tells you how to check that too rather than pretending the checksum is enough.
+# It does not answer who published it. Somebody who could replace the download could replace the
+# checksum file beside it, and there is no longer a signed tag to check that against. Said here
+# rather than left to be inferred, because a script called verify-release should not imply more
+# than it checks.
 #
 # Usage:  bin/verify-release.sh [directory-containing-the-download]
 set -eu
@@ -47,14 +45,5 @@ VERSION=$(printf '%s' "$ARCHIVE" | sed 's/^manager-//; s/\.tar\.gz$//')
 echo ""
 echo "Integrity confirmed: this is the artifact that was published."
 echo ""
-echo "That is only half of it. A checksum proves the download is intact, not that it came"
-echo "from Coysh Digital — whoever could alter the archive could alter SHA256SUMS beside it."
-echo "To confirm authenticity, verify the signature on the tag it was built from:"
-echo ""
-echo "  git clone https://github.com/Coysh-Digital/manager.git"
-echo "  cd manager"
-echo "  git config gpg.ssh.allowedSignersFile .github/allowed_signers"
-echo "  git tag -v v${VERSION}"
-echo ""
-echo "Expect \"Good git signature\". Cross-check the key against"
-echo "https://github.com/timcoysh.keys, which is served from outside this repository."
+echo "That is integrity, not authenticity. A checksum proves the download is intact, not that"
+echo "it came from Coysh Digital: whoever could alter the archive could alter SHA256SUMS beside it."
