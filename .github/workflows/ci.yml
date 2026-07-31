@@ -119,6 +119,14 @@ jobs:
       - name: Compiled assets match the source
         run: |
           npm ci
+
+          # The counterpart to `composer audit` above, and it exists because its absence let a
+          # high-severity advisory sit in this tree. The documentation toolchain pulled a vulnerable
+          # esbuild through an older Vite; none of it ever shipped, since the Dockerfile removes the
+          # whole toolchain and public/build is committed, but a security product should not carry one
+          # to build a documentation site. VitePress now has its own manifest under docs/.
+          npm audit --audit-level=high
+
           npm run build
           git diff --exit-code -- public/build \
             || { echo "public/build is out of date. Run 'npm run build' and commit the result."; exit 1; }

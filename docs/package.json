@@ -1,0 +1,14 @@
+{
+    "$schema": "https://www.schemastore.org/package.json",
+    "private": true,
+    "type": "module",
+    "_comment": "The documentation toolchain, kept out of the application's dependency tree on purpose. VitePress 1.x pins an older Vite than the app uses, which produced a permanent peer-dependency conflict and pulled a known-vulnerable esbuild into every `npm install` in the repository. None of it ever shipped — the Dockerfile removes the whole toolchain and public/build is committed — but a security product should not carry a high-severity advisory in its public tree to build a documentation site. Building the docs is now `cd docs && npm ci && npm run build`, and the application's own `npm audit` is clean enough to gate CI on.",
+    "scripts": {
+        "dev": "vitepress dev .",
+        "build": "vitepress build .",
+        "preview": "vitepress preview ."
+    },
+    "devDependencies": {
+        "vitepress": "^1.6.4"
+    }
+}
