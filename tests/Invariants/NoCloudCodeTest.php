@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Contracts\DirectUploadGrants;
 use App\Contracts\KeyService;
+use App\Contracts\MailAdministration;
 use App\Contracts\ObjectStore;
 use App\Contracts\ProductLabel;
 use App\Contracts\Provisioner;
@@ -14,6 +15,7 @@ use App\Support\SelfHosted\DiskObjectStore;
 use App\Support\SelfHosted\NoDirectUploads;
 use App\Support\SelfHosted\NullProvisioner;
 use App\Support\SelfHosted\SelfHostedLabel;
+use App\Support\SelfHosted\SelfHostedMail;
 use Illuminate\Support\Facades\File;
 
 /**
@@ -166,6 +168,7 @@ it('keeps the edition seams as contracts rather than as dependencies', function 
         StorageQuota::class => ConfiguredQuota::class,
         DirectUploadGrants::class => NoDirectUploads::class,
         ProductLabel::class => SelfHostedLabel::class,
+        MailAdministration::class => SelfHostedMail::class,
     ];
 
     foreach ($seams as $contract => $implementation) {

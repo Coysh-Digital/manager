@@ -54,8 +54,13 @@
 
                 What is offered instead is proof. "A transport is configured" and "mail leaves this
                 server" are different claims, and only one of them can be tested from a button.
+
+                Both the paragraph and the button are for whoever holds the mail configuration. On a
+                hosted edition that is not the person reading this: the relay belongs to whoever runs
+                the service, and telling an administrator to edit a .env file they cannot reach is
+                worse than saying nothing. See App\Contracts\MailAdministration.
             --}}
-            @if ($membership->isOwner())
+            @if ($membership->isOwner() && $mailOperatorManaged)
                 <div class="flex flex-wrap items-center justify-between gap-3 border-t border-border bg-surface-2 px-4 py-3">
                     <p class="max-w-[70ch] text-[12px] leading-relaxed text-text-2">
                         Mail is configured with the <span class="font-mono text-[11.5px]">MAIL_*</span>

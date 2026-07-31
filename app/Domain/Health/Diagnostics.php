@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Health;
 
+use App\Contracts\MailAdministration;
 use App\Domain\Backup\BackupKeypair;
 use App\Domain\Backup\BackupService;
 use App\Domain\Connector\PlatformKeypair;
@@ -153,12 +154,22 @@ final class Diagnostics
     {
         $mailer = (string) config('mail.default');
 
+        /*
+         | Every remedy below names an environment variable, which is the right instruction for the
+         | person who holds the environment and useless to anybody else. On a hosted edition the
+         | relay belongs to whoever runs the service, so the check still reports whether mail works
+         | — that is worth knowing either way — and stops telling the reader to go and fix it.
+        */
+        $operatorManaged = app(MailAdministration::class)->operatorManaged();
+
         if ($mailer === '' || in_array($mailer, ['log', 'array'], true)) {
             return Check::warn(
                 'Mail',
                 'No mail transport is configured, so nothing is delivered.',
-                'Set MAIL_MAILER and the matching MAIL_* variables. Password resets, invitations and '
-                    .'notification emails cannot reach anybody until you do. See docs/env.md.',
+                $operatorManaged
+                    ? 'Set MAIL_MAILER and the matching MAIL_* variables. Password resets, invitations and '
+                        .'notification emails cannot reach anybody until you do. See docs/env.md.'
+                    : null,
             );
         }
 
@@ -166,11 +177,17 @@ final class Diagnostics
             return Check::warn(
                 'Mail',
                 'A transport is configured but no sender address is set.',
-                'Set MAIL_FROM_ADDRESS. Most relays reject a message with no envelope sender.',
+                $operatorManaged
+                    ? 'Set MAIL_FROM_ADDRESS. Most relays reject a message with no envelope sender.'
+                    : null,
             );
         }
 
-        return Check::pass('Mail', 'A transport and a sender address are configured. Send a test from Settings to prove delivery.');
+        // The second sentence names a button that is not on every edition's screen. Pointing at a
+        // control the reader cannot see is worse than stopping at the fact.
+        return Check::pass('Mail', $operatorManaged
+            ? 'A transport and a sender address are configured. Send a test from Settings to prove delivery.'
+            : 'A transport and a sender address are configured.');
     }
 
     private function database(): Check
