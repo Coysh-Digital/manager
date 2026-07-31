@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Domain\Job\JobRejectedException;
+use App\Domain\Job\JobService;
 use App\Models\AuditEvent;
 use App\Models\CapabilityGrant;
 use App\Models\Connector;
@@ -286,4 +288,72 @@ it('does not read a missing schedule field as turning backups off', function ():
         ])->assertRedirect();
 
     expect($site->fresh()->backup_schedule)->toBe('daily');
+});
+
+it('will not let a schedule be set before there is a key to encrypt to', function (): void {
+    /*
+     | The quietest failure this area had.
+     |
+     | The form saved, the audit log recorded it, the settings screen read "Every day" indefinitely,
+     | and ScheduleBackupsCommand skipped the site every hour with its reason going to cron's stdout
+     | and nowhere else. Somebody could believe a fleet had been backed up nightly for months on the
+     | evidence of a screen that agreed with them.
+    */
+    $this->key->forceFill(['state' => RecoveryKey::STATE_REVOKED, 'revoked_at' => now()])->save();
+
+    $site = ($this->makeSite)(['backup_schedule' => 'off']);
+
+    $admin = User::factory()->create(['email_verified_at' => now()]);
+    Membership::factory()->for($admin)->for($this->organisation)->admin()->create();
+
+    $this->actingAs($admin)
+        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
+        ->post("/sites/{$site->external_id}/settings", [
+            'name' => $site->name,
+            'expected_domain' => $site->expected_domain,
+            'environment' => $site->environment,
+            'backup_schedule' => 'daily',
+            'backup_schedule_hour' => 2,
+        ])
+        ->assertRedirect()
+        ->assertSessionHasErrors('backup_schedule');
+
+    expect($site->fresh()->backup_schedule)->toBe('off');
+});
+
+it('always lets a schedule be turned off', function (): void {
+    // Needing a recovery key in order to stop asking for backups would be absurd, and would strand
+    // an organisation whose key was revoked with a schedule it could not switch off.
+    $site = ($this->makeSite)(['backup_schedule' => 'daily']);
+
+    $this->key->forceFill(['state' => RecoveryKey::STATE_REVOKED, 'revoked_at' => now()])->save();
+
+    $admin = User::factory()->create(['email_verified_at' => now()]);
+    Membership::factory()->for($admin)->for($this->organisation)->admin()->create();
+
+    $this->actingAs($admin)
+        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
+        ->post("/sites/{$site->external_id}/settings", [
+            'name' => $site->name,
+            'expected_domain' => $site->expected_domain,
+            'environment' => $site->environment,
+            'backup_schedule' => 'off',
+        ])
+        ->assertRedirect()
+        ->assertSessionHasNoErrors();
+
+    expect($site->fresh()->backup_schedule)->toBe('off');
+});
+
+it('refuses to queue a backup for an organisation with no key, whoever asks', function (): void {
+    // The rule lives in JobService as well as in BackupReadiness, so a caller that never consults
+    // readiness — a command, a future screen — cannot create a job that can only be cancelled later.
+    $this->key->forceFill(['state' => RecoveryKey::STATE_REVOKED, 'revoked_at' => now()])->save();
+
+    $site = ($this->makeSite)();
+
+    expect(fn () => app(JobService::class)->enqueue($site, Jobs::BACKUP_CREATE))
+        ->toThrow(JobRejectedException::class);
+
+    expect(RemoteJob::query()->where('type', Jobs::BACKUP_CREATE)->count())->toBe(0);
 });

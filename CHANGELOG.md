@@ -69,6 +69,27 @@ taken, and no amount of re-sealing alters that.
 read those older artifacts. A fresh installation does not need them, and once your last legacy
 artifact expires you can remove them.
 
+### A recovery key is required before any backup, not only after the first one
+
+The paragraph above says "Backups will stop until you add a recovery key". Until now that was only
+true of organisations that already had one.
+
+The format floor ratchets from `v1` to `v2` when the first key is activated, and the requirement was
+written against the floor — so it applied to organisations that had complied with it and not to the
+ones that had not. A new organisation could take a `v1` backup, sealed to *this platform's* key,
+which is the arrangement the whole zero-knowledge change exists to end. Meanwhile the nightly
+schedule refused those same organisations outright and the settings screen told them "No backups can
+be taken yet", so three components held two rules between them and the strictest was the invisible
+one.
+
+Now: no active recovery key, no backup — manual, scheduled, or asked for by anything else. The
+button is not drawn, `JobService::enqueue()` refuses regardless of caller, and a schedule cannot be
+switched on until there is a key to encrypt to. Turning a schedule *off* never requires one.
+
+**Before you upgrade** — the steps are the same as above, and `coysh-digital/manager-restore` is now
+published on Packagist, so step 1 works as written. If you run a fleet with no recovery key today,
+its backups stop at this deploy rather than continuing in a form we could read.
+
 ### `MANAGER_EDITION` removed
 
 This repository is the self-hosted product. It carried an edition variable and a health check about a

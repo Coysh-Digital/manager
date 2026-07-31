@@ -32,6 +32,27 @@ it('tells an organisation with no key why it cannot back anything up', function 
         ->assertSee('rather than send us a database', false);
 });
 
+it('shows the commands that make a key, and where to read more', function (): void {
+    // "Generate the key with manager-restore keygen" assumed the reader knew how to get
+    // manager-restore. Until it was published on Packagist that was not a small assumption, and it
+    // is the only way to produce the thing every backup now requires.
+    $html = $this->actingAs($this->owner)->get('/settings')->assertOk()->getContent();
+
+    expect($html)->toContain('composer global require coysh-digital/manager-restore')
+        ->and($html)->toContain('manager-restore keygen')
+        ->and($html)->toContain('https://managerforcraft.com/docs/recovery-keys')
+        // The half that must never be pasted here, said where somebody is about to paste something.
+        ->and($html)->toContain('recovery.secret');
+});
+
+it('gives the recovery keys section an anchor the links can reach', function (): void {
+    // Several screens link to settings#recovery-keys. There was no such id, so every one of them
+    // landed at the top of a long page and left the reader to find it.
+    $html = $this->actingAs($this->owner)->get('/settings')->assertOk()->getContent();
+
+    expect($html)->toContain('id="recovery-keys"');
+});
+
 it('warns about a single point of failure while there is one key', function (): void {
     RecoveryKey::factory()->for($this->organisation)->create();
 

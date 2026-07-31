@@ -8,11 +8,11 @@ use App\Models\CapabilityGrant;
 use App\Models\Connector;
 use App\Models\Membership;
 use App\Models\Organisation;
+use App\Models\RecoveryKey;
 use App\Models\RemoteJob;
 use App\Models\Site;
 use App\Models\User;
 use coyshdigital\managerprotocol\Jobs;
-use coyshdigital\managerprotocol\Protocol;
 
 beforeEach(function (): void {
     $this->organisation = Organisation::factory()->create(['name' => 'Coysh Digital']);
@@ -24,6 +24,12 @@ beforeEach(function (): void {
 
     $this->site = Site::factory()->for($this->organisation)->connected()->create(['name' => 'Example Site']);
     Connector::factory()->for($this->site)->create();
+
+    // A backup needs a recovery key to encrypt to, whatever the format floor, so an organisation
+    // that can take one has a key. This used to be absent here, and the tests below passed because
+    // the rule only applied at the v2 floor — which no organisation reaches until it adds its first
+    // key, so the rule applied to nobody who had not already complied with it.
+    $this->key = RecoveryKey::factory()->for($this->organisation)->create();
 
     $this->recentAuth = ['auth.password_confirmed_at' => now()->timestamp];
 });
@@ -153,7 +159,11 @@ it('refuses a backup with a reason when the organisation has no recovery key to 
      | believing a site is backed up when it is not.
     */
     CapabilityGrant::factory()->for($this->site)->capability('backups:create')->create();
-    $this->organisation->forceFill(['backup_format_floor' => Protocol::BACKUP_FORMAT_V2])->save();
+
+    // No floor is set. That is the point: the rule used to apply only at v2, which an organisation
+    // reaches on its first key activation — so the only organisations exempt from "you need a key"
+    // were the ones that had never had one.
+    $this->key->forceFill(['state' => RecoveryKey::STATE_REVOKED, 'revoked_at' => now()])->save();
 
     $this->actingAs($this->owner)->withSession($this->recentAuth)
         ->post("/backups/sites/{$this->site->external_id}")
