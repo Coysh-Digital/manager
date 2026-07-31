@@ -9,11 +9,10 @@
         "monitoring",
         "self-hosted"
     ],
-    "license": "AGPL-3.0-or-later",
+    "license": "proprietary",
     "require": {
         "php": "^8.3",
         "bacon/bacon-qr-code": "^3.1",
-        "coysh-digital/manager-cloud-overlay": "*@dev",
         "coysh-digital/manager-protocol": "^1.2",
         "laravel/framework": "^13.8",
         "laravel/horizon": "^5.48",
@@ -116,20 +115,5 @@
         "security": "https://github.com/Coysh-Digital/manager/blob/main/SECURITY.md",
         "docs": "https://github.com/Coysh-Digital/manager/tree/main/docs",
         "email": "hello@coysh.digital"
-    },
-    "repositories": [
-        {
-            "name": "overlay",
-            "type": "path",
-            "url": "./cloud"
-        },
-        {
-            "name": "manager-protocol",
-            "type": "path",
-            "url": "/var/www/protocol",
-            "options": {
-                "symlink": true
-            }
-        }
-    ]
+    }
 }

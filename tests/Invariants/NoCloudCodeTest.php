@@ -42,7 +42,33 @@ use Illuminate\Support\Facades\File;
  * `.gitignore` and `.dockerignore` both exclude `cloud/`, and both are files somebody can edit. This
  * test is the thing that notices when they have been.
  */
+/**
+ * Whether this checkout is the private deployment rather than the public core.
+ *
+ * The two branches genuinely differ, and the difference has to be detectable from inside the tree: on
+ * `console` in the private mirror, `cloud/` is committed on purpose and is the whole point of the
+ * branch. On public `main` it must not exist. A check that fired on both would be wrong on one of
+ * them, and the one it would be wrong on is the one somebody would then disable.
+ *
+ * `composer.json` is the signal because it is the thing that actually differs: the private deployment
+ * requires the Cloud layer, and the public core cannot mention it.
+ */
+function isPrivateDeployment(): bool
+{
+    $manifest = @file_get_contents(base_path('composer.json')) ?: '';
+
+    return str_contains($manifest, 'manager-cloud-overlay')
+        || preg_match('~"autoload"[^}]*Cloud\\\\~s', $manifest) === 1;
+}
+
 it('has no Cloud implementation anywhere it could be committed or shipped', function (): void {
+    // Skipped on the private deployment, where Cloud code is expected and correct.
+    if (isPrivateDeployment()) {
+        expect(true)->toBeTrue();
+
+        return;
+    }
+
     $root = base_path();
 
     /*
@@ -83,6 +109,16 @@ it('has no Cloud implementation anywhere it could be committed or shipped', func
 it('carries no working copy of the overlay in the checkout', function (): void {
     // The specific accident: `cloud/` beside `app/`, holding a checkout of the private repository.
     // It has happened, which is why this is a test rather than a comment in a README.
+    //
+    // On the private deployment it is not an accident, it is the branch's reason for existing.
+    if (isPrivateDeployment()) {
+        expect(is_dir(base_path('cloud')))->toBeTrue(
+            'This is the private deployment and cloud/ is missing, so the Cloud layer would not load.'
+        );
+
+        return;
+    }
+
     $path = base_path('cloud');
 
     if (! is_dir($path)) {
