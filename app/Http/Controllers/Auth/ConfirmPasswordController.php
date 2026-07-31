@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Auth;
 
+use App\Support\ResumableInput;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -52,6 +53,32 @@ final class ConfirmPasswordController
         $request->session()->put('auth.password_confirmed_at', now()->timestamp);
         $request->user()->forceFill(['last_authenticated_at' => now()])->save();
 
-        return redirect()->intended(route('sites.index'));
+        /*
+         | Hand back whatever the gate interrupted.
+         |
+         | The captured return URL is preferred over `url.intended`, which for a POST holds the
+         | Referer rather than the action — and a Referrer-Policy is entitled to remove that
+         | header entirely, at which point `intended()` falls through to the fleet screen no matter
+         | where the person actually was.
+         |
+         | `withInput()` populates `_old_input`, so every `old()` call already written into the
+         | forms picks the values up with no change to the fields themselves. Nothing is replayed:
+         | see ResumableInput for why not.
+        */
+        $resumed = ResumableInput::resume();
+
+        if ($resumed === null) {
+            return redirect()->intended(route('sites.index'));
+        }
+
+        // Deliberately not `intended()`. For a POST, `url.intended` holds whatever the Referer said
+        // — the fleet screen, or nothing at all if a Referrer-Policy stripped it — and it would
+        // therefore win over the address resolved from the route that was actually interrupted.
+        $request->session()->forget('url.intended');
+
+        return redirect()
+            ->to($resumed['url'])
+            ->withInput($resumed['input'])
+            ->with('manager.resumed_form', $resumed['route']);
     }
 }

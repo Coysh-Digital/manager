@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Middleware\EnsureSecondFactorWhenRequired;
 use App\Http\Middleware\EnsureSetupIsAvailable;
 use App\Http\Middleware\EnsureSiteBelongsToOrganisation;
+use App\Http\Middleware\RequirePasswordConfirmation;
 use App\Http\Middleware\RequiresCapability;
 use App\Http\Middleware\ResolveOrganisation;
 use App\Http\Middleware\VerifyConnectorSignature;
@@ -44,6 +45,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'organisation' => ResolveOrganisation::class,
             'setup.available' => EnsureSetupIsAvailable::class,
             'second-factor' => EnsureSecondFactorWhenRequired::class,
+
+            // Overrides the framework's own 'password.confirm' alias — custom aliases are merged
+            // over the defaults, so this one wins. Same gate, same redirect; it additionally keeps
+            // the typed form, which Laravel's cannot because a POST body does not survive
+            // Redirector::guest(). See RequirePasswordConfirmation.
+            'password.confirm' => RequirePasswordConfirmation::class,
 
             // Applied to every route with a {site} parameter. Tenant scoping is not something an
             // action should have to remember.

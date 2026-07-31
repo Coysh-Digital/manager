@@ -35,7 +35,11 @@
             {{-- A details element rather than a modal. No JavaScript, and the form is linkable and
                  keyboard-navigable for free. --}}
             {{-- z-20 so the panel sits above the table's sticky header, which is z-1. --}}
-            <details class="group relative z-20">
+            {{-- Open when there is something in it to see: fields handed back after the recent-
+                 authentication gate interrupted the submission, or a validation error. Both used to
+                 land here collapsed, so the errors banner referred to a form nobody could see and a
+                 restored form looked like nothing had happened. --}}
+            <details class="group relative z-20" {{ $reopenAddSite || $errors->any() ? 'open' : '' }}>
                 <summary class="flex h-8 cursor-pointer list-none items-center rounded-[7px] border border-primary bg-primary px-3 text-[12.5px] font-medium text-primary-fg hover:bg-primary-hover">
                     Add a site
                 </summary>
@@ -65,9 +69,9 @@
                     <label class="flex flex-col gap-1.5">
                         <span class="text-[12.5px] font-medium">Environment</span>
                         <select name="environment" class="h-[34px] rounded-[7px] border border-border-2 bg-surface-2 px-2 text-[12.5px]">
-                            <option value="production">Production</option>
-                            <option value="staging">Staging</option>
-                            <option value="development">Development</option>
+                            <option value="production" @selected(old('environment', 'production') === 'production')>Production</option>
+                            <option value="staging" @selected(old('environment') === 'staging')>Staging</option>
+                            <option value="development" @selected(old('environment') === 'development')>Development</option>
                         </select>
                     </label>
 
