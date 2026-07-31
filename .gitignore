@@ -43,3 +43,9 @@ Thumbs.db
 # The overlay is meant to be mounted at /var/www/overlay and installed from a path repository, not
 # copied in here. See .ddev/docker-compose.overlay.yaml.
 /cloud/
+
+# Cloud-only tooling. These point at cloud/, which does not exist on this branch, and they live on
+# the console branch of the private mirror where that directory does. Ignored rather than deleted so
+# a developer working across both branches does not keep re-adding them here.
+/phpunit.cloud.xml
+/phpstan.cloud.neon
