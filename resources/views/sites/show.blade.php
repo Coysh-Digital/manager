@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', $site->name.' · Manager')
+@section('title', $site->name.' · Manager for Craft')
 @section('crumb', App\Support\Crumbs::site($site, 'Overview'))
 
 @section('content')

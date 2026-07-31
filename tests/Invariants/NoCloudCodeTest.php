@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Contracts\DirectUploadGrants;
 use App\Contracts\KeyService;
 use App\Contracts\ObjectStore;
+use App\Contracts\ProductLabel;
 use App\Contracts\Provisioner;
 use App\Contracts\StorageQuota;
 use App\Support\SelfHosted\ConfiguredQuota;
@@ -12,6 +13,7 @@ use App\Support\SelfHosted\DerivedKeyService;
 use App\Support\SelfHosted\DiskObjectStore;
 use App\Support\SelfHosted\NoDirectUploads;
 use App\Support\SelfHosted\NullProvisioner;
+use App\Support\SelfHosted\SelfHostedLabel;
 use Illuminate\Support\Facades\File;
 
 /**
@@ -163,6 +165,7 @@ it('keeps the edition seams as contracts rather than as dependencies', function 
         Provisioner::class => NullProvisioner::class,
         StorageQuota::class => ConfiguredQuota::class,
         DirectUploadGrants::class => NoDirectUploads::class,
+        ProductLabel::class => SelfHostedLabel::class,
     ];
 
     foreach ($seams as $contract => $implementation) {

@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Contracts\DirectUploadGrants;
 use App\Contracts\KeyService;
 use App\Contracts\ObjectStore;
+use App\Contracts\ProductLabel;
 use App\Contracts\Provisioner;
 use App\Contracts\StorageQuota;
 use App\Domain\Health\Diagnostics;
@@ -17,11 +18,12 @@ use App\Support\SelfHosted\DerivedKeyService;
 use App\Support\SelfHosted\DiskObjectStore;
 use App\Support\SelfHosted\NoDirectUploads;
 use App\Support\SelfHosted\NullProvisioner;
+use App\Support\SelfHosted\SelfHostedLabel;
 
 /*
  * The seam between the editions.
  *
- * Four contracts are bound with singletonIf so that an edition shipped as a Composer package can
+ * Six contracts are bound with singletonIf so that an edition shipped as a Composer package can
  * replace them. That is only safe if two things stay true: with nothing installed, this repository
  * resolves entirely to its own implementations; and an installation whose wiring disagrees with the
  * edition it claims to be says so out loud rather than quietly wrapping keys the wrong way.
@@ -38,7 +40,16 @@ it('resolves every seam to the self-hosted implementation with no overlay instal
     [Provisioner::class, NullProvisioner::class],
     [StorageQuota::class, ConfiguredQuota::class],
     [DirectUploadGrants::class, NoDirectUploads::class],
+    [ProductLabel::class, SelfHostedLabel::class],
 ]);
+
+it('says what it is under the wordmark without being told', function (): void {
+    // The label is the one seam a person can see, which makes it the one most likely to be "fixed"
+    // back into a config key the next time somebody wants the console to say something else. It is a
+    // binding for the same reason as the other five: a claim about what an installation is should
+    // follow from what is wired into it.
+    expect(app(ProductLabel::class)->label())->toBe('Self-hosted');
+});
 
 it('lets a later binding win, which is what singletonIf is for', function (): void {
     // Package-discovered providers register before application providers, so the core's bindings

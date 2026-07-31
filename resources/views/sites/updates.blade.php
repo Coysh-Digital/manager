@@ -115,6 +115,23 @@
 
                         <x-changelog-link :href="$row['changelog']" />
                     </div>
+
+                    @if ($row['name'] === 'Craft CMS' && $canReadChangelog)
+                        {{-- A <details>, like everything else on these screens that expands. The
+                             fetch happens on first open — the same moment the link beside it would
+                             have sent somebody to GitHub. --}}
+                        <details class="w-full border-t border-border pt-3"
+                                 data-changelog
+                                 data-changelog-url="{{ route('sites.updates.changelog', $site) }}">
+                            <summary class="cursor-pointer text-[12.5px] text-text-2 hover:text-primary">
+                                What changed between these versions
+                            </summary>
+
+                            <div class="pt-2.5" data-changelog-body>
+                                <p class="text-[12.5px] text-text-3">Reading the notes…</p>
+                            </div>
+                        </details>
+                    @endif
                 </div>
             @endforeach
         </div>
@@ -223,9 +240,13 @@
             </div>
 
             <div class="bg-surface-2 px-3.5 py-2.5 text-[12px] leading-relaxed text-text-3">
-                Manager reports that an update exists and whether it is a security release. It does not
-                fetch release notes: those describe what a version fixes, and holding that against a
-                named unpatched site is a liability rather than a feature.
+                Manager reports that an update exists and whether it is a security release. No site
+                ever sends release notes, and none are stored against a site: those describe what a
+                version fixes, and holding that beside the name of an unpatched site is a liability
+                rather than a feature. Craft's changelog above is read from Craft's own repository,
+                once for this installation and cached — the request says nothing about this site.
+                Plugin notes stay on the Plugin Store, because a plugin's report carries a handle and
+                no repository to read.
                 <strong>Not checked</strong> means exactly that — a plugin the site's update service
                 knows nothing about, usually a private or VCS-installed one. It is not the same as up
                 to date.

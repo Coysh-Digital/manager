@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Updates · Manager')
+@section('title', 'Updates · Manager for Craft')
 @section('crumb', App\Support\Crumbs::top('Updates'))
 
 @section('content')
@@ -173,9 +173,12 @@
         </div>
 
         <div class="bg-surface-2 px-3.5 py-2.5 text-[12px] text-text-3">
-            Manager reports that an update exists and whether it is a security release. It does not
-            fetch release notes: those describe what a version fixes, and holding that against a named
-            unpatched site is a liability rather than a feature.
+            Manager reports that an update exists and whether it is a security release. No site ever
+            sends release notes, and none are stored against a site: those describe what a version
+            fixes, and holding that beside the name of an unpatched site is a liability rather than a
+            feature. Craft's own published changelog can be read on a site's Updates screen, fetched
+            once for this installation and cached, carrying nothing about which sites exist or which
+            are behind.
         </div>
     </div>
 @endsection

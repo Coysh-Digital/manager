@@ -6,7 +6,14 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="palette-endpoint" content="{{ route('palette') }}">
     <meta name="robots" content="noindex, nofollow">
-    <title>@yield('title', 'Manager')</title>
+    <title>@yield('title', 'Manager for Craft')</title>
+
+    {{--
+        The same file the marketing site serves, byte for byte, so a pinned tab looks the same
+        whichever surface it came from. Its red is the light theme's --primary; a single static SVG
+        cannot follow the dark theme's shift, and matching managerforcraft.com is worth more.
+    --}}
+    <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
 
     {{--
         Applied before first paint, so the page never flashes the wrong theme on the way to the

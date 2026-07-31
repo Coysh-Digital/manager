@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Backups · Manager')
+@section('title', 'Backups · Manager for Craft')
 @section('crumb', App\Support\Crumbs::top('Backups'))
 
 @section('content')
@@ -50,6 +50,22 @@
             can decrypt them, so this is not end-to-end encryption. Treat the backup store as being as
             sensitive as the sites themselves.
         </div>
+
+        {{-- Requested and not yet arrived. Above the stored artifacts, because it is the thing
+             somebody who just pressed the button came back to look for. --}}
+        @if ($inFlight->isNotEmpty())
+            <div class="mb-3.5 overflow-hidden rounded-[10px] border border-border bg-surface shadow-[var(--shadow)]"
+                 data-backup-progress-list
+                 data-backup-status-url="{{ route('backups.status') }}">
+                <div class="border-b border-border px-4 py-3 text-[13.5px] font-medium">
+                    In progress
+                </div>
+
+                @foreach ($inFlight as $backup)
+                    <x-backup-progress :backup="$backup" :window="$checkInWindow" show-site />
+                @endforeach
+            </div>
+        @endif
 
         @if ($permittedSites->isEmpty())
             <div class="rounded-[10px] border border-border bg-surface p-8 text-center shadow-[var(--shadow)]">

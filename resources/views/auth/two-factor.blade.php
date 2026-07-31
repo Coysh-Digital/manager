@@ -1,6 +1,6 @@
 @extends('layouts.auth')
 
-@section('title', 'Two-factor · Manager')
+@section('title', 'Two-factor · Manager for Craft')
 
 @section('content')
     <h1 class="mb-1 text-[17px] font-semibold tracking-[-0.01em]">Two-factor authentication</h1>

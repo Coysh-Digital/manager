@@ -13,13 +13,7 @@
 <nav id="sidebar"
      class="fixed inset-y-0 left-0 z-40 flex h-screen w-[264px] flex-none -translate-x-full flex-col border-r border-border bg-nav transition-transform duration-200 ease-out peer-checked:translate-x-0 motion-reduce:transition-none lg:sticky lg:top-0 lg:w-[236px] lg:translate-x-0">
     <div class="flex h-14 flex-none items-center gap-2.5 border-b border-border px-[18px]">
-        <div class="flex h-[22px] w-[22px] items-center justify-center rounded-md bg-primary text-[12px] font-semibold tracking-[-0.02em] text-primary-fg">M</div>
-        <div class="flex flex-col gap-px">
-            <span class="text-sm font-semibold tracking-[-0.01em]">Manager</span>
-            <span class="font-mono text-[9.5px] uppercase tracking-[0.04em] text-text-3">
-                Self-hosted
-            </span>
-        </div>
+        <x-wordmark />
 
         {{-- Only reachable while the drawer is open, which is the only time it means anything. --}}
         <label for="nav-drawer"

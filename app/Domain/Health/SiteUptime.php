@@ -70,11 +70,25 @@ final class SiteUptime
             }
         }
 
+        /*
+         | Both ends of the window count, and forgetting that is what made a healthy site read
+         | "8 of ~7".
+         |
+         | Beats one interval apart across a span of S seconds number floor(S / interval) + 1, not
+         | floor(S / interval): a site paired 35 minutes ago that has reported every five minutes
+         | since has checked in at 0, 5, 10, 15, 20, 25, 30 and 35 — eight times over seven
+         | intervals. Reporting the interval count as the expectation meant every well-behaved site
+         | showed one more than it should have, permanently, which reads as a bug in the counter
+         | rather than as a site doing exactly what it was asked.
+         |
+         | $span is measured from the same $from the beats were counted from, so the two figures
+         | describe the same window rather than two overlapping ones.
+         */
         return new UptimeWindow(
             from: $from,
             to: $to,
             received: count($beats),
-            expected: max(1, intdiv($span, $interval)),
+            expected: max(1, (int) floor($span / $interval) + 1),
             availability: $availability,
             outages: $outages,
             longest: $longest,
@@ -171,6 +185,11 @@ final class SiteUptime
      * Hourly over a day, daily over a week or a month: twenty-four bars or thirty, either of which
      * fits across a screen without becoming a texture.
      *
+     * No off-by-one correction here, unlike the window total above, and the difference is real
+     * rather than an oversight: buckets tile. A beat landing exactly on a boundary is counted in the
+     * bucket it opens, so each one holds its own length divided by the interval and nothing is
+     * counted twice.
+     *
      * @param  list<Carbon>  $beats
      * @return list<array{label: string, starts_at: Carbon, percentage: float, received: int, expected: int}>
      */
@@ -179,7 +198,6 @@ final class SiteUptime
         $bucketHours = $windowHours <= 24 ? 1 : 24;
         $count = max(1, (int) ceil($windowHours / $bucketHours));
         $bucketSeconds = $bucketHours * 3600;
-        $expected = max(1, intdiv($bucketSeconds, $interval));
 
         $received = array_fill(0, $count, 0);
 
@@ -206,7 +224,11 @@ final class SiteUptime
                 'starts_at' => $startsAt,
                 'percentage' => min(100.0, $seen / $due * 100),
                 'received' => $seen,
-                'expected' => $expected,
+
+                // The same figure the bar is drawn from. It used to be a whole bucket's worth
+                // regardless, so the hour in progress drew correctly and then described itself as
+                // "3 of 12" — or, once it filled up, "13 of 12".
+                'expected' => $due,
             ];
         }
 

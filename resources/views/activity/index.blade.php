@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Activity log · Manager')
+@section('title', 'Activity log · Manager for Craft')
 @section('crumb', App\Support\Crumbs::top('Activity log'))
 
 @section('content')
