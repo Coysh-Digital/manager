@@ -38,6 +38,8 @@ it('refuses an S3 destination with no bucket', function (): void {
     config([
         'manager.backups.disk' => 'backups',
         'filesystems.disks.backups.driver' => 's3',
+        'filesystems.disks.backups.key' => 'AKIAEXAMPLE',
+        'filesystems.disks.backups.secret' => 'secret-example',
         'filesystems.disks.backups.bucket' => '',
     ]);
 
@@ -48,6 +50,8 @@ it('accepts AWS itself without checking anything', function (): void {
     config([
         'manager.backups.disk' => 'backups',
         'filesystems.disks.backups.driver' => 's3',
+        'filesystems.disks.backups.key' => 'AKIAEXAMPLE',
+        'filesystems.disks.backups.secret' => 'secret-example',
         'filesystems.disks.backups.bucket' => 'acme-backups',
         'filesystems.disks.backups.endpoint' => null,
     ]);
@@ -59,6 +63,8 @@ it('warns about an endpoint pointing at a cloud metadata service', function (str
     config([
         'manager.backups.disk' => 'backups',
         'filesystems.disks.backups.driver' => 's3',
+        'filesystems.disks.backups.key' => 'AKIAEXAMPLE',
+        'filesystems.disks.backups.secret' => 'secret-example',
         'filesystems.disks.backups.bucket' => 'acme-backups',
         'filesystems.disks.backups.endpoint' => $endpoint,
     ]);
@@ -77,6 +83,8 @@ it('warns about an endpoint that is not encrypted', function (): void {
     config([
         'manager.backups.disk' => 'backups',
         'filesystems.disks.backups.driver' => 's3',
+        'filesystems.disks.backups.key' => 'AKIAEXAMPLE',
+        'filesystems.disks.backups.secret' => 'secret-example',
         'filesystems.disks.backups.bucket' => 'acme-backups',
         'filesystems.disks.backups.endpoint' => 'http://storage.example.com',
     ]);
@@ -93,9 +101,46 @@ it('accepts a genuine S3-compatible endpoint', function (): void {
     config([
         'manager.backups.disk' => 'backups',
         'filesystems.disks.backups.driver' => 's3',
+        'filesystems.disks.backups.key' => 'AKIAEXAMPLE',
+        'filesystems.disks.backups.secret' => 'secret-example',
         'filesystems.disks.backups.bucket' => 'acme-backups',
         'filesystems.disks.backups.endpoint' => 'https://s3.eu-west-2.amazonaws.com',
     ]);
 
     expect(backupStorageCheck()->status)->toBe('pass');
 });
+
+it('warns when an S3 destination has no credentials at all', function (string $missing): void {
+    /*
+     | Reported from a live deployment, and the reason this check exists.
+     |
+     | The AWS SDK ends its credential chain at the EC2 instance metadata service. With no key and
+     | no secret the upload does not refuse — it stalls for a second against 169.254.169.254 and
+     | then fails, leaving the artifact at "uploading" and the operator holding
+     |
+     |     cURL error 28: Connection timed out ... 169.254.169.254
+     |
+     | which reads as a network fault rather than a missing variable. Meanwhile this check passed,
+     | because a bucket was set and a bucket was all it looked at.
+     |
+     | It also caught nobody who had set AWS_ACCESS_KEY_ID instead, which .env.example described as
+     | the backup credentials. It never was: the backups disk reads MANAGER_BACKUP_S3_* alone.
+    */
+    config([
+        'manager.backups.disk' => 'backups',
+        'filesystems.disks.backups.driver' => 's3',
+        'filesystems.disks.backups.bucket' => 'acme-backups',
+        'filesystems.disks.backups.endpoint' => null,
+        'filesystems.disks.backups.key' => in_array($missing, ['key', 'both'], true) ? '' : 'AKIAEXAMPLE',
+        'filesystems.disks.backups.secret' => in_array($missing, ['secret', 'both'], true) ? '' : 'secret-example',
+    ]);
+
+    $check = backupStorageCheck();
+
+    // A warning rather than a failure: an EC2 host with an instance role attached is a legitimate
+    // configuration, and this cannot tell the two apart from configuration alone.
+    expect($check->status)->toBe('warn')
+        ->and($check->remedy)->toContain('MANAGER_BACKUP_S3_KEY')
+        // Names the variable people actually set by mistake, because the sample file told them to.
+        ->and($check->remedy)->toContain('AWS_*');
+})->with(['key', 'secret', 'both']);
