@@ -40,6 +40,12 @@ before the first request.
 Redis backs replay protection, which **fails closed**: while it is unreachable, connector requests
 are rejected with a 503 rather than accepted.
 
+## Identifying the installation
+
+| Variable | Default | Notes |
+|---|---|---|
+| `MANAGER_VERSION` | unset | What Settings reports this installation as. The Docker image sets it from its build argument. A tarball or a clone has no way to know its own version — `git archive` leaves no `.git` behind — so it is normal for this to be unset, and the screen says "unreleased build" rather than guessing. Set it to the release you deployed if you want it on screen. |
+
 ## Sessions
 
 | Variable | Default | Notes |

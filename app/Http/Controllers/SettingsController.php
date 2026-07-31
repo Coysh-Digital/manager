@@ -53,6 +53,10 @@ final class SettingsController
             'checks' => $this->diagnostics->all(),
             'membership' => app(Membership::class),
 
+            // Null on an installation that has no way to know, which is most of them. See
+            // config/manager.php.
+            'version' => config('manager.version'),
+
             'siteCount' => $organisation->sites()->active()->count(),
             'connectorCount' => Connector::query()
                 ->whereIn('site_id', $organisation->sites()->select('id'))

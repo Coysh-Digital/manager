@@ -21,9 +21,27 @@
         {{-- The same checks manager:doctor runs. Two implementations would eventually disagree, and
              the one somebody is looking at would be the wrong one. --}}
         <div class="mb-3.5 overflow-hidden rounded-[10px] border border-border bg-surface shadow-[var(--shadow)]">
-            <div class="flex items-center justify-between border-b border-border px-4 py-3">
+            <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-border px-4 py-3">
                 <span class="text-[13.5px] font-medium">Platform health</span>
-                <span class="font-mono text-[11px] text-text-3">php artisan manager:doctor</span>
+
+                {{-- What this installation is, beside how it is doing. Two questions a support
+                     conversation opens with, and this screen only answered one of them. The edition
+                     word is not repeated here: it is under the wordmark, and it comes from a bound
+                     implementation rather than from anything written down. --}}
+                <span class="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                    @if ($version !== null)
+                        <span class="font-mono text-[11px] text-text-2">{{ $version }}</span>
+                    @else
+                        {{-- Unset is the normal state for a clone or a tarball: `git archive` leaves
+                             no .git behind, so an installation genuinely cannot know. Saying so beats
+                             printing a number somebody would quote back at us. --}}
+                        <span class="font-mono text-[11px] text-text-3" title="Set MANAGER_VERSION to record which release this is">unreleased build</span>
+                    @endif
+
+                    <x-changelog-link :href="\App\Domain\Updates\ChangelogLink::manager()" label="Changelog" />
+
+                    <span class="font-mono text-[11px] text-text-3">php artisan manager:doctor</span>
+                </span>
             </div>
 
             <div class="grid grid-cols-1 gap-px bg-border sm:grid-cols-2">
