@@ -77,6 +77,15 @@
                     @endif
                 </div>
 
+                @if ($inFlight->isNotEmpty())
+                    <div data-backup-progress-list
+                         data-backup-status-url="{{ route('sites.backups.status', $site) }}">
+                        @foreach ($inFlight as $backup)
+                            <x-backup-progress :backup="$backup" :window="$checkInWindow" />
+                        @endforeach
+                    </div>
+                @endif
+
                 @if (count($trend) > 1)
                     {{-- The shape is the point. A database growing steadily reads differently from one
                          that halved overnight because a table was dropped, and a table of sizes makes

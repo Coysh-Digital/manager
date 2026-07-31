@@ -55,18 +55,28 @@
                          Note what is not on this form: nothing naming where a backup goes or who can
                          read it. Those come from the organisation's recovery keys and from the site's
                          own config file. A schedule decides when to ask. --}}
-                    <div class="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row">
+                    @php
+                        // The saved value decides what is on screen at load, so a browser with no
+                        // JavaScript gets the right controls rather than all of them. schedule.js
+                        // maintains the same two attributes afterwards.
+                        $schedule = old('backup_schedule', $site->backup_schedule);
+                    @endphp
+
+                    <div class="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row"
+                         data-backup-schedule>
                         <label class="flex flex-1 flex-col gap-1">
                             <span class="font-mono text-[10.5px] uppercase tracking-[0.07em] text-text-3">Backups</span>
                             <select name="backup_schedule"
+                                    data-backup-schedule-frequency
                                     class="h-[34px] rounded-[7px] border border-border bg-surface px-2.5 text-[13px]">
                                 @foreach (['off' => 'Only when asked', 'daily' => 'Every day', 'weekly' => 'Every week'] as $value => $label)
-                                    <option value="{{ $value }}" @selected(old('backup_schedule', $site->backup_schedule) === $value)>{{ $label }}</option>
+                                    <option value="{{ $value }}" @selected($schedule === $value)>{{ $label }}</option>
                                 @endforeach
                             </select>
                         </label>
 
-                        <label class="flex flex-col gap-1 sm:w-[140px]">
+                        <label class="flex flex-col gap-1 sm:w-[140px]"
+                               data-backup-schedule-field="hour"@if ($schedule === 'off') hidden @endif>
                             <span class="font-mono text-[10.5px] uppercase tracking-[0.07em] text-text-3">At</span>
                             <select name="backup_schedule_hour"
                                     class="h-[34px] rounded-[7px] border border-border bg-surface px-2.5 text-[13px]">
@@ -78,7 +88,12 @@
                             </select>
                         </label>
 
-                        <label class="flex flex-col gap-1 sm:w-[140px]">
+                        {{-- Shown only for a weekly schedule, because that is the only one the
+                             scheduler reads it for. It used to be on screen for all three, saved,
+                             audited as a change, and then ignored — a control that does nothing is
+                             worse than no control, because somebody sets it and believes it. --}}
+                        <label class="flex flex-col gap-1 sm:w-[140px]"
+                               data-backup-schedule-field="day"@if ($schedule !== 'weekly') hidden @endif>
                             <span class="font-mono text-[10.5px] uppercase tracking-[0.07em] text-text-3">On</span>
                             <select name="backup_schedule_day"
                                     class="h-[34px] rounded-[7px] border border-border bg-surface px-2.5 text-[13px]">
@@ -93,11 +108,11 @@
                         Times are in this organisation's time zone
                         (<span class="font-mono">{{ $site->organisation->timezone }}</span>), so
                         &ldquo;03:00&rdquo; is the quiet hour where the site is, not where this server
-                        is. The day is ignored for a daily schedule.
-                        @if ($site->backup_schedule !== 'off')
+                        is.
+                        <span data-backup-schedule-note=""@if ($schedule === 'off') hidden @endif>
                             A scheduled backup is refused rather than attempted if this organisation
                             has no recovery key to encrypt it to.
-                        @endif
+                        </span>
                     </p>
 
                     {{-- Said before the change, not after it. The expected domain is what a pairing is

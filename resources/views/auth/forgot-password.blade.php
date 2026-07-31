@@ -1,6 +1,6 @@
 @extends('layouts.auth')
 
-@section('title', 'Reset password · Manager')
+@section('title', 'Reset password · Manager for Craft')
 
 @section('content')
     <h1 class="mb-1 text-[17px] font-semibold tracking-[-0.01em]">Reset your password</h1>

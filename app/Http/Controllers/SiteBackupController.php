@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Domain\Backup\BackupService;
+use App\Domain\Backup\InFlightBackups;
 use App\Domain\Capability\CapabilityService;
 use App\Http\Controllers\Concerns\ResolvesSiteContext;
 use App\Models\BackupArtifact;
 use App\Models\Membership;
 use App\Models\Site;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 
 /**
  * One site's backups.
@@ -27,7 +29,10 @@ final class SiteBackupController
 {
     use ResolvesSiteContext;
 
-    public function __construct(private readonly BackupService $backups) {}
+    public function __construct(
+        private readonly BackupService $backups,
+        private readonly InFlightBackups $inFlight,
+    ) {}
 
     public function show(Site $site): View
     {
@@ -63,6 +68,21 @@ final class SiteBackupController
 
             'storage' => $this->backups->describeStorage(),
             'acknowledgement' => CapabilityService::acknowledgementFor('backups:create'),
+
+            'inFlight' => $this->inFlight->forSite($site),
+            'checkInWindow' => $this->inFlight->checkInWindow(),
+        ]);
+    }
+
+    /**
+     * This site's outstanding backups, as JSON. See BackupController::status().
+     */
+    public function status(Site $site): JsonResponse
+    {
+        return response()->json([
+            'in_flight' => $this->inFlight->forSite($site)
+                ->map(fn ($backup): array => $backup->toArray())
+                ->all(),
         ]);
     }
 }

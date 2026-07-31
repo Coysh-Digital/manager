@@ -200,6 +200,45 @@ it('does not count the time before a site existed as uptime', function (): void 
         ->and($window->isCurrentlySilent())->toBeTrue();
 });
 
+it('does not expect fewer check-ins than a well-behaved site sends', function (): void {
+    /*
+     | The regression that produced "Check-ins 8 of ~7" on screen.
+     |
+     | A site paired 35 minutes ago, reporting every five minutes, has checked in at 0, 5, 10, 15,
+     | 20, 25, 30 and 35 — eight times across seven intervals. Both ends of the window count, so the
+     | expectation is eight, and a site doing exactly what was asked of it must never appear to have
+     | done more than that.
+     */
+    $this->site->forceFill(['created_at' => now()->subMinutes(35)])->save();
+
+    for ($minute = 0; $minute <= 35; $minute += 5) {
+        Heartbeat::factory()->for($this->site)->create([
+            'received_at' => now()->subMinutes(35 - $minute),
+        ]);
+    }
+
+    $window = app(SiteUptime::class)->for($this->site->fresh(), 24);
+
+    expect($window->received)->toBe(8)
+        ->and($window->expected)->toBe(8);
+});
+
+it('does not describe an hour in progress as though it were over', function (): void {
+    // The same off-by-one in the chart: a bucket still filling was measured against a whole hour's
+    // worth of check-ins, so it read "3 of 12" while the bar beside it — already scaled by elapsed
+    // time — drew as full.
+    for ($minute = 0; $minute <= 10; $minute += 5) {
+        Heartbeat::factory()->for($this->site)->create([
+            'received_at' => now()->subMinutes(10 - $minute),
+        ]);
+    }
+
+    $buckets = app(SiteUptime::class)->for($this->site, 24)->buckets;
+    $current = end($buckets);
+
+    expect($current['received'])->toBeLessThanOrEqual($current['expected']);
+});
+
 it('falls back to a sensible window when asked for a nonsense one', function (): void {
     $this->actingAs($this->user)
         ->get(route('sites.health', ['site' => $this->site, 'window' => 'forever']))
@@ -242,6 +281,34 @@ it('shows this site\'s outstanding findings', function (): void {
  | Settings
  |-------------------------------------------------------------------------------------------------
  */
+
+it('offers the day of the week only for a schedule that reads it', function (): void {
+    // The scheduler ignores the day unless the schedule is weekly, so showing it for a daily one
+    // invites somebody to set a value that is saved, audited, and then never consulted.
+    $this->site->forceFill(['backup_schedule' => 'daily'])->save();
+
+    $this->actingAs($this->user)
+        ->get(route('sites.settings', $this->site))
+        ->assertOk()
+        ->assertSee('data-backup-schedule-field="day" hidden', false)
+        ->assertDontSee('data-backup-schedule-field="hour" hidden', false);
+
+    $this->site->forceFill(['backup_schedule' => 'weekly'])->save();
+
+    $this->actingAs($this->user)
+        ->get(route('sites.settings', $this->site))
+        ->assertOk()
+        ->assertDontSee('data-backup-schedule-field="day" hidden', false);
+
+    // Neither applies when backups only happen on request.
+    $this->site->forceFill(['backup_schedule' => 'off'])->save();
+
+    $this->actingAs($this->user)
+        ->get(route('sites.settings', $this->site))
+        ->assertOk()
+        ->assertSee('data-backup-schedule-field="day" hidden', false)
+        ->assertSee('data-backup-schedule-field="hour" hidden', false);
+});
 
 it('renames a site and records the previous value', function (): void {
     $this->actingAs($this->user)

@@ -7,6 +7,7 @@ namespace App\Providers;
 use App\Contracts\DirectUploadGrants;
 use App\Contracts\KeyService;
 use App\Contracts\ObjectStore;
+use App\Contracts\ProductLabel;
 use App\Contracts\Provisioner;
 use App\Contracts\StorageQuota;
 use App\Models\Finding;
@@ -19,6 +20,7 @@ use App\Support\SelfHosted\DerivedKeyService;
 use App\Support\SelfHosted\DiskObjectStore;
 use App\Support\SelfHosted\NoDirectUploads;
 use App\Support\SelfHosted\NullProvisioner;
+use App\Support\SelfHosted\SelfHostedLabel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
@@ -50,6 +52,11 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singletonIf(Provisioner::class, NullProvisioner::class);
         $this->app->singletonIf(StorageQuota::class, ConfiguredQuota::class);
         $this->app->singletonIf(DirectUploadGrants::class, NoDirectUploads::class);
+
+        // The word under the wordmark. Bound the same way and for the same reason, even though it
+        // decides nothing: an installation should say which one it is because of what is wired into
+        // it, not because of a string somebody set.
+        $this->app->singletonIf(ProductLabel::class, SelfHostedLabel::class);
 
         /*
          | None of the passkey package's own routes are registered, and this is the single most

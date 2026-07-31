@@ -13,6 +13,7 @@ use App\Models\Site;
 use App\Models\UpdateReport;
 use App\Models\User;
 use coyshdigital\managerprotocol\Jobs;
+use Illuminate\Support\Facades\Cache;
 
 beforeEach(function (): void {
     $this->organisation = Organisation::factory()->create();
@@ -175,4 +176,77 @@ it('counts fleet updates in the sidebar', function (): void {
         ->assertOk()
         // Amber, because a security release anywhere is the one number that should interrupt.
         ->assertSee('border-amber-line', false);
+});
+
+/*
+ | Craft's release notes, read in place
+ |-------------------------------------------------------------------------------------------------
+ */
+
+it('offers the notes panel only when there is a newer version to read about', function (): void {
+    UpdateReport::factory()->for($this->site)->create();
+
+    $this->actingAs($this->user)
+        ->get("/sites/{$this->site->external_id}/updates")
+        ->assertOk()
+        ->assertSee('What changed between these versions');
+
+    // Nothing to read about a site that is already current, and no panel offering to find out.
+    UpdateReport::query()->delete();
+    UpdateReport::factory()->for($this->site)->upToDate()->create();
+
+    $this->actingAs($this->user)
+        ->get("/sites/{$this->site->external_id}/updates")
+        ->assertOk()
+        ->assertDontSee('What changed between these versions');
+});
+
+it('renders only the versions between the one installed and the one available', function (): void {
+    UpdateReport::factory()->for($this->site)->create();
+
+    // Stands in for the fetch. What is asserted is the cut: a site on 5.6.2 must not be shown what
+    // 5.6.1 fixed, and must not be shown a version it cannot yet install.
+    Cache::put('updates.changelog.craft', <<<'MARKDOWN'
+        ## 5.6.5 - 2026-08-01
+        - Not offered to this site yet.
+
+        ## 5.6.4 - 2026-07-20
+        - Fixed the thing this site is missing.
+
+        ## 5.6.2 - 2026-07-01
+        - Already installed here.
+
+        ## 5.6.1 - 2026-06-11
+        - Long gone.
+        MARKDOWN, now()->addHour());
+
+    $html = $this->actingAs($this->user)
+        ->get("/sites/{$this->site->external_id}/updates/changelog")
+        ->assertOk()
+        ->getContent();
+
+    expect($html)->toContain('Fixed the thing this site is missing')
+        ->and($html)->not->toContain('Already installed here')
+        ->and($html)->not->toContain('Long gone')
+        ->and($html)->not->toContain('Not offered to this site yet');
+});
+
+it('falls back to the link rather than an error when the notes cannot be read', function (): void {
+    UpdateReport::factory()->for($this->site)->create();
+    config()->set('manager.updates.fetch_changelogs', false);
+
+    $this->actingAs($this->user)
+        ->get("/sites/{$this->site->external_id}/updates/changelog")
+        ->assertOk()
+        ->assertSee('could not be read')
+        ->assertSee('github.com/craftcms/cms', false);
+});
+
+it('will not read another organisation’s notes', function (): void {
+    $stranger = User::factory()->create(['email_verified_at' => now()]);
+    Membership::factory()->for($stranger)->for(Organisation::factory()->create())->owner()->create();
+
+    $this->actingAs($stranger)
+        ->get("/sites/{$this->site->external_id}/updates/changelog")
+        ->assertNotFound();
 });

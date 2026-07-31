@@ -7,15 +7,21 @@ namespace App\Domain\Updates;
 /**
  * Where to read what a release changed.
  *
- * A link, never the text. The connector deliberately strips release notes before sending an update
- * report — they describe, in detail, what a given version fixes, and holding that against a named
- * unpatched site puts a map of an exploitable installation in this database. That reasoning has not
- * changed; what changed is that "so there is no way to read them at all" was solving the problem by
- * removing the feature.
+ * A link, built from a handle. The connector deliberately strips release notes before sending an
+ * update report — they describe, in detail, what a given version fixes, and holding that against a
+ * named unpatched site puts a map of an exploitable installation in this database. That reasoning
+ * has not changed; what changed is that "so there is no way to read them at all" was solving the
+ * problem by removing the feature.
  *
- * So the notes stay where the publisher put them. Manager holds a URL built from a handle it already
- * has, the browser fetches nothing until somebody clicks, and no part of what a release fixes is
- * ever stored here or transmitted by a site.
+ * Nothing is built here from anything a site reported beyond its own handle, and no part of what a
+ * release fixes is ever stored against a site or transmitted by one.
+ *
+ * {@see ChangelogFetcher} reads Craft's changelog so it can be shown in place rather than in another
+ * tab, and does not weaken any of the above: it asks for one public file, once per installation, on
+ * a cache key that is a constant. The association worth protecting — *this site* is behind on *these
+ * fixes* — is what never goes anywhere, and a request that is identical whatever the fleet contains
+ * cannot carry it. Plugins have no equivalent, because a plugin's report carries a handle and no
+ * repository, and resolving one would mean asking a third party about every plugin installed.
  *
  * Every link opens in a new tab with `rel="noopener noreferrer"`: these point off-platform, and a
  * referrer would tell a third party which of their packages an installation is behind on.

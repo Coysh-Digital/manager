@@ -17,5 +17,7 @@
 
 <span {{ $attributes->merge(['class' => 'inline-flex items-center gap-1.5 whitespace-nowrap rounded-md border py-0.5 pl-1.5 pr-2 text-[12px] font-medium '.($classes[$tone] ?? $classes['grey'])]) }}>
     <span class="font-mono text-[11px] leading-none">{{ $glyphs[$tone] ?? $glyphs['grey'] }}</span>
-    <span>{{ $label }}</span>
+    {{-- Hooked so a screen that updates a badge in place has something stable to write to, rather
+         than reaching for whichever span happens to be last. --}}
+    <span data-status-badge-label>{{ $label }}</span>
 </span>

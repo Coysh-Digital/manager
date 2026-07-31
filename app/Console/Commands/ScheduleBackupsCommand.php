@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Domain\Backup\BackupTimeline;
 use App\Domain\Backup\RecoveryKeyService;
 use App\Domain\Job\JobRejectedException;
 use App\Domain\Job\JobService;
+use App\Models\BackupEvent;
 use App\Models\RemoteJob;
 use App\Models\Site;
 use coyshdigital\managerprotocol\Jobs;
@@ -44,7 +46,7 @@ final class ScheduleBackupsCommand extends Command
 
     protected $description = 'Request backups from sites whose schedule is due';
 
-    public function handle(JobService $jobs, RecoveryKeyService $keys): int
+    public function handle(JobService $jobs, RecoveryKeyService $keys, BackupTimeline $timeline): int
     {
         $dryRun = (bool) $this->option('dry-run');
 
@@ -106,7 +108,7 @@ final class ScheduleBackupsCommand extends Command
             }
 
             try {
-                $jobs->enqueue(
+                $job = $jobs->enqueue(
                     $site,
                     Jobs::BACKUP_CREATE,
                     // No parameters. A backup job carries none at all — not a destination, not a
@@ -124,6 +126,15 @@ final class ScheduleBackupsCommand extends Command
 
                 continue;
             }
+
+            // The same note the backups screen writes when a person asks. Both paths record it, so a
+            // timeline with no `requested` row means the request was genuinely never made.
+            $timeline->platform(
+                event: BackupEvent::REQUESTED,
+                site: $site,
+                job: $job,
+                detail: 'Requested by the schedule.',
+            );
 
             $site->forceFill(['backup_scheduled_at' => Carbon::now()])->save();
             $requested++;

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Models\BackupArtifact;
+use App\Models\BackupEvent;
 use App\Models\CapabilityGrant;
 use App\Models\Connector;
 use App\Models\Membership;
@@ -89,6 +90,97 @@ it('queues a backup when an administrator asks for one', function (): void {
     expect($job->type)->toBe(Jobs::BACKUP_CREATE)
         ->and($job->state)->toBe(Jobs::STATE_QUEUED)
         ->and($job->site_id)->toBe($this->site->id);
+});
+
+it('attributes a requested backup and refuses to queue a second one behind it', function (): void {
+    // Neither an actor nor an idempotency key was passed, so the audit row for a job that reads an
+    // entire production database recorded only that "the system" asked — and a second press queued a
+    // second full dump of the same database.
+    CapabilityGrant::factory()->for($this->site)->capability('backups:create')->create();
+
+    foreach ([1, 2] as $ignored) {
+        $this->actingAs($this->owner)->withSession($this->recentAuth)
+            ->post("/backups/sites/{$this->site->external_id}")
+            ->assertRedirect();
+    }
+
+    $job = RemoteJob::query()->sole();
+
+    expect($job->requested_by)->toBe($this->owner->id)
+        ->and($job->requested_by_label)->toBe($this->owner->name ?: $this->owner->email);
+
+    expect(BackupEvent::query()->where('event', BackupEvent::REQUESTED)->count())->toBe(2);
+});
+
+it('shows a requested backup as queued until the site collects it', function (): void {
+    /*
+     | The screen used to look identical after pressing the button: a flash message, then nothing at
+     | all until an artifact appeared minutes later. A site collects work every five minutes at best,
+     | so the observable consequence was people pressing the button again.
+     */
+    CapabilityGrant::factory()->for($this->site)->capability('backups:create')->create();
+
+    $this->actingAs($this->owner)->withSession($this->recentAuth)
+        ->post("/backups/sites/{$this->site->external_id}");
+
+    foreach (['/backups', "/sites/{$this->site->external_id}/backups"] as $url) {
+        $this->actingAs($this->owner)->get($url)
+            ->assertOk()
+            ->assertSee('Queued')
+            // Said plainly, because nothing is wrong and nothing is stuck.
+            ->assertSee('Waiting for this site to check in');
+    }
+});
+
+it('follows a backup through the phases the site reports', function (): void {
+    CapabilityGrant::factory()->for($this->site)->capability('backups:create')->create();
+
+    $this->actingAs($this->owner)->withSession($this->recentAuth)
+        ->post("/backups/sites/{$this->site->external_id}");
+
+    $job = RemoteJob::query()->sole();
+    $job->forceFill(['state' => Jobs::STATE_CLAIMED, 'claimed_at' => now()])->save();
+
+    $this->actingAs($this->owner)->get('/backups')
+        ->assertOk()
+        ->assertSee('Collected by the site');
+
+    // A phase the site reported about itself, recorded against the job rather than an artifact —
+    // there is no artifact yet, which is why backup_events allows a null one.
+    BackupEvent::query()->create([
+        'remote_job_id' => $job->id,
+        'organisation_id' => $this->organisation->id,
+        'site_id' => $this->site->id,
+        'event' => BackupEvent::DUMP_STARTED,
+        'source' => BackupEvent::SOURCE_CONNECTOR,
+        'occurred_at' => now(),
+        'recorded_at' => now(),
+    ]);
+
+    $this->actingAs($this->owner)->get('/backups')
+        ->assertOk()
+        ->assertSee('Dumping the database')
+        // Whose claim it is, said on the screen rather than assumed.
+        ->assertSee('Reported by the site');
+});
+
+it('serves the in-flight list as JSON without leaking another organisation', function (): void {
+    CapabilityGrant::factory()->for($this->site)->capability('backups:create')->create();
+
+    $this->actingAs($this->owner)->withSession($this->recentAuth)
+        ->post("/backups/sites/{$this->site->external_id}");
+
+    $this->actingAs($this->owner)->getJson('/backups/status')
+        ->assertOk()
+        ->assertJsonPath('in_flight.0.phase', 'queued')
+        ->assertJsonPath('in_flight.0.site', $this->site->external_id);
+
+    $stranger = User::factory()->create(['email_verified_at' => now()]);
+    Membership::factory()->for($stranger)->for(Organisation::factory()->create())->owner()->create();
+
+    $this->actingAs($stranger)->getJson('/backups/status')
+        ->assertOk()
+        ->assertJsonPath('in_flight', []);
 });
 
 it('refuses to queue a backup for a site without permission', function (): void {

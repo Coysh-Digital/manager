@@ -1,6 +1,6 @@
 @extends('layouts.app', ['siteCount' => $totalSites, 'fleetSummary' => $summary])
 
-@section('title', 'Sites · Manager')
+@section('title', 'Sites · Manager for Craft')
 @section('crumb', App\Support\Crumbs::top('Sites'))
 
 @section('content')

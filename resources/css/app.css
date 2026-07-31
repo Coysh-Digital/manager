@@ -214,4 +214,56 @@
     .tabular {
         font-variant-numeric: tabular-nums;
     }
+
+    /*
+     * Release notes, rendered from somebody else's markdown.
+     *
+     * Styled here rather than with utility classes because the HTML is produced by commonmark and
+     * there is no template to hang classes on. Scoped to .changelog so it cannot reach anything the
+     * application itself renders.
+     */
+    .changelog h2 {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text);
+        margin-top: 0.75rem;
+    }
+
+    .changelog h2:first-child {
+        margin-top: 0;
+    }
+
+    .changelog h3 {
+        font-size: 12.5px;
+        font-weight: 600;
+        color: var(--text-2);
+        margin-top: 0.5rem;
+    }
+
+    .changelog ul {
+        list-style: disc;
+        padding-left: 1.1rem;
+    }
+
+    .changelog li {
+        margin: 0.15rem 0;
+    }
+
+    .changelog code {
+        font-family: var(--font-mono, ui-monospace, monospace);
+        font-size: 11.5px;
+        background: var(--surface-2);
+        border-radius: 4px;
+        padding: 0.05rem 0.25rem;
+    }
+
+    .changelog a {
+        color: var(--primary);
+    }
+
+    /* Long entries scroll rather than stretching the row they sit in. */
+    .changelog {
+        max-height: 420px;
+        overflow-y: auto;
+    }
 }

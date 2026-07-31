@@ -144,6 +144,29 @@ return [
 
     /*
     |---------------------------------------------------------------------------------------------
+    | Updates
+    |---------------------------------------------------------------------------------------------
+    |
+    | Whether this installation may read Craft's published changelog so the notes can be shown on
+    | the updates screen instead of in another tab.
+    |
+    | One request, for one public file, cached for the whole installation. It carries nothing about
+    | which sites exist or which are behind — that association is the thing worth protecting, and it
+    | never leaves. Off is still a supported way to run this: an installation with no outbound
+    | access is a deliberate configuration, not a fault, and the screen falls back to the link it
+    | has always had.
+    |
+    */
+
+    'updates' => [
+        'fetch_changelogs' => filter_var(
+            env('MANAGER_FETCH_CHANGELOGS', true),
+            FILTER_VALIDATE_BOOLEAN,
+        ),
+    ],
+
+    /*
+    |---------------------------------------------------------------------------------------------
     | Account security
     |---------------------------------------------------------------------------------------------
     */

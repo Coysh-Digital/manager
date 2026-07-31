@@ -5,14 +5,18 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Domain\Backup\BackupService;
+use App\Domain\Backup\BackupTimeline;
+use App\Domain\Backup\InFlightBackups;
 use App\Domain\Capability\CapabilityService;
 use App\Domain\Job\JobService;
 use App\Models\BackupArtifact;
+use App\Models\BackupEvent;
 use App\Models\Membership;
 use App\Models\Organisation;
 use App\Models\Site;
 use coyshdigital\managerprotocol\Jobs;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -34,6 +38,8 @@ final class BackupController
     public function __construct(
         private readonly BackupService $backups,
         private readonly JobService $jobs,
+        private readonly InFlightBackups $inFlight,
+        private readonly BackupTimeline $timeline,
     ) {}
 
     public function index(Organisation $organisation): View
@@ -70,6 +76,25 @@ final class BackupController
 
             'storage' => $this->backups->describeStorage(),
             'acknowledgement' => CapabilityService::acknowledgementFor('backups:create'),
+
+            'inFlight' => $this->inFlight->forOrganisation($organisation->id),
+            'checkInWindow' => $this->inFlight->checkInWindow(),
+        ]);
+    }
+
+    /**
+     * The same outstanding work, as JSON, for the screen to keep itself current.
+     *
+     * Read only and deliberately thin: identifiers and a phase name, nothing a page cannot already
+     * see. A backup waits on a site checking in, which can be five minutes away, and a screen that
+     * looks frozen for five minutes teaches people to press the button again.
+     */
+    public function status(Organisation $organisation): JsonResponse
+    {
+        return response()->json([
+            'in_flight' => $this->inFlight->forOrganisation($organisation->id)
+                ->map(fn ($backup): array => $backup->toArray())
+                ->all(),
         ]);
     }
 
@@ -92,12 +117,33 @@ final class BackupController
             ]);
         }
 
-        $job = $this->jobs->enqueue($site, Jobs::BACKUP_CREATE);
+        /*
+         | Attributed, and idempotent, neither of which it was.
+         |
+         | Without a key, JobService::outstandingFor() returns immediately and two presses queue two
+         | backups of the same database — and the second is not free: it is another full dump on a
+         | production site. The Refresh button has always passed one. Without an actor, the audit row
+         | for a job that reads an entire database says only that the system asked for it.
+        */
+        $job = $this->jobs->enqueue(
+            $site,
+            Jobs::BACKUP_CREATE,
+            actor: $request->user(),
+            idempotencyKey: 'backup:manual',
+        );
+
+        // The request itself is now visible on the screen, so the timeline should carry it too. The
+        // vocabulary already had a word for this and nothing was writing it.
+        $this->timeline->platform(
+            event: BackupEvent::REQUESTED,
+            site: $site,
+            job: $job,
+            detail: 'Requested from the backups screen.',
+        );
 
         return back()->with(
             'status',
-            "Backup requested for {$site->name}. It will run when the site next checks in "
-            ."(job {$job->external_id})."
+            "Backup requested for {$site->name}. It will run when the site next checks in."
         );
     }
 

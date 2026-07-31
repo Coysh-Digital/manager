@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Settings · Manager')
+@section('title', 'Settings · Manager for Craft')
 @section('crumb', App\Support\Crumbs::top('Settings'))
 
 @section('content')

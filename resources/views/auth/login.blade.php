@@ -1,6 +1,6 @@
 @extends('layouts.auth')
 
-@section('title', 'Sign in · Manager')
+@section('title', 'Sign in · Manager for Craft')
 
 @section('content')
     <h1 class="mb-1 text-[17px] font-semibold tracking-[-0.01em]">Sign in</h1>

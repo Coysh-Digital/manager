@@ -1,6 +1,6 @@
 @extends('layouts.auth')
 
-@section('title', 'Set up Manager')
+@section('title', 'Set up Manager for Craft')
 
 @section('content')
     <h1 class="mb-1 text-[17px] font-semibold tracking-[-0.01em]">Set up Manager</h1>

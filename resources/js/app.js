@@ -14,6 +14,9 @@ import './copy.js';
 import './charts.js';
 import './nav.js';
 import './palette.js';
+import './schedule.js';
+import './backups.js';
+import './changelog.js';
 
 const STORAGE_KEY = 'manager.theme';
 

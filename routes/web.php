@@ -101,8 +101,20 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
         Route::get('sites/{site}', [SiteController::class, 'show'])->name('sites.show');
         Route::get('sites/{site}/health', [SiteHealthController::class, 'show'])->name('sites.health');
         Route::get('sites/{site}/updates', [SiteUpdateController::class, 'show'])->name('sites.updates');
+
+        // Craft's published release notes, cut to the versions between this site's and the latest.
+        // Fetched when somebody opens the panel, not when the screen renders.
+        Route::get('sites/{site}/updates/changelog', [SiteUpdateController::class, 'changelog'])
+            ->name('sites.updates.changelog');
+
         Route::get('sites/{site}/security', [SiteSecurityController::class, 'show'])->name('sites.security');
         Route::get('sites/{site}/backups', [SiteBackupController::class, 'show'])->name('sites.backups');
+
+        // Read-only, and the same tenant scoping as the screen it serves. It carries a job
+        // identifier and a phase name — nothing the page rendering it cannot already see.
+        Route::get('sites/{site}/backups/status', [SiteBackupController::class, 'status'])
+            ->name('sites.backups.status');
+
         Route::get('sites/{site}/settings', [SiteSettingsController::class, 'show'])->name('sites.settings');
         Route::get('sites/{site}/audit', [SiteAuditController::class, 'show'])->name('sites.audit');
 
@@ -118,6 +130,7 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
     Route::get('findings', [FindingController::class, 'index'])->name('findings.index');
 
     Route::get('backups', [BackupController::class, 'index'])->name('backups.index');
+    Route::get('backups/status', [BackupController::class, 'status'])->name('backups.status');
 
     /*
      | Notes.
