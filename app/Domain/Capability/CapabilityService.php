@@ -52,6 +52,14 @@ final class CapabilityService
      * Read-only, every one, and every one implemented — offering a switch for something the connector
      * cannot do would be a lie told by an interface.
      *
+     * The inverse is a lie too, and a noisier one. `runtime:read` and `logins:read` were implemented
+     * on both sides — `SystemController` and `LoginsController` serve them, the connector schedules
+     * both tasks, and `runtime_reports` and `login_reports` were created for them — but this list was
+     * not extended when they landed. The screen therefore said "Not yet available" about a capability
+     * that was available, no administrator could grant it, and the connector queued a task every
+     * thirty minutes that could only ever fail. A site owner watching their own control panel saw a
+     * permanent row of failed queue jobs from a plugin that monitors their site.
+     *
      * Anything that reads a site's content is absent deliberately. `backups:create` reads the entire
      * database, including user records, so it is not a switch: see {@see self::confirmable()}.
      *
@@ -65,6 +73,8 @@ final class CapabilityService
             'licences:read',
             'security:read',
             'system:read',
+            'runtime:read',
+            'logins:read',
         ];
     }
 

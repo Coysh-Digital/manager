@@ -249,8 +249,8 @@ it('grants every read capability by default', function (): void {
         'capabilities' => CapabilityService::grantableFromInterface(),
     ])->assertRedirect();
 
-    // All five, without anybody visiting the Capabilities screen. A fleet table with nothing in it is
-    // not much of a fleet table.
+    // Every one of them, without anybody visiting the Capabilities screen. A fleet table with nothing
+    // in it is not much of a fleet table.
     expect(Site::query()->sole()->grantedCapabilities())
         ->toEqualCanonicalizing(CapabilityService::grantableFromInterface());
 });
@@ -258,10 +258,13 @@ it('grants every read capability by default', function (): void {
 it('checks every read capability in the form by default', function (): void {
     $html = $this->actingAs($this->owner)->get('/sites')->assertOk()->getContent();
 
-    // Counted rather than eyeballed: five checkboxes, five of them checked.
-    expect(substr_count($html, 'name="capabilities[]"'))->toBe(5)
-        ->and(substr_count($html, 'name="capabilities[]"'))
-        ->toBe(preg_match_all('/name="capabilities\[\]"[^>]*checked/', $html));
+    // Counted rather than eyeballed: one checkbox per grantable capability, and every one checked.
+    // Derived from the list rather than a literal, so adding a capability changes this test's
+    // subject rather than breaking it — the claim is "all of them", not "five of them".
+    $expected = count(CapabilityService::grantableFromInterface());
+
+    expect(substr_count($html, 'name="capabilities[]"'))->toBe($expected)
+        ->and(preg_match_all('/name="capabilities\[\]"[^>]*checked/', $html))->toBe($expected);
 });
 
 it('never offers backups as a checkbox, and refuses it if asked', function (): void {
