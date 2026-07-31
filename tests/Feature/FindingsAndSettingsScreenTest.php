@@ -64,6 +64,52 @@ it('hides resolved findings unless asked for', function (): void {
     $this->actingAs($this->owner)->get('/findings?resolved=1')->assertOk()->assertSee('Fixed already');
 });
 
+it('gives each site its own numbers rather than the first site\'s', function (): void {
+    // Two sites on two different servers. Their disk readings are facts about different machines,
+    // and there is no arrangement of them under which one stands for the other. The grouped layout
+    // printed $group->first()->detail as the description for the whole rule, so both rows carried
+    // the first server's percentage — reported from a live fleet, where it read as one site
+    // borrowing another's disk.
+    $second = Site::factory()->for($this->organisation)->connected()->create(['name' => 'Second Site']);
+
+    Finding::factory()->for($this->site)->rule('disk_almost_full')->create([
+        'title' => 'The disk is filling up',
+        'detail' => 'The volume holding this site is 90.5% full, with 5.5 GB free.',
+    ]);
+    Finding::factory()->for($second)->rule('disk_almost_full')->create([
+        'title' => 'The disk is filling up',
+        'detail' => 'The volume holding this site is 96.2% full, with 1.2 GB free.',
+    ]);
+
+    $this->actingAs($this->owner)
+        ->get('/findings')
+        ->assertOk()
+        ->assertSee('90.5% full, with 5.5 GB free')
+        ->assertSee('96.2% full, with 1.2 GB free');
+});
+
+it('still states a shared description once', function (): void {
+    // The other half of the same rule, and the reason the fix is conditional rather than a blanket
+    // "render it per row". Development mode being on is a fact about a config flag: the sentence is
+    // identical everywhere, and repeating it per site is the noise the grouping was built to remove.
+    $second = Site::factory()->for($this->organisation)->connected()->create(['name' => 'Second Site']);
+
+    $detail = 'Development mode is on, which exposes stack traces to visitors.';
+
+    Finding::factory()->for($this->site)->rule('dev_mode_in_production')->create([
+        'title' => 'Development mode is on in production',
+        'detail' => $detail,
+    ]);
+    Finding::factory()->for($second)->rule('dev_mode_in_production')->create([
+        'title' => 'Development mode is on in production',
+        'detail' => $detail,
+    ]);
+
+    $html = $this->actingAs($this->owner)->get('/findings')->assertOk()->getContent();
+
+    expect(substr_count($html, e($detail)))->toBe(1);
+});
+
 it('requires a reason to acknowledge', function (): void {
     $finding = Finding::factory()->for($this->site)->create();
 
