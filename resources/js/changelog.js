@@ -6,8 +6,9 @@
  * screen that hangs for eight seconds on a timeout would be the visible symptom of a feature nobody
  * had opted into.
  *
- * The response is a server-rendered fragment, already put through commonmark with HTML stripped and
- * unsafe links refused, so there is nothing to parse or sanitise here.
+ * The response is a server-rendered fragment, already sanitised against a fixed allowlist by
+ * ReleaseNotesHtml — no media, no scripts, http(s) links only — so there is nothing to parse or
+ * sanitise here.
  */
 async function load(details) {
     const body = details.querySelector('[data-changelog-body]');

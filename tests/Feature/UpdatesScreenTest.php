@@ -319,9 +319,16 @@ it('renders only the plugin releases between the one installed and the one avail
         ->and($html)->not->toContain('Not offered to this site yet');
 });
 
-it('strips HTML out of a release note before putting it on the page', function (): void {
-    // Third-party text, rendered inside an authenticated session. Whoever publishes the plugin
-    // writes this, and they are not trusted with markup here.
+it('keeps the safe markup in a release note and refuses the rest', function (): void {
+    /*
+     | Craft's update API hands over release notes as HTML, already rendered — its own screen injects
+     | them with .html(). The connector forwards exactly that. The platform used to run them through
+     | commonmark with html_input => 'strip', which returns an empty string for an HTML block, so
+     | every body was discarded and the panel showed version headings with nothing underneath.
+     |
+     | So the fixture is what Craft actually sends, not the Markdown the old tests assumed. The two
+     | refusals below are the original assertions, unchanged.
+    */
     app(UpdatesIngestService::class)->store($this->site, [
         ...UpdateReportFactory::sampleV2Payload(),
         'plugins' => [[
@@ -331,10 +338,14 @@ it('strips HTML out of a release note before putting it on the page', function (
             'update_available' => true,
             'releases' => [[
                 'version' => '3.0.14',
-                // Separate lines on purpose. CommonMark treats a <script> opener as an HTML block
-                // running to the end of its line, so stripping it takes the rest of that line with
-                // it — safe, but it would make this test pass for the wrong reason.
-                'notes' => "Fixed a thing.\n\n<script>alert(1)</script>\n\n[click](javascript:alert(2))",
+                'notes' => '<p>Fixed <strong>a thing</strong>.</p>'
+                    .'<ul><li>A list item</li></ul>'
+                    .'<script>alert(1)</script>'
+                    .'<a href="javascript:alert(2)">click</a>'
+                    .'<a href="https://example.org/x">the release</a>'
+                    .'<a href="//evil.example">protocol relative</a>'
+                    .'<img src="https://tracker.example/pixel.gif">'
+                    .'<div onclick="steal()">kept as text</div>',
             ]],
         ]],
     ]);
@@ -346,9 +357,22 @@ it('strips HTML out of a release note before putting it on the page', function (
         ->assertOk()
         ->getContent();
 
-    expect($html)->toContain('Fixed a thing')
+    // The body survives at all — this is the assertion that fails on the old code.
+    expect($html)->toContain('Fixed')
+        ->and($html)->toContain('<strong>')
+        ->and($html)->toContain('<li>A list item</li>')
+        // The original two refusals.
         ->and($html)->not->toContain('<script>')
-        ->and($html)->not->toContain('href="javascript:');
+        ->and($html)->not->toContain('href="javascript:')
+        // A note must not make this page fetch anything: an image would tell whoever serves it that
+        // this installation is reading this plugin's notes right now.
+        ->and($html)->not->toContain('<img')
+        ->and($html)->not->toContain('tracker.example')
+        ->and($html)->not->toContain('evil.example')
+        ->and($html)->not->toContain('onclick')
+        // A permitted link keeps its href and is given rel.
+        ->and($html)->toContain('href="https://example.org/x"')
+        ->and($html)->toContain('rel="nofollow noopener noreferrer"');
 });
 
 it('will not read another organisation’s plugin notes', function (): void {

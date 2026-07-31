@@ -9,15 +9,25 @@ use Illuminate\Support\Str;
 /**
  * The one place release notes become HTML.
  *
- * Two sources now feed this — Craft's changelog, fetched from GitHub by {@see ChangelogFetcher}, and
- * plugin notes forwarded by connectors and held by {@see PluginChangelog} — and both are third-party
- * text arriving over a network and being put on a page inside an authenticated session. Duplicating
- * the render step would mean two places to get the options right and one of them eventually being
- * changed alone, so there is one.
+ * Two sources feed this, and they do not speak the same language — which is the bug this class was
+ * changed to fix.
+ *
+ * Craft's own changelog is Markdown: {@see ChangelogFetcher} pulls `CHANGELOG.md` from GitHub, and
+ * {@see render} is right for it. Plugin notes are **HTML**, because Craft's update API hands them
+ * over already rendered and the connector forwards what Craft downloaded. Both were going through
+ * `render()`, whose `html_input => 'strip'` returns an empty string for an HTML block — so every
+ * plugin note body was discarded and the panel showed only the version headings this class had
+ * generated itself.
+ *
+ * So there are two entry points, one per source language, and {@see renderHtml} is the one that
+ * knows the body is already markup. Both end at {@see ReleaseNotesHtml}, which is the allowlist: no
+ * path reaches the panel without passing it. That is why this stays a single class rather than
+ * becoming two — the options and the allowlist are the sort of thing that gets fixed in one place
+ * and forgotten in the other.
  *
  * league/commonmark ships with the framework, and its unsafe-input defaults are exactly the two that
- * matter: raw HTML in the source is discarded rather than passed through, and `javascript:` links are
- * not turned into anchors.
+ * matter for the Markdown side: raw HTML in the source is discarded rather than passed through, and
+ * `javascript:` links are not turned into anchors.
  */
 final class ChangelogMarkdown
 {
@@ -45,10 +55,55 @@ final class ChangelogMarkdown
 
         $text = Str::limit(implode("\n\n", array_slice($sections, 0, self::MAX_SECTIONS)), self::MAX_CHARACTERS, ' …');
 
-        return Str::markdown($text, [
+        $html = Str::markdown($text, [
             'html_input' => 'strip',
             'allow_unsafe_links' => false,
         ]);
+
+        // Commonmark has already discarded raw HTML, so this removes nothing today. It is here so
+        // that there is no route to the panel that skips the allowlist — including this one, if the
+        // options above are ever loosened.
+        return ReleaseNotesHtml::sanitise($html);
+    }
+
+    /**
+     * Render sections whose bodies are already HTML.
+     *
+     * Used for plugin notes. Each section is `['heading' => string, 'body' => string]`, and the two
+     * are kept apart deliberately: a Markdown `## 5.7.1` heading cannot be concatenated onto an HTML
+     * body and put through one renderer, which is precisely how the bodies came to be dropped. The
+     * whole document is composed in HTML instead.
+     *
+     * Three things about the order below are load-bearing:
+     *
+     *  - The body is truncated **before** it is sanitised, so a cut landing in the middle of a tag
+     *    is repaired by the parser rather than emitted. Sanitising first and cutting after can
+     *    produce an unbalanced document.
+     *  - The budget runs across sections rather than per section, mirroring the connector's own
+     *    NOTE_BUDGET_CHARACTERS, so twenty releases cannot each spend the maximum.
+     *  - Our heading is composed **after** sanitising, from text this class built and escaped
+     *    itself. A plugin author cannot forge a version heading, because their markup never passes
+     *    through the same step that produces ours.
+     *
+     * @param  list<array{heading: string, body: string}>  $sections
+     */
+    public static function renderHtml(array $sections): ?string
+    {
+        $html = '';
+        $budget = self::MAX_CHARACTERS;
+
+        foreach (array_slice($sections, 0, self::MAX_SECTIONS) as $section) {
+            if ($budget <= 0) {
+                break;
+            }
+
+            $body = ReleaseNotesHtml::sanitise(mb_substr($section['body'], 0, $budget));
+            $budget -= mb_strlen($body);
+
+            $html .= '<h2>'.e($section['heading']).'</h2>'.$body;
+        }
+
+        return $html === '' ? null : $html;
     }
 
     /**

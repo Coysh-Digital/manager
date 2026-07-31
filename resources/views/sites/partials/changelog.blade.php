@@ -14,8 +14,10 @@
 @php($source = $source ?? 'craft')
 
 @if ($notes)
-    {{-- Already rendered through league/commonmark with HTML stripped and unsafe links refused.
-         See ChangelogMarkdown::render(). --}}
+    {{-- Rendered and sanitised server-side against a fixed allowlist — no media, no scripts, and
+         http(s) links only. Craft's changelog arrives as Markdown and goes through commonmark; a
+         plugin's arrives as HTML, because Craft's update API renders it before the connector sees
+         it. Both end at ReleaseNotesHtml. Nothing is parsed or sanitised in the browser. --}}
     <div class="changelog flex flex-col gap-2 text-[12.5px] leading-relaxed text-text-2">
         {!! $notes !!}
     </div>
