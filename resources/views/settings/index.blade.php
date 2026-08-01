@@ -165,6 +165,36 @@
                     <span class="text-[13px] tabular">{{ $connectorCount }}</span>
                 </div>
             </div>
+
+            {{--
+                Billing, for the editions that have any.
+
+                Nothing here names a price, a plan or an edition, and it cannot: the core has no way
+                to know what a hosted service charges, and a link that quoted one would go stale in a
+                repository that has no way of noticing. It says what is on the other end and sends
+                people there. See App\Contracts\BillingAdministration.
+
+                On this card rather than a card of its own because billing is a fact about the
+                organisation, alongside its name, its members and whether it requires a second
+                factor. On Settings rather than Account because Account is per-user and this is not:
+                one person's card pays for everybody.
+
+                Owner-gated on the same idiom as every other write on this screen. Only owners hear
+                about money.
+            --}}
+            @if ($membership->isOwner() && $billingUrl)
+                <div class="flex flex-wrap items-center justify-between gap-3 border-t border-border bg-surface-2 px-4 py-3">
+                    <p class="max-w-[70ch] text-[12px] leading-relaxed text-text-2">
+                        Payment, invoices and your backup storage allowance are managed on the billing
+                        screen. Nothing about a card is held here.
+                    </p>
+
+                    <a href="{{ $billingUrl }}"
+                       class="flex h-[34px] items-center whitespace-nowrap rounded-[7px] border border-border-2 bg-surface px-3.5 text-[12.5px] font-medium text-text no-underline hover:bg-row-hover">
+                        Manage billing
+                    </a>
+                </div>
+            @endif
         </div>
 
         {{--

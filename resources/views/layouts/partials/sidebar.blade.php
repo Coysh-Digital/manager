@@ -98,6 +98,35 @@
     </div>
 
     <div class="flex flex-col gap-0.5 border-t border-border p-2.5">
+        {{--
+            Billing, on the editions where somebody is billed.
+
+            Resolved here rather than passed in by the view composer, the same way <x-wordmark />
+            resolves ProductLabel: this partial renders on every authenticated page, and a composer
+            key would have to be supplied on all of them or default to hiding the link, which is the
+            failure this is meant to prevent.
+
+            Null self-hosted, so the entry does not exist there — which is the honest answer and also
+            what the note at the top of this file asks for. Nobody bills a self-hosted installation,
+            and a nav item leading to a page that explains that is worse than no nav item.
+
+            fullUrlIs rather than routeIs, because the route belongs to a hosting layer this
+            repository does not know the name of. The trailing * keeps it highlighted when the page
+            comes back from a checkout with a query string on it.
+        --}}
+        @php($billingUrl = app(App\Contracts\BillingAdministration::class)->url())
+
+        @if ($billingUrl)
+            <a href="{{ $billingUrl }}"
+               @class([
+                   'flex items-center rounded-md px-2.5 py-[7px] text-[13.5px] font-medium no-underline',
+                   'bg-pale text-primary' => request()->fullUrlIs($billingUrl.'*'),
+                   'text-text-2 hover:bg-row-hover hover:text-text' => ! request()->fullUrlIs($billingUrl.'*'),
+               ])>
+                Billing
+            </a>
+        @endif
+
         <a href="{{ route('settings.show') }}"
            @class([
                'flex items-center rounded-md px-2.5 py-[7px] text-[13.5px] font-medium no-underline',

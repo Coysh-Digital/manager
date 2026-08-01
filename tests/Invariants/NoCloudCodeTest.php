@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Contracts\BillingAdministration;
 use App\Contracts\DirectUploadGrants;
 use App\Contracts\KeyService;
 use App\Contracts\MailAdministration;
@@ -14,6 +15,7 @@ use App\Support\SelfHosted\DerivedKeyService;
 use App\Support\SelfHosted\DiskObjectStore;
 use App\Support\SelfHosted\NoDirectUploads;
 use App\Support\SelfHosted\NullProvisioner;
+use App\Support\SelfHosted\SelfHostedBilling;
 use App\Support\SelfHosted\SelfHostedLabel;
 use App\Support\SelfHosted\SelfHostedMail;
 use Illuminate\Support\Facades\File;
@@ -157,9 +159,12 @@ it('keeps the edition seams as contracts rather than as dependencies', function 
      | it. A self-hosted installation is complete: it never resolves to something it does not have,
      | and it never carries code it cannot run.
      |
-     | If a fifth, sixth or seventh seam is added, it belongs in this list — and if one is added
-     | without a self-hosted implementation, that is a self-hosted installation that boots and then
-     | fails somewhere unhelpful.
+     | A new seam belongs in this list, and the set-equality assertion below is what makes that
+     | mandatory rather than customary. One added without a self-hosted implementation is a
+     | self-hosted installation that boots and then fails somewhere unhelpful.
+     |
+     | Not numbered any more. It said "a fifth, sixth or seventh" and the count moved twice while the
+     | sentence stayed put, which is the failure mode this whole file exists to prevent.
      */
     $seams = [
         KeyService::class => DerivedKeyService::class,
@@ -169,6 +174,7 @@ it('keeps the edition seams as contracts rather than as dependencies', function 
         DirectUploadGrants::class => NoDirectUploads::class,
         ProductLabel::class => SelfHostedLabel::class,
         MailAdministration::class => SelfHostedMail::class,
+        BillingAdministration::class => SelfHostedBilling::class,
     ];
 
     foreach ($seams as $contract => $implementation) {
