@@ -1,12 +1,19 @@
-# Manager — workspace map
+# Manager — the control plane, and the repositories around it
 
-This directory is a **workspace, not a repository**. It holds several independent checkouts side by
-side, plus a throwaway Craft install used to exercise the connector.
+**This repository is `Coysh-Digital/manager`, and it is public.** It is Manager Self-Hosted: the
+Laravel control plane people install on their own infrastructure. Everything in this checkout ships
+to them.
 
-If you are an assistant working here, read this first. Getting a change into the wrong repository is
-the mistake that matters most, because one of them is public and one of them is not, and a push to a
-public repository cannot be undone — a force-push removes the ref, not the objects, and not anybody's
-fetch, GitHub's cache, or the forks network.
+It is normally one of several checkouts sitting side by side in a workspace, and this file used to
+open by describing that workspace as though you were standing in it — "this directory is a
+workspace, not a repository" — which was false in the one place the file actually lives. If a
+`CLAUDE.md` exists in the parent directory it is the authority on cross-repository work; this file
+covers what is true of `platform/` whether or not that parent is there.
+
+Getting a change into the wrong repository is the mistake that matters most here, because one of
+them is public and one of them is not, and a push to a public repository cannot be undone — a
+force-push removes the ref, not the objects, and not anybody's fetch, GitHub's cache, or the forks
+network.
 
 ## The two websites
 
@@ -23,7 +30,7 @@ the public core.
 
 ## The repositories
 
-Six, and each one has a reason it cannot simply be folded into another.
+Each has a reason it cannot simply be folded into another.
 
 ### `platform/` → `Coysh-Digital/manager` — **PUBLIC**
 
@@ -60,7 +67,8 @@ The wire contract: canonical strings, signing, schemas, the backup artifact form
 Separate because both the platform and the plugin need it and they are under different licences.
 Vendoring copies into each guarantees drift, and drift in a signing protocol is a security event.
 
-MIT, unlike the rest, so anyone can verify a signature or reimplement either side without asking.
+MIT, like `connector` and `restore` and unlike this repository, so anyone can verify a signature or
+reimplement either side without asking.
 
 **Schemas are add-only.** Never edit a published one; add `.v2` beside it. The committed signing
 fixtures are the change detector — if they stop verifying, that is a wire-format break and a version
@@ -132,29 +140,50 @@ are written to fail rather than warn, and every one of them exists because somet
 
 The packages depend on each other, so releases have an order:
 
-1. `protocol` — tag and publish first. Everything else resolves against it. **v1.2.0 is published.**
-2. `restore` and `connector` — both require `manager-protocol ^1.2`.
-3. `platform` — regenerate `composer.lock`, which cannot satisfy `^1.2` until step 1 is done.
+1. `protocol` — tag and publish first. Everything else resolves against it.
+2. `restore` and `connector` — both require `manager-protocol`.
+3. `platform` — regenerate `composer.lock`, which cannot satisfy the constraint until step 1 is done.
 4. `private/console` — merge `main`, resolve the `.gitignore` conflict deliberately, deploy.
 
-No repository verifies a release signature any more. `platform`'s workflow used to require a signed
-tag checked against `.github/allowed_signers` and refuse to publish an unsigned one; that gate, the
-signer files in all three repositories and the invariants asserting them were removed deliberately.
-A release still carries a SHA256 manifest and is built reproducibly, so integrity is checkable;
-authorship is not.
+The version each of those requires is in the relevant `composer.json`. It is not written out here,
+and neither is what is currently tagged or published — see below.
 
-Nothing in `platform/` needs a local path repository any more. Before v1.2.0 was published, the
-protocol had to be symlinked from a sibling checkout via an uncommitted `repositories` block; that is
-gone, and `composer install` resolves everything from Packagist. If you find yourself adding one back,
-it means a package needs releasing.
+No repository verifies a release signature. `platform`'s workflow used to require a signed tag
+checked against `.github/allowed_signers` and refuse to publish an unsigned one; that gate, the
+signer files and the invariants asserting them were removed deliberately. A release still carries a
+SHA256 manifest and is built reproducibly, so integrity is checkable; authorship is not.
 
-## Currently outstanding
+**A tag is what a site can install.** A version declared in `composer.json` and not tagged has
+reached nobody, and a version already tagged cannot be changed — a fix to it needs a new number.
 
-- `connector` 1.7.0 and `manager-restore` 1.0.0 are committed but **not tagged**. `manager-protocol`
-  v1.2.0 is published, so nothing blocks them.
-- `platform` has no tags at all. Its release workflow requires a signed one.
-- `console`'s `composer.lock` does not list the Cloud layer yet. Now unblocked:
-  `composer update coysh-digital/manager-cloud-overlay -W` on that branch.
+Nothing in `platform/` needs a local path repository. The protocol used to be symlinked from a
+sibling checkout via an uncommitted `repositories` block; that is gone, and `composer install`
+resolves everything from Packagist. If you find yourself adding one back, it means a package needs
+releasing.
+
+## Do not record versions, tags or branch positions in this file
+
+This section used to be called *Currently outstanding*, and every line in it was wrong by the time
+anybody read it: two packages listed as untagged had been tagged and published, a protocol version
+was three releases behind, a lockfile described as missing the Cloud layer had listed it for weeks,
+and a claim that releases need a signed tag contradicted the paragraph directly above it in this
+same file.
+
+None of it was careless. All of it was true when written, which is the point — a fact that changes
+does not belong in a document that does not.
+
+Query it instead. From the workspace checkout:
+
+```bash
+./bin/status.sh            # every repository: branch, tag, published version, mirror, open PRs
+./bin/status.sh --offline  # no network
+```
+
+Standalone, without the workspace: `git tag --sort=-v:refname | head`, `gh pr list`, and
+`composer show coysh-digital/<package> --all` answer the same questions for one repository.
+
+What belongs here is what cannot be queried: why the seams exist, why the fixtures are the contract,
+why nothing is ever pushed straight to `main`.
 
 ## Local development
 
