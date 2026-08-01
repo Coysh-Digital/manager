@@ -131,10 +131,14 @@ jobs:
           git diff --exit-code -- public/build \
             || { echo "public/build is out of date. Run 'npm run build' and commit the result."; exit 1; }
 
+      # The plugin registers a namespaced Composer command and installs no vendor/bin entry, so the
+      # binary this used to invoke has never existed. That was a second failure stacked behind the
+      # allow-plugins one in composer.json, and behind both sat a third: the assets check above
+      # fails first, so neither of these had ever been reached to be noticed.
       - name: Software bill of materials
         run: |
-          composer require --dev --no-interaction cyclonedx/cyclonedx-php-composer
-          vendor/bin/cyclonedx-php-composer make-sbom --output-file=sbom.json --output-format=JSON
+          composer require --dev --no-interaction --no-progress cyclonedx/cyclonedx-php-composer
+          composer CycloneDX:make-sbom --output-file=sbom.json --output-format=JSON
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
