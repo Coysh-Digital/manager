@@ -34,6 +34,22 @@
             </div>
         @endif
 
+        {{-- One organisation-wide cause, stated once rather than repeated down every row — and with
+             somewhere to go, which the per-row text has no space for. --}}
+        @if ($needsRecoveryKey)
+            <div class="mb-4 rounded-lg border border-amber-line bg-amber-bg px-3.5 py-3 text-[12.5px] leading-relaxed text-text">
+                <p><span class="font-medium">No backups can be taken yet.</span>
+                    A backup is encrypted to keys you hold and to nothing else, so until this organisation
+                    has one active recovery key there is nothing to encrypt one to. You generate it on your
+                    own machine — it never exists on this server.</p>
+                <p class="mt-1.5">
+                    <a href="{{ route('settings.show') }}#recovery-keys" class="text-primary hover:text-primary-hover">Add a recovery key in Settings</a>,
+                    or read
+                    <a href="https://managerforcraft.com/docs/recovery-keys" target="_blank" rel="noopener noreferrer" class="text-primary hover:text-primary-hover">how recovery keys work ↗</a>.
+                </p>
+            </div>
+        @endif
+
         @if ($errors->any())
             <div class="mb-4 rounded-lg border border-danger-line bg-danger-bg px-3.5 py-2.5 text-[12.5px] text-danger">
                 {{ $errors->first() }}
@@ -94,7 +110,7 @@
                             </div>
 
                             @if ($membership->canAdminister())
-                                @php $siteReadiness = $readiness[$site->id] ?? ['ready' => true, 'blockers' => []]; @endphp
+                                @php $siteReadiness = $readiness[$site->id] ?? ['ready' => true, 'blockers' => [], 'warnings' => []]; @endphp
 
                                 <div class="flex items-center gap-2.5">
                                     @unless ($siteReadiness['ready'])
@@ -102,6 +118,14 @@
                                              organisation-wide cause repeated down the column, which
                                              is itself the useful observation. --}}
                                         <span class="text-[12px] text-text-3">{{ $siteReadiness['blockers'][0] }}</span>
+                                    @else
+                                        {{-- Warnings were computed and then dropped on this screen,
+                                             so a fleet with one recovery key looked identical to a
+                                             fleet with three. The single-site screen has always said
+                                             it; the screen showing every site said nothing. --}}
+                                        @foreach (array_slice($siteReadiness['warnings'] ?? [], 0, 1) as $warning)
+                                            <span class="text-[12px] text-amber">{{ $warning }}</span>
+                                        @endforeach
                                     @endunless
 
                                     <form method="POST" action="{{ route('backups.store', $site) }}">

@@ -32,6 +32,22 @@ final class ChangelogLink
     }
 
     /**
+     * This platform's own changelog.
+     *
+     * The file rather than the releases page. `CHANGELOG.md` is written for somebody about to
+     * upgrade a running installation and says what they have to do about it, which is the question
+     * being asked by anybody who has just read a version number off a screen. The releases page can
+     * also be empty — it is, until a version is tagged — and a link to nothing teaches people not to
+     * trust the others.
+     *
+     * The core is public, so this resolves for a self-hosted reader and a Cloud one alike.
+     */
+    public static function manager(): string
+    {
+        return 'https://github.com/Coysh-Digital/manager/blob/main/CHANGELOG.md';
+    }
+
+    /**
      * A plugin's page, from its handle.
      *
      * The Plugin Store is the honest destination. Guessing at a repository from a handle would be

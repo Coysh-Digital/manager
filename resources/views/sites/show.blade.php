@@ -17,9 +17,11 @@
                         <span class="text-[13px] font-medium text-info">Paired, but nothing reported yet</span>
                         <span class="text-[12.5px] text-text-2">
                             The connector has authenticated. Nothing is sent until something on the site
-                            asks it to — <strong>Manager never calls out to a site</strong>, so there is
-                            one more step: a scheduled task, set out under
-                            <a href="{{ route('sites.settings', $site) }}#connector" class="text-info hover:text-primary-hover">Settings</a>.
+                            asks it to — <strong>Manager never calls out to a site</strong> — and by
+                            default the next few visitors are what asks. The first report usually
+                            arrives within a few minutes of the site being used. Nothing to set up:
+                            <a href="{{ route('sites.settings', $site) }}#connector" class="text-info hover:text-primary-hover">cron is optional</a>
+                            and makes the timing predictable on a site with quiet spells.
                         </span>
                     </div>
 

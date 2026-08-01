@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Domain\Audit\AuditRecorder;
+use App\Domain\Backup\RecoveryKeyService;
 use App\Domain\Capability\CapabilityPanel;
 use App\Domain\Pairing\EnrolmentService;
 use App\Http\Controllers\Concerns\ResolvesSiteContext;
@@ -29,6 +30,7 @@ final class SiteSettingsController
     public function __construct(
         private readonly CapabilityPanel $panel,
         private readonly AuditRecorder $audit,
+        private readonly RecoveryKeyService $recoveryKeys,
     ) {}
 
     public function show(Site $site): View
@@ -83,6 +85,29 @@ final class SiteSettingsController
         if ($domain === '' || ! str_contains($domain, '.')) {
             return back()->withErrors([
                 'expected_domain' => 'That does not look like a domain. Use the host the site is served from, such as example.org.',
+            ])->withInput();
+        }
+
+        /*
+         | Turning a schedule on with no recovery key produced the worst outcome this screen can:
+         | the form saved, the audit log recorded it, the screen read "Every day" indefinitely, and
+         | ScheduleBackupsCommand skipped the site every hour with the reason going to cron's stdout
+         | and nowhere else. Somebody could believe a site had been backed up nightly for months.
+         |
+         | Refused rather than saved-and-warned, because a schedule that is set and never runs is
+         | precisely the state that misleads. Turning one *off* is always allowed — needing a key to
+         | stop asking for backups would be absurd.
+        */
+        $requested = $validated['backup_schedule'] ?? $site->backup_schedule;
+
+        if ($requested !== 'off'
+            && $requested !== $site->backup_schedule
+            && $site->organisation !== null
+            && ! $this->recoveryKeys->hasActiveKey($site->organisation)) {
+            return back()->withErrors([
+                'backup_schedule' => 'Add a recovery key before scheduling backups. A backup is encrypted to '
+                    .'keys you hold, so until this organisation has one there is nothing to encrypt to and every '
+                    .'scheduled run would be skipped.',
             ])->withInput();
         }
 

@@ -209,6 +209,36 @@ it('shows platform health from the same checks the doctor runs', function (): vo
         ->assertSee('Replay-protection store');
 });
 
+it('says which version it is running, and where to read what changed', function (): void {
+    // "Which version are you on?" was unanswerable from the interface: nothing in the application
+    // read a version at all, so the only way to tell was to ask whoever deployed it.
+    config()->set('manager.version', '1.2.0');
+
+    $this->actingAs($this->owner)
+        ->get('/settings')
+        ->assertOk()
+        ->assertSee('1.2.0')
+        ->assertSee('Changelog')
+        ->assertSee('https://github.com/Coysh-Digital/manager/blob/main/CHANGELOG.md', escape: false);
+});
+
+it('does not invent a version it has no way to know', function (): void {
+    /*
+     | The normal state, and the reason this is nullable rather than defaulted to something
+     | plausible. The release tarball is produced by `git archive`, so it carries no `.git`; the
+     | Docker image sets MANAGER_VERSION from its build argument and a clone sets nothing. A number
+     | guessed here is a number somebody quotes back in a support conversation.
+    */
+    config()->set('manager.version', null);
+
+    $this->actingAs($this->owner)
+        ->get('/settings')
+        ->assertOk()
+        ->assertSee('unreleased build')
+        // The changelog is still worth reaching, whatever the installation can say about itself.
+        ->assertSee('Changelog');
+});
+
 it('states what a new site can do, and that it is not configurable', function (): void {
     $this->actingAs($this->owner)
         ->get('/settings')

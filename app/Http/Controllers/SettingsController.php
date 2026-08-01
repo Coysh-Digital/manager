@@ -58,6 +58,10 @@ final class SettingsController
             // edition, where the test-send button would prove something about somebody else's relay.
             'mailOperatorManaged' => app(MailAdministration::class)->operatorManaged(),
 
+            // Null on an installation that has no way to know, which is most of them. See
+            // config/manager.php.
+            'version' => config('manager.version'),
+
             'siteCount' => $organisation->sites()->active()->count(),
             'connectorCount' => Connector::query()
                 ->whereIn('site_id', $organisation->sites()->select('id'))

@@ -8,6 +8,7 @@ use App\Domain\Backup\BackupReadiness;
 use App\Domain\Backup\BackupService;
 use App\Domain\Backup\BackupTimeline;
 use App\Domain\Backup\InFlightBackups;
+use App\Domain\Backup\RecoveryKeyService;
 use App\Domain\Capability\CapabilityService;
 use App\Domain\Job\JobRejectedException;
 use App\Domain\Job\JobService;
@@ -43,6 +44,7 @@ final class BackupController
         private readonly InFlightBackups $inFlight,
         private readonly BackupTimeline $timeline,
         private readonly BackupReadiness $readiness,
+        private readonly RecoveryKeyService $recoveryKeys,
     ) {}
 
     public function index(Organisation $organisation): View
@@ -80,6 +82,10 @@ final class BackupController
             // an artifact can tell which of the two things is missing.
             'permittedSites' => $permitted,
             'readiness' => $readiness,
+
+            // An organisation-level fact rather than a per-site one, so the screen can say it once
+            // and offer somewhere to go, instead of repeating the same sentence down every row.
+            'needsRecoveryKey' => ! $this->recoveryKeys->hasActiveKey($organisation),
 
             'storedBytes' => $artifacts
                 ->where('state', BackupArtifact::STATE_STORED)
@@ -158,6 +164,9 @@ final class BackupController
             return back()->withErrors(['site' => match ($e->reason) {
                 JobRejectedException::SITE_NOT_CONNECTED => "{$site->name} has no active connector, so it cannot be asked for a backup.",
                 JobRejectedException::CAPABILITY_NOT_GRANTED => "{$site->name} does not have permission to create backups.",
+                // Same race as the connector one: a key can be revoked between the screen rendering
+                // and the button being pressed.
+                JobRejectedException::NO_RECOVERY_KEY => 'This organisation has no active recovery key, so there is nothing to encrypt a backup to.',
                 default => "Could not request a backup from {$site->name}.",
             }]);
         }

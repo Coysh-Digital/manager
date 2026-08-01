@@ -342,6 +342,42 @@ final class Diagnostics
             )];
         }
 
+        /*
+         | No credentials is a real configuration, and a rare one.
+         |
+         | The AWS SDK walks a credential chain and ends it at the EC2 instance metadata service on
+         | 169.254.169.254. On an EC2 host with a role attached that is correct and deliberate.
+         | Anywhere else — which is most places, including every Ploi host — it is what happens when
+         | the credentials were simply never set, and the symptom is not a clean refusal: the upload
+         | hangs, the artifact sits at "uploading", and the operator sees
+         |
+         |     cURL error 28: Connection timed out ... 169.254.169.254
+         |
+         | which reads like a network fault rather than a missing variable.
+         |
+         | Reported from a live console deployment, where .env.example's "Object storage" block said
+         | in as many words that AWS_* was "used for backups" — it is not, and never has been. The
+         | backups disk reads MANAGER_BACKUP_S3_* alone, which is the whole point of it having its
+         | own credentials. That comment is corrected in the same change as this check.
+         |
+         | A warning rather than a failure, because the instance-role case is legitimate and this
+         | cannot tell the two apart from configuration alone.
+        */
+        $key = (string) config("filesystems.disks.{$disk}.key");
+        $secret = (string) config("filesystems.disks.{$disk}.secret");
+
+        if ($key === '' || $secret === '') {
+            return [Check::warn(
+                'Backup storage',
+                "S3 bucket {$bucket}, with no credentials configured.",
+                'Set MANAGER_BACKUP_S3_KEY and MANAGER_BACKUP_S3_SECRET. Backups do not read the '
+                .'AWS_* variables. Without them the SDK falls back to the EC2 instance metadata '
+                .'service, and on a host that is not EC2 with a role attached every upload stalls '
+                .'for a second and then fails. Ignore this only if this host genuinely has an '
+                .'instance role.',
+            )];
+        }
+
         if (! is_string($endpoint) || $endpoint === '') {
             // No endpoint means AWS itself, which needs no checking.
             return [Check::pass('Backup storage', "S3 bucket: {$bucket}.")];

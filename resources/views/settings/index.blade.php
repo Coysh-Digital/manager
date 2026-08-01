@@ -21,9 +21,27 @@
         {{-- The same checks manager:doctor runs. Two implementations would eventually disagree, and
              the one somebody is looking at would be the wrong one. --}}
         <div class="mb-3.5 overflow-hidden rounded-[10px] border border-border bg-surface shadow-[var(--shadow)]">
-            <div class="flex items-center justify-between border-b border-border px-4 py-3">
+            <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-border px-4 py-3">
                 <span class="text-[13.5px] font-medium">Platform health</span>
-                <span class="font-mono text-[11px] text-text-3">php artisan manager:doctor</span>
+
+                {{-- What this installation is, beside how it is doing. Two questions a support
+                     conversation opens with, and this screen only answered one of them. The edition
+                     word is not repeated here: it is under the wordmark, and it comes from a bound
+                     implementation rather than from anything written down. --}}
+                <span class="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                    @if ($version !== null)
+                        <span class="font-mono text-[11px] text-text-2">{{ $version }}</span>
+                    @else
+                        {{-- Unset is the normal state for a clone or a tarball: `git archive` leaves
+                             no .git behind, so an installation genuinely cannot know. Saying so beats
+                             printing a number somebody would quote back at us. --}}
+                        <span class="font-mono text-[11px] text-text-3" title="Set MANAGER_VERSION to record which release this is">unreleased build</span>
+                    @endif
+
+                    <x-changelog-link :href="\App\Domain\Updates\ChangelogLink::manager()" label="Changelog" />
+
+                    <span class="font-mono text-[11px] text-text-3">php artisan manager:doctor</span>
+                </span>
             </div>
 
             <div class="grid grid-cols-1 gap-px bg-border sm:grid-cols-2">
@@ -395,8 +413,12 @@
              never do: offer to generate a key here, and imply that we could help if one is lost. --}}
         <div class="mb-3.5 overflow-hidden rounded-[10px] border border-border bg-surface shadow-[var(--shadow)]">
             <div class="flex items-center justify-between border-b border-border px-4 py-3">
-                <span class="text-[13.5px] font-medium">Recovery keys</span>
-                <span class="font-mono text-[11px] text-text-3">manager-restore keygen</span>
+                {{-- The id every "Add one in Settings" link has always pointed at, and which was
+                     never here — those links landed at the top of Settings and left the reader to
+                     find this themselves. scroll-mt so the sticky topbar does not cover the header
+                     it just jumped to. --}}
+                <span id="recovery-keys" class="scroll-mt-20 text-[13.5px] font-medium">Recovery keys</span>
+                <x-changelog-link href="https://managerforcraft.com/docs/recovery-keys" label="How recovery keys work" />
             </div>
 
             <div class="p-4">
@@ -557,14 +579,33 @@
                     {{-- The instruction that carries the most weight in the whole feature, so it is on
                          the screen rather than in a document. Without pinning, this platform chooses
                          who can read your backups and nothing would look wrong if it chose itself. --}}
+                    {{-- The commands, not a description of them. "Generate the key with
+                         manager-restore keygen" assumes the reader knows how to get manager-restore,
+                         and until it was published on Packagist that was not a small assumption. --}}
+                    <div class="flex flex-col gap-2">
+                        <p class="text-[12px] font-medium text-text-2">On your own machine, not on this server:</p>
+
+                        <pre class="overflow-x-auto rounded-lg bg-surface-2 p-3"><code class="font-mono text-[11.5px] leading-relaxed">composer global require coysh-digital/manager-restore
+
+manager-restore keygen --label="Ops laptop" --out=~/keys/recovery</code></pre>
+
+                        <p class="max-w-[80ch] text-[12px] leading-relaxed text-text-2">
+                            Two files come out.
+                            <code class="font-mono">recovery.pub</code> is safe to share and is what you
+                            paste above. <code class="font-mono">recovery.secret</code> is the one that
+                            matters: keep it somewhere other than the machine that made it, and never
+                            here. If it is lost, every backup encrypted to it is permanently unreadable
+                            — we have never held the other half, so there is nobody to ask.
+                        </p>
+                    </div>
+
                     <p class="max-w-[80ch] text-[12px] leading-relaxed text-text-3">
-                        Generate the key on your own machine with
-                        <code class="font-mono">manager-restore keygen</code> and paste the
-                        <code class="font-mono">.pub</code> half here. We never see the other half and
-                        have nowhere to put one. After activating it, add its fingerprint to
+                        We never see the secret half and have nowhere to put one. After activating the
+                        key you will be asked to prove you hold it, and then to add its fingerprint to
                         <code class="font-mono">config/manager-connector.php</code> on each site — that
                         pin lives on your server, and it is what stops us handing your sites a key of
                         our own.
+                        <x-changelog-link href="https://managerforcraft.com/docs/recovery-keys" label="Full instructions" />
                     </p>
 
                     <div>
