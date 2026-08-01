@@ -6,6 +6,7 @@ namespace App\Providers;
 
 use App\Contracts\DirectUploadGrants;
 use App\Contracts\KeyService;
+use App\Contracts\MailAdministration;
 use App\Contracts\ObjectStore;
 use App\Contracts\ProductLabel;
 use App\Contracts\Provisioner;
@@ -21,6 +22,7 @@ use App\Support\SelfHosted\DiskObjectStore;
 use App\Support\SelfHosted\NoDirectUploads;
 use App\Support\SelfHosted\NullProvisioner;
 use App\Support\SelfHosted\SelfHostedLabel;
+use App\Support\SelfHosted\SelfHostedMail;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
@@ -52,6 +54,11 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singletonIf(Provisioner::class, NullProvisioner::class);
         $this->app->singletonIf(StorageQuota::class, ConfiguredQuota::class);
         $this->app->singletonIf(DirectUploadGrants::class, NoDirectUploads::class);
+
+        // Whether the person reading Settings holds the mail configuration. Self-hosted they do, and
+        // the test-send button is worth having; on a hosted edition the relay belongs to somebody
+        // else and the button tests infrastructure the reader cannot change.
+        $this->app->singletonIf(MailAdministration::class, SelfHostedMail::class);
 
         // The word under the wordmark. Bound the same way and for the same reason, even though it
         // decides nothing: an installation should say which one it is because of what is wired into

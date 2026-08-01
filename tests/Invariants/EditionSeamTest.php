@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Contracts\DirectUploadGrants;
 use App\Contracts\KeyService;
+use App\Contracts\MailAdministration;
 use App\Contracts\ObjectStore;
 use App\Contracts\ProductLabel;
 use App\Contracts\Provisioner;
@@ -19,11 +20,12 @@ use App\Support\SelfHosted\DiskObjectStore;
 use App\Support\SelfHosted\NoDirectUploads;
 use App\Support\SelfHosted\NullProvisioner;
 use App\Support\SelfHosted\SelfHostedLabel;
+use App\Support\SelfHosted\SelfHostedMail;
 
 /*
  * The seam between the editions.
  *
- * Six contracts are bound with singletonIf so that an edition shipped as a Composer package can
+ * Seven contracts are bound with singletonIf so that an edition shipped as a Composer package can
  * replace them. That is only safe if two things stay true: with nothing installed, this repository
  * resolves entirely to its own implementations; and an installation whose wiring disagrees with the
  * edition it claims to be says so out loud rather than quietly wrapping keys the wrong way.
@@ -41,6 +43,7 @@ it('resolves every seam to the self-hosted implementation with no overlay instal
     [StorageQuota::class, ConfiguredQuota::class],
     [DirectUploadGrants::class, NoDirectUploads::class],
     [ProductLabel::class, SelfHostedLabel::class],
+    [MailAdministration::class, SelfHostedMail::class],
 ]);
 
 it('says what it is under the wordmark without being told', function (): void {

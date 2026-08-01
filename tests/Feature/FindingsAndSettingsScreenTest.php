@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Contracts\MailAdministration;
 use App\Domain\Findings\Severity;
 use App\Domain\Health\Diagnostics;
 use App\Models\AuditEvent;
@@ -428,4 +429,48 @@ it('keeps the test send to owners', function (): void {
     $this->actingAs($member)->withSession(['auth.password_confirmed_at' => now()->timestamp])
         ->post(route('settings.mail.test'))
         ->assertForbidden();
+});
+
+it('offers no test send on an edition that does not administer its own mail', function (): void {
+    /*
+     | The button proves that mail leaves *this* server, which is a useful thing for whoever owns the
+     | server and a meaningless one for everybody else. On a hosted edition the relay belongs to
+     | whoever runs the service; an administrator cannot change it, and the paragraph beside the
+     | button is worse than the button — it tells them to edit a .env file they cannot reach.
+     |
+     | Bound rather than configured, like the other six seams: see App\Contracts\MailAdministration.
+    */
+    app()->bind(MailAdministration::class, fn (): MailAdministration => new class implements MailAdministration
+    {
+        public function operatorManaged(): bool
+        {
+            return false;
+        }
+    });
+
+    $html = $this->actingAs($this->owner)->get(route('settings.show'))->assertOk()->getContent();
+
+    expect($html)->not->toContain('Send a test email')
+        // The instruction to edit .env goes with it.
+        ->and($html)->not->toContain('MAIL_*')
+        // The health check still reports whether mail works; it just stops naming a missing button.
+        ->and($html)->toContain('Mail')
+        ->and($html)->not->toContain('Send a test from Settings');
+});
+
+it('refuses the test-send route as well as hiding the button', function (): void {
+    // Hiding a control is not removing it. A route that still works when its button has gone is how
+    // a removed feature comes back by URL.
+    app()->bind(MailAdministration::class, fn (): MailAdministration => new class implements MailAdministration
+    {
+        public function operatorManaged(): bool
+        {
+            return false;
+        }
+    });
+
+    $this->actingAs($this->owner)
+        ->withSession($this->recentAuth)
+        ->post(route('settings.mail.test'))
+        ->assertNotFound();
 });

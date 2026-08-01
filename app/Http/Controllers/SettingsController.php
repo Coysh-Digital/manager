@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Contracts\MailAdministration;
 use App\Domain\Audit\AuditRecorder;
 use App\Domain\Backup\RetentionPolicy;
 use App\Domain\Capability\CapabilityService;
@@ -52,6 +53,10 @@ final class SettingsController
             'organisation' => $organisation,
             'checks' => $this->diagnostics->all(),
             'membership' => app(Membership::class),
+
+            // Whether this reader is the one who holds the mail configuration. False on a hosted
+            // edition, where the test-send button would prove something about somebody else's relay.
+            'mailOperatorManaged' => app(MailAdministration::class)->operatorManaged(),
 
             // Null on an installation that has no way to know, which is most of them. See
             // config/manager.php.
@@ -323,6 +328,11 @@ final class SettingsController
     public function testMail(Request $request): RedirectResponse
     {
         $this->authoriseOwner();
+
+        // Hiding the button is not the same as refusing the action. On a hosted edition this would
+        // send through a relay the caller does not administer, and a route that still works when its
+        // control has gone is how a removed feature comes back by URL.
+        abort_unless(app(MailAdministration::class)->operatorManaged(), 404);
 
         $user = $request->user();
 
