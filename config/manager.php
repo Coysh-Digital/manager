@@ -8,6 +8,25 @@ return [
 
     /*
     |---------------------------------------------------------------------------------------------
+    | Version
+    |---------------------------------------------------------------------------------------------
+    |
+    | What this installation is running, for the screen that says so and for a support conversation
+    | that would otherwise start with "which version?".
+    |
+    | Null unless something sets it, and deliberately so. The release tarball is produced by
+    | `git archive`, so it carries no `.git` and an installation cannot work its own version out by
+    | asking git — and the Docker image already has `MANAGER_VERSION` as a build argument that
+    | nothing has ever read. This is what reads it. An installation running from a clone leaves it
+    | unset and the screen says as much, which is the honest answer: guessing a number that people
+    | then quote at support is worse than an em-dash.
+    |
+    */
+
+    'version' => env('MANAGER_VERSION') ?: null,
+
+    /*
+    |---------------------------------------------------------------------------------------------
     | Pairing
     |---------------------------------------------------------------------------------------------
     |
