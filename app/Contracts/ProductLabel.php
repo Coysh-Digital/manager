@@ -10,7 +10,7 @@ namespace App\Contracts;
  * A seam rather than a config key, and that distinction is the whole reason this interface exists.
  * The core has no notion of an edition — there is a test asserting it — because an installation that
  * *claims* to be something is a claim, whereas an installation with a different implementation bound
- * is a fact. This is the same shape as the other five contracts: the self-hosted answer is the
+ * is a fact. This is the same shape as every other contract here: the self-hosted answer is the
  * default, and a hosting layer that is actually installed and active replaces it.
  *
  * It is display only. Nothing may branch on this value, and nothing does — a label that started

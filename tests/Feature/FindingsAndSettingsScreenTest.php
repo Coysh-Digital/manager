@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Contracts\BillingAdministration;
 use App\Contracts\MailAdministration;
 use App\Domain\Findings\Severity;
 use App\Domain\Health\Diagnostics;
@@ -438,7 +439,7 @@ it('offers no test send on an edition that does not administer its own mail', fu
      | whoever runs the service; an administrator cannot change it, and the paragraph beside the
      | button is worse than the button — it tells them to edit a .env file they cannot reach.
      |
-     | Bound rather than configured, like the other six seams: see App\Contracts\MailAdministration.
+     | Bound rather than configured, like every other seam: see App\Contracts\MailAdministration.
     */
     app()->bind(MailAdministration::class, fn (): MailAdministration => new class implements MailAdministration
     {
@@ -473,4 +474,87 @@ it('refuses the test-send route as well as hiding the button', function (): void
         ->withSession($this->recentAuth)
         ->post(route('settings.mail.test'))
         ->assertNotFound();
+});
+
+/*
+ | Billing, and the fact that it does not exist here.
+ |
+ | The problem these cover is not that billing was broken on the editions that have it. It worked.
+ | It was reachable from a couple of emails and from nowhere inside the application, so somebody who
+ | wanted to sort out payment before a trial ran out had to know the URL. The fix is a link, and a
+ | link is the kind of thing that gets moved, wrapped in the wrong condition, or quietly dropped in
+ | a refactor — so it gets tests rather than a comment.
+ */
+
+/** A hosted edition's answer: somewhere to go. */
+function billingAt(string $url): void
+{
+    app()->bind(BillingAdministration::class, fn (): BillingAdministration => new class($url) implements BillingAdministration
+    {
+        public function __construct(private readonly string $url) {}
+
+        public function url(): ?string
+        {
+            return $this->url;
+        }
+    });
+}
+
+it('shows an owner the way to billing when somebody is billing them', function (): void {
+    billingAt('https://console.example.org/billing');
+
+    $html = $this->actingAs($this->owner)->get(route('settings.show'))->assertOk()->getContent();
+
+    // Both entry points, because they answer different questions. The sidebar is where somebody
+    // goes looking for billing; the Settings block is where they end up when they are already
+    // administering the organisation.
+    expect(substr_count($html, 'https://console.example.org/billing'))->toBe(2)
+        ->and($html)->toContain('Manage billing');
+});
+
+it('tells nobody what it costs', function (): void {
+    // The core cannot know, and a figure it invented would be wrong somewhere it could not see.
+    billingAt('https://console.example.org/billing');
+
+    $html = $this->actingAs($this->owner)->get(route('settings.show'))->assertOk()->getContent();
+
+    expect($html)->not->toContain('£')
+        ->and($html)->not->toContain('Cloud')
+        ->and($html)->not->toContain('per month');
+});
+
+it('keeps billing away from everybody who is not an owner', function (): void {
+    // Only owners hear about money. An admin can administer the organisation without being the
+    // person whose card pays for it.
+    billingAt('https://console.example.org/billing');
+
+    $member = User::factory()->create(['email_verified_at' => now()]);
+    Membership::factory()->for($member)->for($this->organisation)->create([
+        'role' => Membership::ROLE_ADMIN,
+    ]);
+
+    $html = $this->actingAs($member)->get(route('settings.show'))->assertOk()->getContent();
+
+    // The sidebar entry is not owner-gated — it is the way to a page that decides for itself who may
+    // see what — but the Settings block, which sits among this screen's owner-only controls, is.
+    expect($html)->not->toContain('Manage billing');
+});
+
+it('offers no billing at all on an installation nobody bills', function (): void {
+    /*
+     | The self-hosted default, and the assertion most worth having.
+     |
+     | Nothing is bound here, so the seam answers null exactly as it does on a real self-hosted
+     | install. There is no subscription, no card and no allowance to buy more of, so there is
+     | nothing to link to — and the link disappears rather than becoming a page that explains why it
+     | does not apply.
+     |
+     | This is the one that catches somebody dropping the condition around a link that is already
+     | there: every hosted-edition test above would still pass.
+    */
+    $html = $this->actingAs($this->owner)->get(route('settings.show'))->assertOk()->getContent();
+
+    expect($html)->not->toContain('Manage billing')
+        ->and($html)->not->toContain('/billing')
+        ->and($html)->not->toContain('>Billing<');
 });

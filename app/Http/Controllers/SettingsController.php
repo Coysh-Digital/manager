@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Contracts\BillingAdministration;
 use App\Contracts\MailAdministration;
 use App\Domain\Audit\AuditRecorder;
 use App\Domain\Backup\RetentionPolicy;
@@ -57,6 +58,10 @@ final class SettingsController
             // Whether this reader is the one who holds the mail configuration. False on a hosted
             // edition, where the test-send button would prove something about somebody else's relay.
             'mailOperatorManaged' => app(MailAdministration::class)->operatorManaged(),
+
+            // Where to manage payment, or null when nobody bills this installation — which is the
+            // answer here, and the reason the section below it renders nothing self-hosted.
+            'billingUrl' => app(BillingAdministration::class)->url(),
 
             // Null on an installation that has no way to know, which is most of them. See
             // config/manager.php.

@@ -17,7 +17,7 @@ namespace App\Contracts;
  * a question they were not asking. The paragraph beside it is worse than the button — it tells the
  * reader to edit a `.env` file they have no access to.
  *
- * A seam rather than a config key, for the same reason as the other six: an installation should
+ * A seam rather than a config key, for the same reason as the other seams: an installation should
  * behave the way it does because of what is wired into it. {@see ProductLabel} is display only and
  * explicitly may not be branched on, so this is its own contract rather than a second use of that
  * one.

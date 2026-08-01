@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Contracts\BillingAdministration;
 use App\Contracts\DirectUploadGrants;
 use App\Contracts\KeyService;
 use App\Contracts\MailAdministration;
@@ -21,6 +22,7 @@ use App\Support\SelfHosted\DerivedKeyService;
 use App\Support\SelfHosted\DiskObjectStore;
 use App\Support\SelfHosted\NoDirectUploads;
 use App\Support\SelfHosted\NullProvisioner;
+use App\Support\SelfHosted\SelfHostedBilling;
 use App\Support\SelfHosted\SelfHostedLabel;
 use App\Support\SelfHosted\SelfHostedMail;
 use Illuminate\Database\Eloquent\Model;
@@ -59,6 +61,11 @@ class AppServiceProvider extends ServiceProvider
         // the test-send button is worth having; on a hosted edition the relay belongs to somebody
         // else and the button tests infrastructure the reader cannot change.
         $this->app->singletonIf(MailAdministration::class, SelfHostedMail::class);
+
+        // Where to send somebody to manage what they pay. Nobody bills a self-hosted installation,
+        // so this answers null and every part of the interface that would link to billing stays
+        // absent — not greyed out, not explaining why it does not apply.
+        $this->app->singletonIf(BillingAdministration::class, SelfHostedBilling::class);
 
         // The word under the wordmark. Bound the same way and for the same reason, even though it
         // decides nothing: an installation should say which one it is because of what is wired into
