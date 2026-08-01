@@ -11,6 +11,7 @@ use App\Domain\Connector\PlatformKeypair;
 use App\Domain\Notifications\OutboundUrlGuard;
 use App\Models\CapabilityGrant;
 use App\Models\User;
+use coyshdigital\managerprotocol\Protocol;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -472,28 +473,96 @@ final class Diagnostics
      * Reported as a failure only when a site has been granted the permission, because a platform nobody
      * has asked to take backups does not need a backup key. A warning otherwise, so the gap is visible
      * before somebody grants the permission rather than after the first job fails.
+     *
+     * Split by artifact format, and that is the whole point of the counting below. This key belongs to
+     * the v1 format, where the platform holds the recipient and can therefore read every artifact. An
+     * organisation that has raised its floor to v2 seals to its own recovery keys instead and never
+     * consults this key at all — so for those sites its absence is correct and its presence is legacy.
+     *
+     * Reporting one answer for both was wrong in both directions at once. An installation whose
+     * organisations had all moved to v2 was told a key it no longer uses meant its backups were
+     * readable, which understates the security it actually has; and removing that key — the right
+     * thing to do once no v1 artifacts remain — turned the check red and could fail a deploy, because
+     * `manager:doctor` runs on every one.
      */
     private function backupEncryption(): Check
     {
+        /*
+         | Sites with permission, grouped by the format their organisation has settled on.
+         |
+         | Joined rather than counted per organisation, because the question is "how many sites would
+         | try to back up", and a site inherits its format from the organisation above it.
+         */
         $granted = CapabilityGrant::query()
-            ->where('capability', 'backups:create')
-            ->where('state', CapabilityGrant::STATE_GRANTED)
-            ->count();
+            ->where('capability_grants.capability', 'backups:create')
+            ->where('capability_grants.state', CapabilityGrant::STATE_GRANTED)
+            ->join('sites', 'sites.id', '=', 'capability_grants.site_id')
+            ->join('organisations', 'organisations.id', '=', 'sites.organisation_id')
+            ->selectRaw('organisations.backup_format_floor as floor, count(*) as total')
+            ->groupBy('organisations.backup_format_floor')
+            ->pluck('total', 'floor');
+
+        $legacy = (int) $granted->get(Protocol::BACKUP_FORMAT_V1, 0);
+        $sealed = (int) $granted->get(Protocol::BACKUP_FORMAT_V2, 0);
+
+        $sites = static fn (int $count): string => $count.' '.($count === 1 ? 'site' : 'sites');
 
         if (! $this->backupKeypair->isConfigured()) {
-            $detail = $granted > 0
-                ? "Not configured, and {$granted} ".($granted === 1 ? 'site has' : 'sites have')
-                    .' permission to back up. No backup will be taken until it is: a connector without a '
-                    .'key refuses rather than uploading a database in the clear.'
-                : 'Not configured. No site has permission to back up yet, so nothing is failing.';
+            // Only v1 sites are broken by this. Saying so lets an operator who has finished moving to
+            // recovery keys delete the key without the health screen calling it an outage.
+            if ($legacy > 0) {
+                return Check::fail(
+                    'Backup encryption key',
+                    'Not configured, and '.$sites($legacy).' still on the v1 artifact format '
+                    .($legacy === 1 ? 'has' : 'have').' permission to back up. No backup will be taken '
+                    .'for them until it is: a connector without a key refuses rather than uploading a '
+                    .'database in the clear.',
+                    'Run: php artisan manager:backups:keygen — or set up a recovery key for those organisations, which moves them to the sealed format and retires this key.',
+                );
+            }
 
-            return $granted > 0
-                ? Check::fail('Backup encryption key', $detail, 'Run: php artisan manager:backups:keygen')
-                : Check::warn('Backup encryption key', $detail, 'Run: php artisan manager:backups:keygen before granting backups:create');
+            if ($sealed > 0) {
+                return Check::pass(
+                    'Backup encryption key',
+                    'Not configured, and not needed: '.$sites($sealed).' with permission seal each '
+                    .'artifact to their own organisation\'s recovery keys, which this platform does not '
+                    .'hold. Storing to '.$this->backups->describeStorage().'.',
+                );
+            }
+
+            return Check::warn(
+                'Backup encryption key',
+                'Not configured. No site has permission to back up yet, so nothing is failing.',
+                'Run: php artisan manager:backups:keygen before granting backups:create, or set up a recovery key to use the sealed format instead.',
+            );
         }
 
-        // Configured. Say plainly what it means rather than leaving somebody to infer end-to-end
-        // encryption from the word "encrypted".
+        /*
+         | Configured. What that means now depends on who is still using it, and the honest answer is
+         | not the same sentence for both.
+         */
+        if ($legacy > 0) {
+            // Said plainly rather than leaving somebody to infer end-to-end encryption from the word
+            // "encrypted". For these sites it is simply true that we can read their backups.
+            return Check::pass(
+                'Backup encryption key',
+                'Configured, storing to '.$this->backups->describeStorage().'. '
+                .$sites($legacy).' on the v1 format '.($legacy === 1 ? 'seals' : 'seal').' to this key, '
+                .'so whoever holds it can read those backups — they are not end-to-end encrypted.'
+                .($sealed > 0 ? ' '.$sites($sealed).' already seal to their own recovery keys instead.' : ''),
+            );
+        }
+
+        if ($sealed > 0) {
+            return Check::pass(
+                'Backup encryption key',
+                'Configured but no longer used for new backups: '.$sites($sealed).' with permission '
+                .'seal to their own organisation\'s recovery keys. Keep this key only while artifacts '
+                .'taken before that change are still within retention — it is the only thing that can '
+                .'read them. Storing to '.$this->backups->describeStorage().'.',
+            );
+        }
+
         return Check::pass(
             'Backup encryption key',
             'Configured, storing to '.$this->backups->describeStorage()
