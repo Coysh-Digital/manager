@@ -52,8 +52,9 @@ Do not disable it; if it fires, it is right.
 
 ### `connector/` → `Coysh-Digital/craft-manager-connector` — **PUBLIC**
 
-The Craft CMS 5 plugin installed on managed sites. Separate because it is installed by Composer into
-customers' own servers, and it cannot depend on the whole control plane to do that.
+The Craft CMS plugin installed on managed sites — Craft 4.4 or later, and Craft 5. Separate because
+it is installed by Composer into customers' own servers, and it cannot depend on the whole control
+plane to do that.
 
 Its most important file is `bin/verify-invariants.php`. It fails the build if the plugin gains the
 ability to shell out, accept a destination as a parameter, accept a recovery key the site has not

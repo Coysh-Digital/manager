@@ -29,8 +29,8 @@ composer require coysh-digital/craft-manager-connector
 php craft plugin/install manager-connector
 ```
 
-Requires Craft 5, PHP 8.2+, and the `sodium` extension (which you almost certainly already have -
-Craft uses it too).
+Requires Craft 4.4+ or Craft 5, PHP 8.1+, and the `sodium` extension (which you almost certainly
+already have - Craft uses it too).
 
 ## Configuring
 
