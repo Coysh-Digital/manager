@@ -9,7 +9,6 @@ use App\Domain\Job\JobService;
 use App\Models\RemoteJob;
 use App\Models\Site;
 use coyshdigital\managerprotocol\Jobs;
-use coyshdigital\managerprotocol\Protocol;
 
 /**
  * Whether a backup can actually be taken from this site right now, and if not, why not.
@@ -29,17 +28,26 @@ use coyshdigital\managerprotocol\Protocol;
  * So the checks are gathered here and asked *before* the button is drawn as well as before the job is
  * queued. Same conditions, same order, one implementation.
  *
- * The recovery-key rule deserves its own note, because it is not the same rule everywhere:
+ * **A recovery key is now required, whatever the format floor.** That disagreement used to be
+ * described here as older than this class and left unresolved, so it is worth setting out what it
+ * was and why it has gone.
  *
- *  - At **format floor v2** it is a hard block. A v2 artifact is encrypted to recovery keys and to
- *    nothing else, so with no active key there is genuinely nothing to encrypt to, and
- *    {@see JobService::claimFor()} cancels the job outright.
- *  - At **v1** a backup can still be taken, because a v1 artifact is sealed to the platform's own
- *    key. But `ScheduleBackupsCommand` skips *every* organisation without an active key regardless
- *    of floor — so a v1 organisation with no key can back up by hand while its scheduled backups are
- *    being skipped without saying so. That disagreement is older than this class and is not resolved
- *    here; it is reported, because a warning somebody can read beats two commands that quietly
- *    disagree.
+ * At floor v2 a missing key was already a hard block: a v2 artifact is encrypted to recovery keys
+ * and to nothing else, so there is genuinely nothing to encrypt to. At v1 a backup was still taken,
+ * because a v1 artifact is sealed to *this platform's* key — which is precisely the arrangement the
+ * v2 format exists to end. The floor only ratchets to v2 on the first key activation, so the
+ * organisations still on v1 were exactly the ones that had never added a key: every new organisation
+ * could take a backup this platform could read, having been told nowhere that it could.
+ *
+ * Meanwhile `ScheduleBackupsCommand` refused those same organisations outright, and the settings
+ * screen told them "No backups can be taken yet" — which was untrue for them and had been for as
+ * long as both had existed. Three components, two rules, and the strictest one was the one nobody
+ * could see.
+ *
+ * So the rule is the strict one, in one place, and the screens now say what the system does. The
+ * cost is real and deliberate: an organisation with no key cannot take a backup at all, where before
+ * it could take one of the readable kind. `manager-restore` is published, so making a key is a
+ * two-command job, and the settings screen sets out both commands.
  */
 final class BackupReadiness
 {
@@ -68,18 +76,12 @@ final class BackupReadiness
 
         $organisation = $site->organisation;
         $activeKeys = $organisation === null ? 0 : count($this->keys->recipientsFor($organisation));
-        $requiresKey = $organisation?->backup_format_floor === Protocol::BACKUP_FORMAT_V2;
 
         if ($activeKeys === 0) {
-            if ($requiresKey) {
-                // Worth stating as the reason rather than as a rule: backups are encrypted to keys
-                // the customer holds, so "no key" is not a missing setting, it is nothing to encrypt
-                // to. The same sentence is on the settings screen.
-                $blockers[] = 'This organisation has no active recovery key, so there is nothing to encrypt a backup to.';
-            } else {
-                $warnings[] = 'This organisation has no active recovery key. A backup can still be taken, '
-                    .'but scheduled backups are being skipped until one is added.';
-            }
+            // Worth stating as the reason rather than as a rule: backups are encrypted to keys the
+            // customer holds, so "no key" is not a missing setting, it is nothing to encrypt to. The
+            // same sentence is on the settings screen.
+            $blockers[] = 'This organisation has no active recovery key, so there is nothing to encrypt a backup to.';
         } elseif ($activeKeys === 1) {
             $warnings[] = 'One recovery key. If it is lost, every backup encrypted to it becomes permanently unreadable.';
         }

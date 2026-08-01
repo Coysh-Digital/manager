@@ -88,6 +88,26 @@ final class JobService
             throw new JobRejectedException(JobRejectedException::SITE_NOT_CONNECTED);
         }
 
+        /*
+         | A backup needs somewhere to encrypt itself to before it is worth asking for.
+         |
+         | This used to be enforced at claim time, so an organisation with no key got "Backup
+         | requested", a REQUESTED row on the timeline, and then a cancellation minutes later when
+         | the site next checked in. Refusing here means the answer arrives while the person who
+         | asked is still looking at the screen.
+         |
+         | Here as well as in BackupReadiness, not instead of it: readiness decides whether the
+         | button is drawn, and this is what makes the rule true for every caller — including any
+         | future one that forgets to ask.
+        */
+        if ($type === Jobs::BACKUP_CREATE
+            && $site->organisation !== null
+            && ! $this->recoveryKeys->hasActiveKey($site->organisation)) {
+            $this->recordRefusal($site, $type, $actor, JobRejectedException::NO_RECOVERY_KEY);
+
+            throw new JobRejectedException(JobRejectedException::NO_RECOVERY_KEY);
+        }
+
         return DB::transaction(function () use ($site, $definition, $parameters, $actor, $idempotencyKey): RemoteJob {
             // Checked before inserting, which handles the ordinary case without relying on an
             // exception. The index below is what makes it correct under concurrency.
@@ -206,14 +226,19 @@ final class JobService
                  */
                 $recipientFingerprints = null;
 
-                if ($job->type === Jobs::BACKUP_CREATE
-                    && $site->organisation->backup_format_floor === Protocol::BACKUP_FORMAT_V2) {
-                    $recipientFingerprints = array_column(
+                if ($job->type === Jobs::BACKUP_CREATE) {
+                    $fingerprints = array_column(
                         $this->recoveryKeys->recipientsFor($site->organisation),
                         'fingerprint',
                     );
 
-                    if ($recipientFingerprints === []) {
+                    /*
+                     | Cancelled whatever the format floor. A job with no key behind it can only
+                     | produce an artifact this platform could read, which is the thing the v2 format
+                     | exists to stop — and enqueue() now refuses to create one at all, so reaching
+                     | here means the key was revoked between asking and collecting.
+                    */
+                    if ($fingerprints === []) {
                         $this->finish(
                             $job,
                             Jobs::STATE_CANCELLED,
@@ -221,6 +246,13 @@ final class JobService
                         );
 
                         continue;
+                    }
+
+                    // Only recorded against the job at the v2 floor: below it the connector is not
+                    // sealing to recipients, and a set recorded here would be a promise about an
+                    // artifact nobody asked for.
+                    if ($site->organisation->backup_format_floor === Protocol::BACKUP_FORMAT_V2) {
+                        $recipientFingerprints = $fingerprints;
                     }
                 }
 
