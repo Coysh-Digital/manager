@@ -106,6 +106,7 @@
         "preferred-install": "dist",
         "sort-packages": true,
         "allow-plugins": {
+            "cyclonedx/cyclonedx-php-composer": true,
             "pestphp/pest-plugin": true,
             "php-http/discovery": true
         }
