@@ -47,8 +47,39 @@ final class Diagnostics
             ...$this->configuration(),
             ...$this->infrastructure(),
             ...$this->backupDestination(),
+            $this->backupSizeCeiling(),
             ...$this->security(),
         ];
+    }
+
+    /**
+     * How large an artifact this installation will accept.
+     *
+     * Reported because it is invisible until it refuses something, and because when it refuses it
+     * does so in middleware — before anything with context about the artifact runs, and with a
+     * correlation id nothing writes down. A blank MANAGER_BACKUP_MAX_BYTES made this zero on a live
+     * console and every upload was refused with "payload too large", including a 2.1 MB one, for
+     * four nights.
+     *
+     * The blank case cannot recur — config falls back with ?: and an invariant asserts it — but a
+     * deliberately small value can, and looks identical from the outside. So the number is stated
+     * rather than left to be discovered.
+     */
+    private function backupSizeCeiling(): Check
+    {
+        $bytes = (int) config('manager.backups.max_bytes');
+        $readable = round($bytes / 1024 / 1024).' MB';
+
+        // Anything under a megabyte will refuse essentially every real database.
+        if ($bytes < 1024 * 1024) {
+            return Check::fail(
+                'Backup size ceiling',
+                "{$bytes} bytes.",
+                'MANAGER_BACKUP_MAX_BYTES is set low enough to refuse every backup. Unset it to use the protocol default.',
+            );
+        }
+
+        return Check::pass('Backup size ceiling', "Artifacts up to {$readable}.");
     }
 
     /**
