@@ -130,7 +130,9 @@ final class BackupService
             // Rejected rather than partially accepted. A declaration that does not satisfy the schema
             // means the two sides disagree about the format, and storing an artifact under that
             // disagreement is how an unreadable backup gets created.
-            throw new BackupRejectedException('That artifact declaration did not satisfy backup.v1.');
+            throw new BackupRejectedException(
+                'That artifact declaration did not satisfy backup.v1: '.implode(', ', array_slice($problems, 0, 10)).'.'
+            );
         }
 
         /** @var array<string, mixed> $artifact */
@@ -285,7 +287,21 @@ final class BackupService
         $problems = SchemaValidator::forSchema('backup.v2')->validate($declaration);
 
         if ($problems !== []) {
-            throw new BackupRejectedException('That artifact declaration did not satisfy backup.v2.');
+            /*
+             | The paths, not just the verdict.
+             |
+             | The validator returns exactly which fields failed and this discarded them, so a
+             | refusal said only that a declaration "did not satisfy" a schema — and diagnosing it
+             | meant guessing at eight fields from the outside. It cost several rounds of exactly
+             | that on a live site.
+             |
+             | Safe to include, and that is a property of the validator rather than an assumption:
+             | its output is paths only. It never quotes a rejected value, which is what makes it
+             | printable in a message that reaches a customer's log.
+             */
+            throw new BackupRejectedException(
+                'That artifact declaration did not satisfy backup.v2: '.implode(', ', array_slice($problems, 0, 10)).'.'
+            );
         }
 
         $manifestBytes = base64_decode((string) $declaration['manifest_b64'], true);
@@ -328,7 +344,9 @@ final class BackupService
         $manifestProblems = SchemaValidator::forSchema('backup-manifest.v2')->validate($manifest);
 
         if ($manifestProblems !== []) {
-            throw new BackupRejectedException('That artifact manifest did not satisfy backup-manifest.v2.');
+            throw new BackupRejectedException(
+                'That artifact manifest did not satisfy backup-manifest.v2: '.implode(', ', array_slice($problems, 0, 10)).'.'
+            );
         }
 
         /** @var array<string, mixed> $encryption */
