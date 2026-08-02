@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Domain\Backup\BackupReadiness;
 use App\Domain\Backup\BackupService;
+use App\Domain\Backup\FailedBackupJobs;
 use App\Domain\Backup\InFlightBackups;
 use App\Domain\Capability\CapabilityService;
 use App\Http\Controllers\Concerns\ResolvesSiteContext;
@@ -33,6 +34,7 @@ final class SiteBackupController
     public function __construct(
         private readonly BackupService $backups,
         private readonly InFlightBackups $inFlight,
+        private readonly FailedBackupJobs $failed,
         private readonly BackupReadiness $readiness,
     ) {}
 
@@ -72,6 +74,9 @@ final class SiteBackupController
             'acknowledgement' => CapabilityService::acknowledgementFor('backups:create'),
 
             'inFlight' => $this->inFlight->forSite($site),
+
+            // Asked for, did not happen, left no artifact — invisible everywhere else on this page.
+            'failedJobs' => $this->failed->forSite($site),
             'checkInWindow' => $this->inFlight->checkInWindow(),
 
             // Whether the button can do anything, decided here rather than discovered minutes later

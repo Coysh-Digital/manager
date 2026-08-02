@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Domain\Job;
 
 use App\Domain\Audit\AuditRecorder;
+use App\Domain\Backup\BackupFailureNotice;
 use App\Domain\Backup\RecoveryKeyService;
+use App\Domain\Notifications\Notifier;
 use App\Models\AuditEvent;
 use App\Models\Connector;
 use App\Models\RemoteJob;
@@ -41,6 +43,7 @@ final class JobService
         private readonly AuditRecorder $audit,
         private readonly CorrelationId $correlationId,
         private readonly RecoveryKeyService $recoveryKeys,
+        private readonly Notifier $notifier,
     ) {}
 
     /**
@@ -379,6 +382,24 @@ final class JobService
             failureReason: $succeeded ? null : $failureReason,
             after: ['type' => $job->type, 'result' => $succeeded ? $result : null],
         );
+
+        /*
+         | A backup the site refused is the failure nobody hears about.
+         |
+         | It happens before an artifact row exists — the connector checks the dump against its own
+         | size limit, and its recovery-key pinning, before it declares anything — so there is
+         | nothing for BackupService::fail() to act on and nothing for the backups screen to list.
+         | The job simply left the queue, and InFlightBackups only reads queued and claimed work, so
+         | the row a person was watching disappeared with no explanation anywhere they would look.
+         |
+         | Reported live: a site whose database has outgrown `maxBackupMegabytes` fails this way
+         | every night, silently, while the backups screen keeps showing the last one that worked.
+         */
+        if (! $succeeded && $job->type === Jobs::BACKUP_CREATE) {
+            $this->notifier->dispatch(
+                BackupFailureNotice::event($site, $failureReason ?? 'The site reported the backup failed')
+            );
+        }
 
         return $job->fresh() ?? $job;
     }
