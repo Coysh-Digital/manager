@@ -13,6 +13,7 @@ use coyshdigital\managerprotocol\Jobs;
 use coyshdigital\managerprotocol\Protocol;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Step one of an upload: the connector says what it is about to send. Requires `backups:create`.
@@ -105,6 +106,22 @@ final class BackupDeclareController
 
     private function rejected(string $reason, CorrelationId $correlationId): JsonResponse
     {
+        /*
+         | Written down, because the identifier below is offered as something to look up.
+         |
+         | This returned a correlation id and logged nothing. A site was refused, reported the id it
+         | had been handed, and a search of the platform's own logs found no record of it — the one
+         | thing a person had to go on named something that had never been written. The reason was
+         | composed here and existed only in a response body already on its way out.
+         |
+         | Warning rather than error: a refusal is the platform working. It is worth finding, not
+         | worth waking somebody.
+         */
+        Log::warning('Artifact declaration refused.', [
+            'reason' => $reason,
+            'correlation_id' => $correlationId->get(),
+        ]);
+
         return response()->json([
             'error' => 'artifact_rejected',
             'reason' => $reason,
