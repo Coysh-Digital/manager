@@ -29,10 +29,18 @@
             </a>
         @endif
 
+        @if ($backup->looksStalled())
+            {{-- Not an error. The job has not expired and the site may still be working — but it has
+                 been quiet for long enough that "large database" has stopped being the likeliest
+                 explanation, and somebody watching a stepper that has not moved deserves to be told
+                 that rather than left to guess. --}}
+            <x-status-badge tone="amber" label="No change" />
+        @endif
+
         <span class="ml-auto font-mono text-[11.5px] text-text-3" data-backup-elapsed>
-            requested {{ $backup->requestedAt->diffForHumans(short: true) }}
+            {{ $backup->since()->diffForHumans(short: true) }} at this phase
             @if ($backup->requestedBy)
-                by {{ $backup->requestedBy }}
+                · requested by {{ $backup->requestedBy }}
             @endif
         </span>
     </div>
@@ -49,6 +57,12 @@
         {{ $backup->detail($window) }}
         @if ($backup->reportedBySite)
             Reported by the site rather than observed here.
+        @endif
+
+        @if ($backup->expiresAt)
+            {{-- The honest end of the wait. Nothing here can make a site answer, so the useful thing
+                 to say is when this stops being counted as running. --}}
+            Given up on at {{ $backup->expiresAt->format('H:i') }} if nothing further arrives.
         @endif
     </p>
 </div>

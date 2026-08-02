@@ -50,7 +50,45 @@ final readonly class InFlightBackup
         public Carbon $requestedAt,
         public ?string $requestedBy,
         public bool $reportedBySite,
+
+        /**
+         * When this last changed — the newest phase report, or the request if there has been none.
+         *
+         * Separate from `requestedAt` because they answer different questions. "Requested 50 minutes
+         * ago" is normal for a large site; "nothing has changed for 50 minutes" is the one that
+         * tells somebody to go and look.
+         */
+        public ?Carbon $changedAt = null,
+
+        /** When the platform stops waiting and marks the job expired, if it has been claimed. */
+        public ?Carbon $expiresAt = null,
     ) {}
+
+    /**
+     * How long this has sat at its current phase.
+     */
+    public function since(): Carbon
+    {
+        return $this->changedAt ?? $this->requestedAt;
+    }
+
+    /**
+     * Whether this has been quiet for long enough to be worth a second look.
+     *
+     * Measured against the job's own expiry rather than a number chosen here, so the screen and the
+     * sweep that eventually gives up agree with each other. Half the runtime is the point where
+     * "this is a big database" stops being the likeliest explanation.
+     */
+    public function looksStalled(): bool
+    {
+        if ($this->expiresAt === null) {
+            return false;
+        }
+
+        $window = $this->expiresAt->diffInSeconds($this->requestedAt, absolute: true);
+
+        return $window > 0 && $this->since()->diffInSeconds(Carbon::now(), absolute: true) > ($window / 2);
+    }
 
     /**
      * Where this sits in {@see self::PHASES}, for drawing the stepper.

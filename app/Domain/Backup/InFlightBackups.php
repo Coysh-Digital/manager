@@ -100,9 +100,27 @@ final class InFlightBackups
          */
         $latest = BackupEvent::query()
             ->whereIn('remote_job_id', $jobs->pluck('id'))
-            ->whereIn('event', [BackupEvent::DUMP_STARTED, BackupEvent::ENCRYPTED, BackupEvent::UPLOAD_STARTED])
+            /*
+             | DECLARED is in here because it is the only one of these the platform records itself.
+             |
+             | The connector reports a phase once, when the dump starts, and its own comment explains
+             | why: everything after that is derivable from the declaration, and a signed request with
+             | a nonce and a rate-limit slot per phase is not worth spending on telemetry. That is
+             | right — but nothing was reading the declaration, so the stepper stopped at Dumping and
+             | a backup that was busy uploading looked identical to one that had stopped dead.
+             |
+             | A declaration means the dump finished and the artifact is encrypted, because a site
+             | cannot declare checksums for bytes it has not produced. So it is the upload phase,
+             | observed here rather than claimed by the site.
+             */
+            ->whereIn('event', [
+                BackupEvent::DUMP_STARTED,
+                BackupEvent::ENCRYPTED,
+                BackupEvent::UPLOAD_STARTED,
+                BackupEvent::DECLARED,
+            ])
             ->orderBy('recorded_at')
-            ->get(['remote_job_id', 'event', 'occurred_at'])
+            ->get(['remote_job_id', 'event', 'occurred_at', 'recorded_at'])
             ->keyBy('remote_job_id');
 
         return $jobs->map(function (RemoteJob $job) use ($latest): InFlightBackup {
@@ -111,7 +129,7 @@ final class InFlightBackups
             $phase = match ($event?->event) {
                 BackupEvent::DUMP_STARTED => InFlightBackup::PHASE_DUMPING,
                 BackupEvent::ENCRYPTED => InFlightBackup::PHASE_ENCRYPTING,
-                BackupEvent::UPLOAD_STARTED => InFlightBackup::PHASE_UPLOADING,
+                BackupEvent::UPLOAD_STARTED, BackupEvent::DECLARED => InFlightBackup::PHASE_UPLOADING,
                 default => $job->state === Jobs::STATE_CLAIMED
                     ? InFlightBackup::PHASE_COLLECTED
                     : InFlightBackup::PHASE_QUEUED,
@@ -125,7 +143,13 @@ final class InFlightBackups
                 requestedBy: $job->requested_by_label,
 
                 // Everything past "collected" is the site describing itself, and the screen says so.
-                reportedBySite: $event !== null,
+                // A declaration is the exception: the platform saw that one.
+                reportedBySite: $event !== null && $event->event !== BackupEvent::DECLARED,
+
+                // Our clock, not the site's. BackupTimeline keeps both precisely so a site with a
+                // wrong clock cannot make itself look freshly active.
+                changedAt: $event === null ? null : Carbon::instance($event->recorded_at),
+                expiresAt: $job->expires_at === null ? null : Carbon::instance($job->expires_at),
             );
         })->values();
     }
