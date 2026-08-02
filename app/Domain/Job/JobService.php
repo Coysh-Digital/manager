@@ -6,9 +6,11 @@ namespace App\Domain\Job;
 
 use App\Domain\Audit\AuditRecorder;
 use App\Domain\Backup\BackupFailureNotice;
+use App\Domain\Backup\BackupService;
 use App\Domain\Backup\RecoveryKeyService;
 use App\Domain\Notifications\Notifier;
 use App\Models\AuditEvent;
+use App\Models\BackupArtifact;
 use App\Models\Connector;
 use App\Models\RemoteJob;
 use App\Models\Site;
@@ -396,9 +398,37 @@ final class JobService
          | every night, silently, while the backups screen keeps showing the last one that worked.
          */
         if (! $succeeded && $job->type === Jobs::BACKUP_CREATE) {
-            $this->notifier->dispatch(
-                BackupFailureNotice::event($site, $failureReason ?? 'The site reported the backup failed')
-            );
+            $reason = $failureReason ?? 'The site reported the backup failed';
+
+            /*
+             | Settle the artifact too, if the site got as far as declaring one.
+             |
+             | Reported live: four backups sitting at "Uploading" on the screen, hours apart, with
+             | nothing anywhere saying why. The declaration had succeeded, so an artifact row existed
+             | in `pending` — which the screen renders as "Uploading" — and then the upload failed and
+             | the job failed with it. The artifact stayed pending, so it kept claiming to be
+             | uploading; and FailedBackupJobs excludes jobs that produced an artifact, on the
+             | assumption the artifact would carry its own reason. It does not carry one until
+             | something fails it, and the only thing that did was the nightly prune.
+             |
+             | So the failure was recorded twice and visible neither time, and the customer's screen
+             | said "Uploading" for eight hours.
+             |
+             | Failing it here puts the site's own reason on the row immediately, and lets the
+             | exclusion in FailedBackupJobs mean what it was written to mean.
+             */
+            $artifact = BackupArtifact::query()
+                ->where('remote_job_id', $job->id)
+                ->where('state', BackupArtifact::STATE_PENDING)
+                ->first();
+
+            if ($artifact !== null) {
+                app(BackupService::class)->fail($artifact, $reason);
+            } else {
+                // No artifact means the site refused before declaring, so nothing else will report
+                // this. BackupService::fail() sends its own notice when there is one.
+                $this->notifier->dispatch(BackupFailureNotice::event($site, $reason));
+            }
         }
 
         return $job->fresh() ?? $job;

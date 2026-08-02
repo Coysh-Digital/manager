@@ -145,3 +145,39 @@ it('offers backup failures as something to subscribe to', function (): void {
     expect(NotificationEvent::catalogue())->toHaveKey(NotificationEvent::BACKUP_FAILED)
         ->and(NotificationEvent::isKnown(NotificationEvent::BACKUP_FAILED))->toBeTrue();
 });
+
+it('settles a declared artifact when the backup job fails', function (): void {
+    /*
+     * Reported live: four backups sitting at "Uploading" hours apart, with nothing saying why.
+     *
+     * The declaration had succeeded, so an artifact existed in `pending` — which the screen renders
+     * as "Uploading" — and then the upload failed and the job failed with it. The artifact stayed
+     * pending, so it went on claiming to be uploading, and FailedBackupJobs excluded the job because
+     * an artifact existed. The reason was recorded twice and visible neither time until the nightly
+     * prune swept it up.
+     */
+    $job = RemoteJob::factory()->for($this->site)->create([
+        'type' => Jobs::BACKUP_CREATE,
+        'state' => Jobs::STATE_CLAIMED,
+        'claimed_by_connector_id' => $this->connector->id,
+    ]);
+
+    $artifact = BackupArtifact::factory()->for($this->site)->create([
+        'organisation_id' => $this->organisation->id,
+        'remote_job_id' => $job->id,
+        'state' => BackupArtifact::STATE_PENDING,
+    ]);
+
+    app(JobService::class)->report(
+        site: $this->site,
+        connector: $this->connector,
+        jobExternalId: $job->external_id,
+        succeeded: false,
+        failureReason: 'the upload did not complete',
+    );
+
+    $artifact->refresh();
+
+    expect($artifact->state)->toBe(BackupArtifact::STATE_FAILED)
+        ->and($artifact->failure_reason)->toBe('the upload did not complete');
+});
