@@ -22,9 +22,9 @@ use App\Support\SelfHosted\DiskObjectStore;
 use App\Support\SelfHosted\NoDirectUploads;
 use App\Support\SelfHosted\NullProvisioner;
 use App\Support\SelfHosted\SelfHostedBilling;
-use App\Support\SelfHosted\SiteDecidesBackupSize;
 use App\Support\SelfHosted\SelfHostedLabel;
 use App\Support\SelfHosted\SelfHostedMail;
+use App\Support\SelfHosted\SiteDecidesBackupSize;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Route;
 
