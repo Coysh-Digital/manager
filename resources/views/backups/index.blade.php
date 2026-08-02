@@ -83,6 +83,19 @@
             </div>
         @endif
 
+        @if ($failedJobs->isNotEmpty())
+            <div class="mb-3.5 overflow-hidden rounded-[10px] border border-amber-line bg-surface shadow-[var(--shadow)]">
+                <div class="flex flex-wrap items-baseline justify-between gap-3 border-b border-border px-4 py-3">
+                    <span class="text-[13.5px] font-medium">Did not complete</span>
+                    <span class="text-[12px] text-text-2">Asked for in the last 7 days, and nothing was stored</span>
+                </div>
+
+                @foreach ($failedJobs as $failure)
+                    <x-backup-failure :failure="$failure" show-site />
+                @endforeach
+            </div>
+        @endif
+
         @if ($permittedSites->isEmpty())
             <div class="rounded-[10px] border border-border bg-surface p-8 text-center shadow-[var(--shadow)]">
                 <p class="mb-1.5 text-[14px] font-medium">No site has permission to back up</p>

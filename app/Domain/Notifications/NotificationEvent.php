@@ -36,6 +36,20 @@ final class NotificationEvent
     public const CAPABILITY_CONFIRMED = 'capability.confirmed';
 
     /**
+     * A backup was asked for and did not arrive.
+     *
+     * The one event on this list that was promised before it existed. The pricing page has said
+     * "with a notification when a run does not complete" since launch, and nothing dispatched
+     * anything: a site refusing the job, an artifact declared and never uploaded, and bytes that
+     * failed their checksum all ended as a row in the audit log and silence everywhere else.
+     *
+     * A backup nobody knows failed is indistinguishable from a backup that worked, right up until
+     * somebody needs it. That makes this the highest-consequence entry in the catalogue even though
+     * it is the least dramatic.
+     */
+    public const BACKUP_FAILED = 'backup.failed';
+
+    /**
      * Everything a destination can subscribe to.
      *
      * @return array<string, string>
@@ -47,6 +61,7 @@ final class NotificationEvent
             self::SITE_SILENT => 'A site stops reporting',
             self::CONNECTOR_REVOKED => 'A connector is revoked',
             self::CAPABILITY_CONFIRMED => 'A permission needing confirmation is granted, such as backups',
+            self::BACKUP_FAILED => 'A backup does not complete',
         ];
     }
 

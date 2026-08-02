@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Domain\Backup\BackupReadiness;
 use App\Domain\Backup\BackupService;
 use App\Domain\Backup\BackupTimeline;
+use App\Domain\Backup\FailedBackupJobs;
 use App\Domain\Backup\InFlightBackups;
 use App\Domain\Backup\RecoveryKeyService;
 use App\Domain\Capability\CapabilityService;
@@ -42,6 +43,7 @@ final class BackupController
         private readonly BackupService $backups,
         private readonly JobService $jobs,
         private readonly InFlightBackups $inFlight,
+        private readonly FailedBackupJobs $failed,
         private readonly BackupTimeline $timeline,
         private readonly BackupReadiness $readiness,
         private readonly RecoveryKeyService $recoveryKeys,
@@ -77,6 +79,11 @@ final class BackupController
             'organisation' => $organisation,
             'membership' => app(Membership::class),
             'artifacts' => $artifacts,
+
+            // Backups that were asked for and left nothing behind. Without this they are invisible:
+            // no artifact to list, and the job has left the queue so InFlightBackups cannot see it
+            // either.
+            'failedJobs' => $this->failed->forOrganisation($organisation->id),
 
             // Sites that could be backed up, so somebody who has granted the permission but never seen
             // an artifact can tell which of the two things is missing.

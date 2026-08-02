@@ -9,6 +9,7 @@ use App\Contracts\KeyService;
 use App\Contracts\ObjectStore;
 use App\Contracts\StorageQuota;
 use App\Domain\Audit\AuditRecorder;
+use App\Domain\Notifications\Notifier;
 use App\Models\BackupArtifact;
 use App\Models\BackupEvent;
 use App\Models\Organisation;
@@ -62,6 +63,7 @@ final class BackupService
         private readonly AuditRecorder $audit,
         private readonly BackupTimeline $timeline,
         private readonly DirectUploadGrants $grants,
+        private readonly Notifier $notifier,
     ) {}
 
     /**
@@ -967,6 +969,11 @@ final class BackupService
             outcome: 'failure',
             failureReason: $reason,
         );
+
+        // Tell somebody. An audit entry is a record for afterwards, not a way of finding out — and
+        // this failure is silent by nature: the screen shows the previous backup, which succeeded,
+        // and nothing about the estate looks different until a restore is needed.
+        $this->notifier->dispatch(BackupFailureNotice::event($artifact->site, $reason, $artifact->external_id));
 
         return $artifact;
     }

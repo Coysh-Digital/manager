@@ -124,6 +124,14 @@
                     </div>
                 @endif
 
+                @if ($failedJobs->isNotEmpty())
+                    <div class="border-t border-border">
+                        @foreach ($failedJobs as $failure)
+                            <x-backup-failure :failure="$failure" />
+                        @endforeach
+                    </div>
+                @endif
+
                 @if (count($trend) > 1)
                     {{-- The shape is the point. A database growing steadily reads differently from one
                          that halved overnight because a table was dropped, and a table of sizes makes
