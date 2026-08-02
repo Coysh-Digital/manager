@@ -14,7 +14,7 @@ does not](/what-it-does) is the page for that.
   the connector refuses to talk back, so this is not optional.
 - Somewhere to put backups. A local volume is fine to start with; S3 or anything S3-compatible works
   too.
-- A Craft 5 site you can install a plugin on.
+- A Craft 4.4+ or Craft 5 site you can install a plugin on.
 
 You do **not** need admin credentials for the sites you are going to monitor. Manager for Craft has
 nowhere to put them.

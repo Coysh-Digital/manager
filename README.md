@@ -130,7 +130,7 @@ your own machine, because the platform holds no key that would open it. See
 
 | | |
 |---|---|
-| [`craft-manager-connector`](https://github.com/Coysh-Digital/craft-manager-connector) | The Craft 5 plugin installed on managed sites. Public, MIT. |
+| [`craft-manager-connector`](https://github.com/Coysh-Digital/craft-manager-connector) | The Craft 4.4+/5 plugin installed on managed sites. Public, MIT. |
 | [`manager-protocol`](https://github.com/Coysh-Digital/manager-protocol) | The wire contract shared by both. Public, MIT. |
 | [`manager-restore`](https://github.com/Coysh-Digital/manager-restore) | The offline CLI that generates recovery keys and decrypts backups. Public, MIT. It opens no sockets, and there is a test. |
 | `manager-cloud` | Private. The marketing site at managerforcraft.com. |
