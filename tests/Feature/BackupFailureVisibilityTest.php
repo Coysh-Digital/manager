@@ -2,10 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Contracts\BackupSizeLimit;
 use App\Domain\Job\JobService;
 use App\Domain\Notifications\NotificationEvent;
 use App\Jobs\DeliverNotification;
 use App\Models\BackupArtifact;
+use App\Models\CapabilityGrant;
 use App\Models\Connector;
 use App\Models\Membership;
 use App\Models\NotificationDestination;
@@ -180,4 +182,35 @@ it('settles a declared artifact when the backup job fails', function (): void {
 
     expect($artifact->state)->toBe(BackupArtifact::STATE_FAILED)
         ->and($artifact->failure_reason)->toBe('the upload did not complete');
+});
+
+it('sends no size limit on a self-hosted installation', function (): void {
+    // The site's own maxBackupMegabytes stands. Whoever runs this installation runs the machines
+    // being backed up, and the limit bounds a dump on a disk they own.
+    CapabilityGrant::factory()->for($this->site)->capability('backups:create')->create();
+
+    $job = app(JobService::class)->enqueue($this->site, Jobs::BACKUP_CREATE);
+
+    expect($job->parameters)->not->toHaveKey('max_megabytes');
+});
+
+it('passes the platform limit through when an edition sets one', function (): void {
+    /*
+     * Hosted, maxBackupMegabytes is the wrong control in the wrong place: the customer's plugin
+     * config is on their own server, most sites have no config file, and the 2 GB default becomes a
+     * ceiling nobody chose on storage that is already metered and billed. Zero means no limit.
+     */
+    app()->bind(BackupSizeLimit::class, fn () => new class implements BackupSizeLimit
+    {
+        public function megabytes(): ?int
+        {
+            return 0;
+        }
+    });
+
+    CapabilityGrant::factory()->for($this->site)->capability('backups:create')->create();
+
+    $job = app(JobService::class)->enqueue($this->site, Jobs::BACKUP_CREATE);
+
+    expect($job->parameters['max_megabytes'])->toBe(0);
 });

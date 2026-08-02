@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Job;
 
+use App\Contracts\BackupSizeLimit;
 use App\Domain\Audit\AuditRecorder;
 use App\Domain\Backup\BackupFailureNotice;
 use App\Domain\Backup\BackupService;
@@ -46,6 +47,7 @@ final class JobService
         private readonly CorrelationId $correlationId,
         private readonly RecoveryKeyService $recoveryKeys,
         private readonly Notifier $notifier,
+        private readonly BackupSizeLimit $backupSize,
     ) {}
 
     /**
@@ -69,6 +71,24 @@ final class JobService
             $this->recordRefusal($site, $type, $actor, JobRejectedException::UNKNOWN_TYPE);
 
             throw new JobRejectedException(JobRejectedException::UNKNOWN_TYPE);
+        }
+
+        /*
+         | The platform's own size limit, where it has one.
+         |
+         | Added here rather than at each caller, for the same reason the recovery-key rule below
+         | lives here: this makes it true for every caller, including the scheduler and any future
+         | one that forgets to ask. There are two today and there was no reason for both to know.
+         |
+         | Only a hosted edition answers with a number, and zero means no limit. Self-hosted answers
+         | null and nothing is sent, so the site's own maxBackupMegabytes stands.
+         */
+        if ($type === Jobs::BACKUP_CREATE) {
+            $megabytes = $this->backupSize->megabytes();
+
+            if ($megabytes !== null) {
+                $parameters['max_megabytes'] = $megabytes;
+            }
         }
 
         // Unknown parameters are rejected, not dropped. A caller passing something the schema does

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Contracts\BackupSizeLimit;
 use App\Contracts\BillingAdministration;
 use App\Contracts\DirectUploadGrants;
 use App\Contracts\KeyService;
@@ -23,6 +24,7 @@ use App\Support\SelfHosted\DiskObjectStore;
 use App\Support\SelfHosted\NoDirectUploads;
 use App\Support\SelfHosted\NullProvisioner;
 use App\Support\SelfHosted\SelfHostedBilling;
+use App\Support\SelfHosted\SiteDecidesBackupSize;
 use App\Support\SelfHosted\SelfHostedLabel;
 use App\Support\SelfHosted\SelfHostedMail;
 use Illuminate\Database\Eloquent\Model;
@@ -66,6 +68,11 @@ class AppServiceProvider extends ServiceProvider
         // so this answers null and every part of the interface that would link to billing stays
         // absent — not greyed out, not explaining why it does not apply.
         $this->app->singletonIf(BillingAdministration::class, SelfHostedBilling::class);
+
+        // Whether a site's own maxBackupMegabytes stands. It does here: whoever runs this
+        // installation runs the machines being backed up, and the limit protects their disk. A
+        // hosted edition owns and bills for the storage, so it lifts it.
+        $this->app->singletonIf(BackupSizeLimit::class, SiteDecidesBackupSize::class);
 
         // The word under the wordmark. Bound the same way and for the same reason, even though it
         // decides nothing: an installation should say which one it is because of what is wired into
