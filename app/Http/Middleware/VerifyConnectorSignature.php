@@ -106,7 +106,7 @@ final class VerifyConnectorSignature
                 // at a 2.1 MB artifact for the fault, when the limit had been configured to zero by
                 // a blank environment line — and the refusal happens here, before anything with more
                 // context about the artifact has run.
-                return $this->reject("payload too large, limit is {$ceiling} bytes", 413);
+                return $this->reject("payload too large, limit is {$ceiling} bytes (MANAGER_BACKUP_MAX_BYTES)", 413);
             }
         } elseif (strlen($body) > (int) config('manager.connector.max_payload_bytes')) {
             return $this->reject('payload too large', 413);

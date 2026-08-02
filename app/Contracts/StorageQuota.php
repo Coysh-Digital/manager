@@ -24,6 +24,18 @@ interface StorageQuota
      *
      * Null rather than PHP_INT_MAX so that "no limit configured" and "an enormous limit" stay
      * distinguishable to a caller deciding whether to warn somebody.
+     *
+     * `$incomingBytes` is the artifact being declared right now, and an edition that sells storage
+     * needs it. Self-hosted reads a fixed number and can ignore it — `ConfiguredQuota` does. A hosted
+     * edition granting overage in blocks cannot: deciding how much room to open on the basis of what
+     * is *already* stored quietly assumes no single artifact is larger than one block, which was true
+     * only while the wire contract capped an artifact at 2 GiB. It no longer does.
+     *
+     * Defaulted so every existing *call site* is unchanged. Implementations still have to declare it
+     * — PHP requires the signatures to match — which is the honest cost of widening a seam and is
+     * still much cheaper than the alternative. A new contract would need a self-hosted binding and a
+     * hand-maintained row in the hosted edition's own seam test, and that second one has no tripwire:
+     * it is exactly how a contract once reached production with nothing bound behind it.
      */
-    public function remainingBytes(Organisation $organisation): ?int;
+    public function remainingBytes(Organisation $organisation, int $incomingBytes = 0): ?int;
 }

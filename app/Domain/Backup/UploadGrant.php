@@ -34,6 +34,8 @@ final class UploadGrant
      * @param  string  $path  absolute object path, beginning with a slash
      * @param  string  $query  presigned query string, without the leading question mark
      * @param  array<string, string>  $headers  headers the upload must send for the signature to hold
+     * @param  list<UploadPart>  $parts  when the artifact is too large for one request; empty otherwise
+     * @param  string|null  $reference  the store's own handle for a multipart upload, never sent out
      */
     public function __construct(
         public readonly string $path,
@@ -42,16 +44,26 @@ final class UploadGrant
         public readonly Carbon $expiresAt,
         public readonly int $maxBytes,
         public readonly string $storageKey,
+        public readonly array $parts = [],
+        public readonly int $partBytes = 0,
+        public readonly ?string $reference = null,
     ) {}
 
     /**
      * The form a connector receives, on the signed claim response.
      *
+     * `parts` and `part_bytes` appear only when there are parts, so a grant for an ordinary artifact
+     * is byte-identical to what this produced before multipart existed — which matters because a
+     * connector too old to understand them is the common case and must see nothing new.
+     *
+     * `reference` is never here. It is the store's handle for the upload in progress, this platform
+     * completes the upload itself, and a connector has no use for one.
+     *
      * @return array<string, mixed>
      */
     public function toPayload(string $jobExternalId): array
     {
-        return [
+        $payload = [
             'job_id' => $jobExternalId,
             'path' => $this->path,
             'query' => $this->query,
@@ -59,5 +71,12 @@ final class UploadGrant
             'expires_at' => $this->expiresAt->getTimestamp(),
             'max_bytes' => $this->maxBytes,
         ];
+
+        if ($this->parts !== []) {
+            $payload['part_bytes'] = $this->partBytes;
+            $payload['parts'] = array_map(static fn (UploadPart $part): array => $part->toPayload(), $this->parts);
+        }
+
+        return $payload;
     }
 }

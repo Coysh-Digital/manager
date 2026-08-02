@@ -197,12 +197,24 @@ actual date rather than claiming it happened immediately.
 
 ## Quotas and limits
 
-- **Per artifact**: 2 GB by default. A site whose database is larger than that needs a conversation,
-  not a bigger buffer.
+- **Per artifact**: 2 GB by default, set with `MANAGER_BACKUP_MAX_BYTES`. **This is now the only
+  per-artifact ceiling.** Until `manager-protocol` 1.5.0 the wire contract carried its own 2 GB
+  maximum, so raising this could not have any effect — it was a limit no operator could move, and it
+  refused real backups on sites whose databases had simply grown. Raising it now works, and the
+  refusal names both the artifact's size and this setting.
+
+  Above 5 GB an artifact cannot be uploaded in one request and has to arrive in parts, which requires
+  an edition that issues presigned uploads. A self-hosted installation streams every byte through the
+  application instead, so `manager:doctor` warns if the ceiling is raised past that point. Sites
+  uploading straight to their own storage are unaffected.
 - **Per organisation**: unset by default on self-hosted. Set `MANAGER_BACKUP_QUOTA_BYTES` if you
   want one - a single site filling a volume takes down backups for every site sharing it.
 - **On the Craft side**: `maxBackupMegabytes`, default 2048. A safety valve so an unexpectedly huge
   dump fails early with a clear message rather than late with a full disk.
+
+From connector 1.11.0 the per-artifact ceiling is sent to sites on the signed claim response, so a
+site whose database is larger than it will refuse **before** taking a dump rather than after dumping,
+encrypting and offering one.
 
 ## What Manager for Craft is never told
 

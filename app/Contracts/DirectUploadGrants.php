@@ -30,13 +30,30 @@ interface DirectUploadGrants
     /**
      * Issue a grant for one artifact, or null when this edition does not issue them.
      *
+     * Above five gigabytes an object store will not accept a single request, so an implementation
+     * should return a grant carrying {@see UploadPart}s instead. `$expectedCrc32c` is what makes that
+     * possible, and it is worth being exact about what it costs.
+     *
+     * On the single-request path the store enforces `$expectedSha256Base64` — a cryptographic hash the
+     * connector signed. On the multipart path it cannot: a store can only confirm a whole-object
+     * checksum across an assembly when the algorithm linearises, and SHA-256 does not. CRC-32C does,
+     * so that is what the store checks, and **a CRC is forgeable where a SHA is not.**
+     *
+     * That is a real difference and not one to gloss over. It is also not a weakening of anything that
+     * was doing work: this platform cannot read a v2 or v3 artifact whatever checksum guarded it, and
+     * what binds those bytes to that site has always been the Ed25519 signature over the manifest,
+     * checked offline by the customer with `manager-restore`. The transport checksum's job is to catch
+     * corruption between a site and a bucket, and for that the two are equivalent.
+     *
      * @param  string  $expectedSha256Base64  the whole-file checksum the storage service must enforce
+     * @param  string  $expectedCrc32c  the same bytes as CRC-32C hex, for a multipart assembly
      */
     public function grantFor(
         Site $site,
         RemoteJob $job,
         string $expectedSha256Base64,
         int $maxBytes,
+        string $expectedCrc32c = '',
     ): ?UploadGrant;
 
     /**
@@ -47,6 +64,11 @@ interface DirectUploadGrants
      *
      * This is what makes `uploaded` a state rather than a claim: a connector says it finished, and
      * nothing is called `stored` until something other than the connector agrees.
+     *
+     * `$reference` is the store's own handle for a multipart upload still in progress. Given one, an
+     * implementation completes the upload before asking about it — which is where the store validates
+     * the assembled whole and refuses it if the parts do not add up to what was promised. It is the
+     * platform that completes it, never the connector, so nothing here is taken on a site's word.
      */
-    public function confirm(string $storageKey, string $expectedSha256Base64): ?int;
+    public function confirm(string $storageKey, string $expectedSha256Base64, ?string $reference = null): ?int;
 }

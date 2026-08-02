@@ -32,6 +32,7 @@ final class NoDirectUploads implements DirectUploadGrants
         RemoteJob $job,
         string $expectedSha256Base64,
         int $maxBytes,
+        string $expectedCrc32c = '',
     ): ?UploadGrant {
         return null;
     }
@@ -43,7 +44,7 @@ final class NoDirectUploads implements DirectUploadGrants
      * `stored` and `verified` in the same instant and never passes through `uploaded`. Returning null
      * rather than throwing keeps the contract honest if that ever stops being true.
      */
-    public function confirm(string $storageKey, string $expectedSha256Base64): ?int
+    public function confirm(string $storageKey, string $expectedSha256Base64, ?string $reference = null): ?int
     {
         return null;
     }

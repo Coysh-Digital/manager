@@ -40,8 +40,12 @@ manager.example.org {
     reverse_proxy 127.0.0.1:8080
 
     # Bodies are streamed, not buffered, so a large backup upload does not land on the proxy's disk.
+    #
+    # Size this against MANAGER_BACKUP_MAX_BYTES rather than leaving it at the old 2GB: since
+    # manager-protocol 1.5.0 an artifact may be larger, and a proxy limit below the application's
+    # ceiling refuses the upload here — where the message cannot explain itself.
     request_body {
-        max_size 2GB
+        max_size 20GB
     }
 }
 ```
@@ -60,16 +64,21 @@ server {
 
     # Backup artifacts are uploaded through this. The default of 1 MB would reject them, and the
     # symptom is a backup that reports success on the site and never appears in Manager.
-    client_max_body_size 2G;
+    #
+    # Keep this at or above MANAGER_BACKUP_MAX_BYTES. Since manager-protocol 1.5.0 an artifact may
+    # be larger than 2 GB, and a proxy that refuses one does so before the application can say why.
+    client_max_body_size 20G;
 
     # Streamed through rather than buffered to disk first. A buffered upload writes an unencrypted-
     # adjacent copy of a customer database into the proxy's temp directory.
     proxy_request_buffering off;
     proxy_buffering off;
 
-    # Long enough for a large artifact on a slow connection.
-    proxy_read_timeout 900s;
-    proxy_send_timeout 900s;
+    # Long enough for a large artifact on a slow connection. Twenty gigabytes on a 20 Mbit uplink
+    # is around two and a half hours, so this is sized against MANAGER_BACKUP_UPLOAD_WINDOW rather
+    # than against how long a request usually takes.
+    proxy_read_timeout 21600s;
+    proxy_send_timeout 21600s;
 
     location / {
         proxy_pass http://127.0.0.1:8080;

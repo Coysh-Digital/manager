@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Connector;
 
 use App\Domain\Backup\BackupKeypair;
+use App\Domain\Backup\BackupService;
 use App\Domain\Backup\RecoveryKeyService;
 use App\Domain\Connector\PlatformKeypair;
 use App\Domain\Connector\ResponseSigner;
@@ -59,9 +60,16 @@ final class JobClaimController
                  |
                  | On the signed response for the same reason the capability list is: this is
                  | security-sensitive configuration, and a connector that only learned it at pairing
-                 | could never follow a rotation. Never inside a job envelope — a `backup.create` job
-                 | carries no parameters at all, and the moment it carried one naming a recipient it
-                 | would also be able to carry one naming a destination.
+                 | could never follow a rotation.
+                 |
+                 | Never inside a job envelope. A `backup.create` job carries one optional parameter,
+                 | `max_megabytes`, and that is the whole of what belongs there: a size can only ever
+                 | cause a site to do less work. A recipient, a schema version or a destination cannot
+                 | travel that way — the first two because a job claimed before a change and run after
+                 | it would instruct the wrong answer, and the third because it must not exist at all.
+                 |
+                 | (This paragraph used to say the job carried no parameters at all. That stopped
+                 | being true when the hosted edition gained the ability to lift a site's size limit.)
                  |
                  | Note what a signature does and does not buy here. It proves the platform said this.
                  | It does not prove the platform said something honest, and a compromised platform
@@ -72,6 +80,34 @@ final class JobClaimController
                 'backup' => [
                     'format' => $zeroKnowledge ? Protocol::BACKUP_FORMAT_V2 : Protocol::BACKUP_FORMAT_V1,
                     'min_connector_version' => Protocol::MIN_CONNECTOR_VERSION_FOR_V2,
+
+                    /*
+                     | Which declaration schemas this build can read, most preferred first.
+                     |
+                     | A connector picks the newest it also implements and falls back to backup.v2
+                     | when it recognises none — which is what a connector older than v3 does with a
+                     | key it has never seen. That is what lets the ceiling move without a cutover:
+                     | neither side has to be upgraded before the other, and no backup is lost while
+                     | a fleet catches up.
+                     |
+                     | Distinct from `format` above, which is the one-way commitment about who can
+                     | read an artifact. This is about how large one may be, and the two must not be
+                     | run together — a size question riding on a security ratchet would make lifting
+                     | a ceiling irreversible.
+                     */
+                    'declarations' => BackupService::ACCEPTED_DECLARATIONS,
+
+                    /*
+                     | And what this platform will actually accept.
+                     |
+                     | Sent so a site with a database larger than the ceiling is refused before it
+                     | dumps, rather than after it has dumped, encrypted and offered. That is the
+                     | precise failure this change exists to fix: a site did all of that work nightly
+                     | and kept none of it.
+                     |
+                     | A size, never a destination. It can only ever cause a connector to do less.
+                     */
+                    'max_artifact_bytes' => (int) config('manager.backups.max_bytes'),
 
                     // Empty when the organisation has none active. The connector then refuses before
                     // taking a dump, so no plaintext database is written for a backup that could not
