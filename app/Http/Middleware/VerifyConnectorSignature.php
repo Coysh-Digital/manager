@@ -99,8 +99,14 @@ final class VerifyConnectorSignature
                 return $this->reject('missing content length', 411);
             }
 
-            if ((int) $length > (int) config('manager.backups.max_bytes')) {
-                return $this->reject('payload too large', 413);
+            $ceiling = (int) config('manager.backups.max_bytes');
+
+            if ((int) $length > $ceiling) {
+                // The ceiling, not just the verdict. "Payload too large" alone sent somebody looking
+                // at a 2.1 MB artifact for the fault, when the limit had been configured to zero by
+                // a blank environment line — and the refusal happens here, before anything with more
+                // context about the artifact has run.
+                return $this->reject("payload too large, limit is {$ceiling} bytes", 413);
             }
         } elseif (strlen($body) > (int) config('manager.connector.max_payload_bytes')) {
             return $this->reject('payload too large', 413);

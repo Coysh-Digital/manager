@@ -56,7 +56,15 @@ return [
 
     'connector' => [
         'timestamp_tolerance' => (int) env('MANAGER_TIMESTAMP_TOLERANCE', Protocol::DEFAULT_TIMESTAMP_TOLERANCE),
-        'max_payload_bytes' => (int) env('MANAGER_MAX_PAYLOAD_BYTES', Protocol::MAX_PAYLOAD_BYTES),
+        /*
+         | `?:` rather than leaning on env()'s default argument.
+         |
+         | env('KEY', $fallback) returns the fallback only when the key is *absent*. A key that is
+         | present and blank returns an empty string, which `(int)` turns into 0 — and a size cap of
+         | zero rejects everything. .env.example ships several of these lines blank, so copying it
+         | and filling in only what you need is enough to set one.
+         */
+        'max_payload_bytes' => ((int) env('MANAGER_MAX_PAYLOAD_BYTES', Protocol::MAX_PAYLOAD_BYTES)) ?: Protocol::MAX_PAYLOAD_BYTES,
         'rate_limit_per_site' => (int) env('MANAGER_RATE_LIMIT_SITE', 60),
         'rate_limit_per_ip' => (int) env('MANAGER_RATE_LIMIT_IP', 120),
 
@@ -107,7 +115,16 @@ return [
 
         'disk' => env('MANAGER_BACKUP_DISK', 'backups'),
 
-        'max_bytes' => (int) env('MANAGER_BACKUP_MAX_BYTES', Protocol::MAX_ARTIFACT_BYTES),
+        /*
+         | Blank is not absent — see max_payload_bytes above, and this is the one that bit.
+         |
+         | A blank MANAGER_BACKUP_MAX_BYTES made this zero, and every upload was refused with
+         | HTTP 413 "payload too large" before a byte of the body was read. A 2.1 MB backup failed
+         | that way on a live site, repeatedly, and the message named the size of the payload rather
+         | than the size of the limit — so it read as the artifact being too big rather than the
+         | ceiling being nothing.
+         */
+        'max_bytes' => ((int) env('MANAGER_BACKUP_MAX_BYTES', Protocol::MAX_ARTIFACT_BYTES)) ?: Protocol::MAX_ARTIFACT_BYTES,
 
         /*
          | Total bytes one organisation may hold, across every site. Unset by default, because an
