@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Contracts\BackupSizeLimit;
 use App\Contracts\BillingAdministration;
 use App\Contracts\DirectUploadGrants;
 use App\Contracts\KeyService;
@@ -23,6 +24,7 @@ use App\Support\SelfHosted\NullProvisioner;
 use App\Support\SelfHosted\SelfHostedBilling;
 use App\Support\SelfHosted\SelfHostedLabel;
 use App\Support\SelfHosted\SelfHostedMail;
+use App\Support\SelfHosted\SiteDecidesBackupSize;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Route;
 
@@ -50,6 +52,7 @@ it('resolves every seam to the self-hosted implementation with no overlay instal
     [ProductLabel::class, SelfHostedLabel::class],
     [MailAdministration::class, SelfHostedMail::class],
     [BillingAdministration::class, SelfHostedBilling::class],
+    [BackupSizeLimit::class, SiteDecidesBackupSize::class],
 ]);
 
 it('says what it is under the wordmark without being told', function (): void {

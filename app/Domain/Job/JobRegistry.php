@@ -172,10 +172,25 @@ final class JobRegistry
             type: Jobs::BACKUP_CREATE,
             schemaVersion: 'v1',
             requiredCapability: 'backups:create',
+            /*
+             | One optional parameter, and it is the platform overriding the site.
+             |
+             | `max_megabytes` is sent only by an edition that owns and bills for the storage, and
+             | zero means no limit. Self-hosted never sends it, so a site's own maxBackupMegabytes
+             | stands — which is the setting's whole purpose there: it bounds a dump on a disk the
+             | same operator owns.
+             |
+             | Hosted, it is the wrong control in the wrong place. The customer's plugin config is on
+             | their own server, most sites have no config file at all, and the 2 GB default becomes
+             | a ceiling nobody chose on storage we are already metering and charging for. Refusing
+             | the backup is a worse answer than billing for the space.
+             */
             parameterSchema: [
                 'type' => 'object',
                 'additionalProperties' => false,
-                'properties' => [],
+                'properties' => [
+                    'max_megabytes' => ['type' => 'integer', 'minimum' => 0],
+                ],
             ],
             // A dump plus encryption plus an upload, on a site that may be large and a connection that
             // may be slow. Bounded all the same: an unreported job expires rather than sitting claimed.
