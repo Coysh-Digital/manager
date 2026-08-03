@@ -422,6 +422,9 @@
                     <p class="max-w-[80ch] text-[12px] leading-relaxed text-text-3">
                         The time zone is what a site's backup schedule reads, so &ldquo;03:00&rdquo;
                         means the quiet hour where your sites are rather than where this server is.
+                        It is also the clock dated times are printed in for anybody who has not set
+                        their own, which they can do on
+                        <a href="{{ route('account.show') }}" class="text-primary hover:text-primary-hover">their account screen</a>.
                         Changing retention governs <em>future</em> backups: each one is given an expiry
                         when it is stored, from the policy in force at that moment, so shortening this
                         does not reach back and re-date what you already have.

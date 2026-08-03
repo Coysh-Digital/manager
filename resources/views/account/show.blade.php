@@ -77,6 +77,57 @@
         </div>
 
         {{--
+            The clock every absolute time on every screen is printed in.
+
+            Its own form rather than a third field on the one above, and that is deliberate rather
+            than tidy: AccountController::updateProfile validates the name and nothing else, the
+            hosted edition documents relying on exactly that, and widening it to carry a preference
+            would put a security assumption behind a convenience feature.
+        --}}
+        <div class="mb-3.5 overflow-hidden rounded-[10px] border border-border bg-surface shadow-[var(--shadow)]">
+            <div class="border-b border-border px-4 py-3 text-[13.5px] font-medium">Time zone</div>
+
+            <form method="POST" action="{{ route('account.timezone') }}" class="flex flex-col gap-4 p-4">
+                @csrf
+
+                <label class="flex flex-col gap-1.5 sm:w-[320px]">
+                    <span class="text-[12.5px] font-medium">Show times in</span>
+                    <select name="timezone"
+                            class="h-[34px] w-full rounded-[7px] border border-border-2 bg-surface px-2.5 text-[13px]">
+                        {{-- Blank is a real answer, not a prompt. Somebody who has never set this
+                             should read times in the organisation's zone, and should be able to go
+                             back to that having once set their own. --}}
+                        <option value="" @selected(old('timezone', $user->timezone) === null || old('timezone', $user->timezone) === '')>
+                            Use the organisation's ({{ $organisationTimezone }})
+                        </option>
+
+                        @foreach ($timezones as $timezone)
+                            <option value="{{ $timezone }}" @selected(old('timezone', $user->timezone) === $timezone)>{{ $timezone }}</option>
+                        @endforeach
+                    </select>
+                    @error('timezone')
+                        <span class="text-[12px] text-danger">{{ $message }}</span>
+                    @enderror
+                </label>
+
+                <p class="max-w-[80ch] text-[12px] leading-relaxed text-text-3">
+                    This is yours alone and changes nothing anybody else sees. It decides how dated
+                    times are printed — audit entries, when a backup was taken, when a site fell
+                    silent — and nothing about when anything runs: a backup schedule reads the
+                    organisation's zone, so moving this will not move the hour your sites are backed
+                    up at.
+                </p>
+
+                <div>
+                    <button type="submit"
+                            class="h-[34px] rounded-[7px] border border-border-2 bg-surface px-3.5 text-[12.5px] font-medium text-text hover:bg-row-hover">
+                        Save
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        {{--
             Then the password: it is the thing people come here to change, and it was the one thing
             this screen could not do. Before this the only routes to it were the forgotten-password
             email or a shell command.

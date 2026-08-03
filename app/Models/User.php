@@ -28,6 +28,7 @@ use Laravel\Passkeys\PasskeyAuthenticatable;
  * @property Carbon|null $totp_confirmed_at
  * @property Carbon|null $email_verified_at
  * @property Carbon|null $last_authenticated_at
+ * @property string|null $timezone IANA identifier; null means use the organisation's
  */
 #[Fillable(['name', 'email', 'password'])]
 #[Hidden(['password', 'remember_token', 'totp_secret'])]

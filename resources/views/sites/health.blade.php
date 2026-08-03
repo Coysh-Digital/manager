@@ -114,9 +114,9 @@
                     @foreach (array_reverse($uptime->outages) as $outage)
                         <div class="grid grid-cols-[1fr_auto_auto] items-center gap-4 border-b border-border px-4 py-2.5 text-[12.5px] last:border-b-0">
                             <span>
-                                {{ $outage->from->format('j M, H:i') }}
+                                <x-timestamp :at="$outage->from" format="j M, H:i" />
                                 <span class="text-text-3">→</span>
-                                {{ $outage->isOngoing ? 'still silent' : $outage->to->format('H:i') }}
+                                @if ($outage->isOngoing)still silent@else<x-timestamp :at="$outage->to" format="H:i" />@endif
                             </span>
                             <span class="font-mono tabular text-text-2">{{ $outage->duration() }}</span>
                             @if ($outage->isOngoing)
