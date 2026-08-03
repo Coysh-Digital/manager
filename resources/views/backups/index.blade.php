@@ -172,7 +172,7 @@
 
         @if ($artifacts->isNotEmpty())
             <div class="overflow-hidden rounded-[10px] border border-border bg-surface shadow-[var(--shadow)]">
-                <div class="overflow-x-auto">
+                <div class="relative overflow-x-auto">
                     <table class="w-full border-collapse text-[13px]">
                         <thead class="sticky top-0 bg-surface-2">
                             <tr>

@@ -20,7 +20,7 @@
 --}}
 {{-- Scrolls sideways rather than wrapping to two rows on a phone. Seven tabs wrapped is a block of
      navigation taller than the content under it, and the order carries meaning. --}}
-<nav aria-label="Site sections" class="-mx-4 mb-5 overflow-x-auto border-b border-border px-4 sm:mx-0 sm:mb-6 sm:px-0">
+<nav aria-label="Site sections" class="relative -mx-4 mb-5 overflow-x-auto border-b border-border px-4 sm:mx-0 sm:mb-6 sm:px-0">
     <ul class="-mb-px flex w-max min-w-full items-end gap-x-1">
         @foreach ($tabs as $tab)
             @php $active = request()->routeIs($tab['route']); @endphp

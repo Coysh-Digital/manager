@@ -298,7 +298,7 @@
                 </div>
 
                 @if ($runtimeReport->volumes() !== [])
-                    <div class="overflow-x-auto">
+                    <div class="relative overflow-x-auto">
                         <table class="w-full min-w-[480px] text-[13px]">
                             <thead>
                                 <tr class="bg-surface-2">

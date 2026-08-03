@@ -58,7 +58,7 @@
                 </div>
 
                 @if ($trust['addresses'] !== [])
-                    <div class="overflow-x-auto">
+                    <div class="relative overflow-x-auto">
                         <table class="w-full min-w-[520px] text-[13px]">
                             <thead>
                                 <tr class="bg-surface-2">

@@ -15,18 +15,29 @@
                 aria-label="{{ $label }}"></canvas>
     </div>
 
-    <table class="sr-only">
-        <caption>{{ $summary ?? $label }}</caption>
-        <thead>
-            <tr><th scope="col">Period</th><th scope="col">Value</th></tr>
-        </thead>
-        <tbody>
-            @foreach ($points as $point)
-                <tr>
-                    <th scope="row">{{ $point['label'] }}</th>
-                    <td>{{ $point['text'] ?? $point['value'] }}</td>
-                </tr>
-            @endforeach
-        </tbody>
-    </table>
+    {{--
+        The hiding goes on a wrapper, not on the table.
+
+        `sr-only` clips with `overflow: hidden` on a one-pixel box, and a table's overflow does not
+        clip its own `<caption>` — the caption is laid out outside the table box. So the summary
+        sentence, which is a whole sentence naming the site, escaped and rendered at its full width
+        while being invisible. Measured on a 375px viewport it ran to 475px, which is exactly the
+        horizontal scrollbar somebody reported on every screen carrying a chart.
+    --}}
+    <div class="sr-only">
+        <table>
+            <caption>{{ $summary ?? $label }}</caption>
+            <thead>
+                <tr><th scope="col">Period</th><th scope="col">Value</th></tr>
+            </thead>
+            <tbody>
+                @foreach ($points as $point)
+                    <tr>
+                        <th scope="row">{{ $point['label'] }}</th>
+                        <td>{{ $point['text'] ?? $point['value'] }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
 </div>

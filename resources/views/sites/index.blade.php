@@ -183,7 +183,7 @@
                 me today" is answered by name, status and when it was last heard from. The versions
                 are still one tap away on the site itself.
             --}}
-            <div class="overflow-x-auto">
+            <div class="relative overflow-x-auto">
                 <table class="table-sticky w-full text-[13px] lg:min-w-[1120px]">
                     <thead>
                         <tr class="bg-surface-2">
