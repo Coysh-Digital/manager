@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Contracts\BackupSizeLimit;
 use App\Domain\Backup\BackupService;
 use App\Models\BackupArtifact;
 use App\Models\CapabilityGrant;
@@ -328,6 +329,54 @@ it('advertises the ceiling, so a site is refused before it dumps', function (): 
     // Sent so a database larger than this fails before a dump exists, rather than after the site has
     // dumped, encrypted and offered twenty gigabytes. A size, never a destination.
     expect($response->json('backup.max_artifact_bytes'))->toBe(12345678);
+});
+
+it('advertises zero when there is no ceiling, rather than omitting the field', function (): void {
+    /*
+     * Zero is the wire's "no ceiling", and the connector reads it as one — it skips the check on
+     * zero exactly as it does on an absent field. The field is still sent, because *absent* is how
+     * a platform too old to have an opinion looks, and this platform has one.
+     *
+     * This is now the default. A ceiling of 2 GiB that nobody chose refused a 3.2 GB database on a
+     * platform being paid to hold it, and refused it before the dump, which is the one place the
+     * connector cannot be argued with.
+     */
+    config()->set('manager.backups.max_bytes', null);
+
+    $response = postSignedConnectorRequest('/api/connector/v1/jobs/claim', [], $this->site, $this->keypair['secret']);
+
+    expect($response->json('backup.max_artifact_bytes'))->toBe(0)
+        ->and($response->json('backup'))->toHaveKey('max_artifact_bytes');
+});
+
+it('accepts an artifact of any size when nothing caps it', function (): void {
+    /*
+     | The default, now, and the test that would have caught the failure that started this.
+     |
+     | The case above proves a *raised* ceiling works. This one proves the absence of a ceiling
+     | works, which is a different code path: every enforcement point has to skip rather than
+     | compare against something enormous. Twenty gigabytes because that is the size backup.v2 could
+     | not even describe.
+     */
+    config()->set('manager.backups.max_bytes', null);
+
+    expect(app(BackupSizeLimit::class)->ceilingBytes())->toBeNull();
+
+    $twentyGigabytes = 20 * 1024 ** 3;
+
+    $artifact = ($this->makeArtifact)(
+        claimBytes: $twentyGigabytes,
+        mutateManifest: static function (array $manifest) use ($twentyGigabytes): array {
+            $manifest['integrity']['plaintext_bytes'] = $twentyGigabytes;
+            $manifest['integrity']['ciphertext_bytes'] = $twentyGigabytes;
+
+            return $manifest;
+        },
+    );
+
+    ($this->declare)($artifact['declaration'])->assertOk();
+
+    expect((int) BackupArtifact::query()->first()->artifact_bytes)->toBe($twentyGigabytes);
 });
 
 it('keeps v2 on the accepted list, because connectors in the field still send it', function (): void {

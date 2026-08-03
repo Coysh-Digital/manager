@@ -206,6 +206,11 @@ it('passes the platform limit through when an edition sets one', function (): vo
         {
             return 0;
         }
+
+        public function ceilingBytes(): ?int
+        {
+            return null;
+        }
     });
 
     CapabilityGrant::factory()->for($this->site)->capability('backups:create')->create();

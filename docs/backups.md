@@ -197,11 +197,21 @@ actual date rather than claiming it happened immediately.
 
 ## Quotas and limits
 
-- **Per artifact**: 2 GB by default, set with `MANAGER_BACKUP_MAX_BYTES`. **This is now the only
-  per-artifact ceiling.** Until `manager-protocol` 1.5.0 the wire contract carried its own 2 GB
-  maximum, so raising this could not have any effect — it was a limit no operator could move, and it
-  refused real backups on sites whose databases had simply grown. Raising it now works, and the
-  refusal names both the artifact's size and this setting.
+- **Per artifact**: **no ceiling by default.** Set `MANAGER_BACKUP_MAX_BYTES`, in bytes, if you want
+  one, and the refusal then names both the artifact's size and this setting.
+
+  It used to default to 2 GB, inherited from the wire contract: until `manager-protocol` 1.5.0
+  `backup.v2` carried its own 2 GB maximum, so this setting could only refuse more, never permit it.
+  When the protocol stopped enforcing a maximum the default stayed, and it went on refusing real
+  backups on sites whose databases had simply grown — a wall nobody had chosen and few people knew
+  was there. A limit you set is a policy; a limit you inherited is an accident.
+
+  With no ceiling set, the real limit is whatever your reverse proxy and PHP will carry. That is
+  worth knowing because it fails badly: a proxy refuses the upload before Manager for Craft sees it,
+  so there is no correlation ID and nothing in the log. See
+  [Reverse proxy and TLS](/reverse-proxy) for the settings and for how to test it.
+  `manager:doctor` reports PHP's limit under **Upload path ceiling** and fails when it is below a
+  ceiling you configured; it cannot see the proxy.
 
   Above 5 GB an artifact cannot be uploaded in one request and has to arrive in parts, which requires
   an edition that issues presigned uploads. A self-hosted installation streams every byte through the
@@ -214,7 +224,8 @@ actual date rather than claiming it happened immediately.
 
 From connector 1.11.0 the per-artifact ceiling is sent to sites on the signed claim response, so a
 site whose database is larger than it will refuse **before** taking a dump rather than after dumping,
-encrypting and offering one.
+encrypting and offering one. With no ceiling set the platform sends zero, which sites read as "no
+limit" and skip the check — the same as an older platform that sends nothing at all.
 
 ## What Manager for Craft is never told
 

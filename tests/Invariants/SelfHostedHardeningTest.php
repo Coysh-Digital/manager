@@ -96,6 +96,77 @@ it('notices if the audit log loses its protection', function (): void {
         ->and($check->detail)->toContain('audit_events_reject_mutation');
 });
 
+/*
+|--------------------------------------------------------------------------------------------------
+| Size ceilings
+|--------------------------------------------------------------------------------------------------
+|
+| Two checks, and the second exists because the first can be right while backups still fail. The
+| ceiling is a policy this application enforces and can explain; the upload path is plumbing that
+| refuses first and explains nothing. When they disagree, the plumbing wins silently.
+*/
+
+it('states plainly when there is no backup ceiling, rather than reporting a number nobody set', function (): void {
+    config(['manager.backups.max_bytes' => null]);
+
+    $check = checkNamed('Backup size ceiling');
+
+    // A pass, not a warning. The size is still bounded — by quota, by disk, and by the upload path
+    // below — and an operator who has not asked for a ceiling has not misconfigured anything.
+    expect($check->status)->toBe(Check::PASS)
+        ->and($check->detail)->toContain('No ceiling');
+});
+
+it('fails on a ceiling too small to accept any real database', function (): void {
+    config(['manager.backups.max_bytes' => 4096]);
+
+    $check = checkNamed('Backup size ceiling');
+
+    expect($check->failed())->toBeTrue()
+        ->and($check->detail)->toContain('4096')
+        ->and($check->remedy)->toContain('MANAGER_BACKUP_MAX_BYTES');
+});
+
+it('fails when PHP will refuse artifacts this platform has promised to accept', function (): void {
+    /*
+     | The failure the shipped Docker image had: nginx carved the upload route out of its body limit
+     | and php.ini left post_max_size at 2M, so the claim response advertised a ceiling the request
+     | path could not carry. A site dumps, encrypts and offers before finding out.
+     |
+     | Driven off the real ini value rather than a hardcoded one, because this is asserting a
+     | relationship between two numbers and only one of them is ours to set.
+    */
+    $postMax = checkNamed('Upload path ceiling');
+
+    if (str_contains($postMax->detail, 'any size')) {
+        // post_max_size is unlimited on this runner, so there is no smaller number to contradict.
+        expect($postMax->status)->toBe(Check::PASS);
+
+        return;
+    }
+
+    config(['manager.backups.max_bytes' => 1024 ** 4]);
+
+    $check = checkNamed('Upload path ceiling');
+
+    expect($check->failed())->toBeTrue()
+        ->and($check->detail)->toContain('post_max_size')
+        ->and($check->remedy)->toContain('post_max_size');
+});
+
+it('names PHP as the effective ceiling when this platform sets none', function (): void {
+    config(['manager.backups.max_bytes' => null]);
+
+    $check = checkNamed('Upload path ceiling');
+
+    // Whatever the runner's post_max_size is, this must not fail — an operator who set no ceiling
+    // has not misconfigured anything — and it must say what the real limit turned out to be.
+    expect($check->failed())->toBeFalse()
+        ->and($check->detail)->toContain(
+            str_contains($check->detail, 'any size') ? 'any size' : 'effective backup ceiling'
+        );
+});
+
 it('reports readiness narrowly', function (): void {
     // Readiness is polled by orchestrators. A probe that failed on an unverified mail
     // configuration would take a working instance out of rotation for no good reason.

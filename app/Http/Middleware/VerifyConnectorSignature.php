@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Contracts\BackupSizeLimit;
 use App\Domain\Connector\NonceStore;
 use App\Models\Connector;
 use App\Models\Site;
@@ -56,6 +57,7 @@ final class VerifyConnectorSignature
         private readonly NonceStore $nonceStore,
         private readonly RateLimiter $limiter,
         private readonly CorrelationId $correlationId,
+        private readonly BackupSizeLimit $backupSize,
     ) {}
 
     /**
@@ -99,9 +101,23 @@ final class VerifyConnectorSignature
                 return $this->reject('missing content length', 411);
             }
 
-            $ceiling = (int) config('manager.backups.max_bytes');
+            $ceiling = $this->backupSize->ceilingBytes();
 
-            if ((int) $length > $ceiling) {
+            /*
+             | Only when there is a ceiling to check against.
+             |
+             | Null is an edition or an operator that has not set one, and it is now the default —
+             | so this is the ordinary path rather than the exception. Nothing is silently permitted
+             | by it: the artifact is still bounded by the organisation's quota, by the disk, and by
+             | whatever the web server in front of this will carry.
+             |
+             | That last one is worth naming here, because this is the code somebody will be reading
+             | when they hit it. A body limit in nginx answers with its own HTML 413 before PHP is
+             | invoked at all, so the connector reports "Correlation ID: unknown" and this log line
+             | does not exist. If you are looking for a rejection that was never written down, it
+             | was not written down here.
+             */
+            if ($ceiling !== null && (int) $length > $ceiling) {
                 // The ceiling, not just the verdict. "Payload too large" alone sent somebody looking
                 // at a 2.1 MB artifact for the fault, when the limit had been configured to zero by
                 // a blank environment line — and the refusal happens here, before anything with more

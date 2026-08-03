@@ -41,9 +41,9 @@ manager.example.org {
 
     # Bodies are streamed, not buffered, so a large backup upload does not land on the proxy's disk.
     #
-    # Size this against MANAGER_BACKUP_MAX_BYTES rather than leaving it at the old 2GB: since
-    # manager-protocol 1.5.0 an artifact may be larger, and a proxy limit below the application's
-    # ceiling refuses the upload here — where the message cannot explain itself.
+    # Manager sets no backup ceiling of its own unless you set MANAGER_BACKUP_MAX_BYTES, so by
+    # default **this line is the ceiling** — whatever you put here is the largest database anyone
+    # can back up, and the refusal happens here, where the message cannot explain itself.
     request_body {
         max_size 20GB
     }
@@ -62,11 +62,12 @@ server {
     ssl_certificate     /etc/letsencrypt/live/manager.example.org/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/manager.example.org/privkey.pem;
 
-    # Backup artifacts are uploaded through this. The default of 1 MB would reject them, and the
-    # symptom is a backup that reports success on the site and never appears in Manager.
+    # Backup artifacts are uploaded through this. **nginx's default is 1 MB**, which rejects
+    # essentially every real backup, and the symptom is a 413 the application never sees and cannot
+    # explain. A live console ran at 2m and refused a 2.1 MB database for four nights.
     #
-    # Keep this at or above MANAGER_BACKUP_MAX_BYTES. Since manager-protocol 1.5.0 an artifact may
-    # be larger than 2 GB, and a proxy that refuses one does so before the application can say why.
+    # Manager sets no backup ceiling of its own unless you set MANAGER_BACKUP_MAX_BYTES, so by
+    # default this line is the ceiling. If you do set one, keep this at or above it.
     client_max_body_size 20G;
 
     # Streamed through rather than buffered to disk first. A buffered upload writes an unencrypted-
@@ -115,6 +116,49 @@ labels:
 
 Traefik sets the forwarded headers itself. Set `MANAGER_TRUSTED_PROXIES` to the Docker network range
 Traefik runs on rather than to `127.0.0.1`.
+
+## PHP's own body limit
+
+The proxy is not the only thing that can refuse a large upload before Manager for Craft sees it.
+PHP refuses a request whose `Content-Length` exceeds `post_max_size` before any application code
+runs, and Laravel applies that to a `PUT` exactly as to a `POST`. So a generous
+`client_max_body_size` with a default `post_max_size` fails in the same way, one layer further in.
+
+```ini
+; php.ini — 0 means unlimited, and Manager streams the upload to disk rather than reading it
+; into memory, so this is not the protection it looks like.
+post_max_size = 0
+upload_max_filesize = 0
+```
+
+`manager:doctor` reports the effective number under **Upload path ceiling**, and fails if it is
+below a ceiling you have configured. It cannot see the proxy — see below.
+
+## When a backup fails with no correlation ID
+
+Every refusal Manager for Craft composes carries a correlation identifier, in the response body and
+in the `Manager-Correlation-Id` header, and writes a matching line to its log. So a connector
+reporting
+
+```
+The platform rejected the artifact (HTTP 413). Correlation ID: unknown
+```
+
+is telling you the response **did not come from Manager for Craft at all**. Nothing will be in the
+Laravel log, because nothing reached PHP. Look at the proxy.
+
+Test it directly rather than inferring, with a body larger than the one that failed:
+
+```bash
+head -c 3000000 /dev/zero > /tmp/probe.bin
+curl -i -X PUT --data-binary @/tmp/probe.bin \
+  -H 'Content-Type: application/octet-stream' \
+  https://manager.example.org/api/connector/v1/backups/probe/content
+```
+
+An HTML error page naming nginx is the proxy. A JSON body with a `correlation_id` means the request
+got through and the fault is somewhere else — the signature is expected to fail here, so a `401` is
+the healthy answer.
 
 ## Cloudflare and similar
 

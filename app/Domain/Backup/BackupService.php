@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Backup;
 
+use App\Contracts\BackupSizeLimit;
 use App\Contracts\DirectUploadGrants;
 use App\Contracts\KeyService;
 use App\Contracts\ObjectStore;
@@ -64,6 +65,7 @@ final class BackupService
         private readonly BackupTimeline $timeline,
         private readonly DirectUploadGrants $grants,
         private readonly Notifier $notifier,
+        private readonly BackupSizeLimit $backupSize,
     ) {}
 
     /**
@@ -168,9 +170,9 @@ final class BackupService
             throw new BackupRejectedException('That artifact uses a chunk size this platform cannot read.');
         }
 
-        $limit = (int) config('manager.backups.max_bytes');
+        $limit = $this->backupSize->ceilingBytes();
 
-        if ($artifact['ciphertext_bytes'] > $limit) {
+        if ($limit !== null && $artifact['ciphertext_bytes'] > $limit) {
             throw new BackupRejectedException('That artifact is larger than this platform accepts.');
         }
 
@@ -418,9 +420,9 @@ final class BackupService
         }
 
         $declaredBytes = (int) $declaration['artifact_bytes'];
-        $ceiling = (int) config('manager.backups.max_bytes');
+        $ceiling = $this->backupSize->ceilingBytes();
 
-        if ($declaredBytes > $ceiling) {
+        if ($ceiling !== null && $declaredBytes > $ceiling) {
             /*
              | The number, and where it comes from.
              |

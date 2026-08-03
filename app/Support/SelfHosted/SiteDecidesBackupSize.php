@@ -19,4 +19,21 @@ final class SiteDecidesBackupSize implements BackupSizeLimit
     {
         return null;
     }
+
+    /**
+     * The operator's own ceiling, if they set one.
+     *
+     * Unlike `megabytes()` this is not somebody else's disk — the artifact lands here, so this
+     * installation does get a say. It just declines to invent one: `MANAGER_BACKUP_MAX_BYTES` is
+     * null unless an operator wrote a number, and null is no ceiling.
+     *
+     * Read through config rather than env so that a test can set it, and returned rather than
+     * clamped so the refusal downstream can name the number the operator actually chose.
+     */
+    public function ceilingBytes(): ?int
+    {
+        $bytes = config('manager.backups.max_bytes');
+
+        return is_int($bytes) && $bytes > 0 ? $bytes : null;
+    }
 }
