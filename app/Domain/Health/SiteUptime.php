@@ -6,6 +6,7 @@ namespace App\Domain\Health;
 
 use App\Models\Heartbeat;
 use App\Models\Site;
+use App\Support\ViewerTimezone;
 use Illuminate\Support\Carbon;
 
 /**
@@ -227,7 +228,9 @@ final class SiteUptime
             $due = max(1, intdiv($elapsed, $interval));
 
             $buckets[] = [
-                'label' => $bucketHours === 1 ? $startsAt->format('H:i') : $startsAt->format('j M'),
+                // In the reader's zone. An hourly axis is the one place a timezone is most obviously
+                // wrong: "the site went quiet at 03:00" means nothing if 03:00 is somebody else's.
+                'label' => ViewerTimezone::apply($startsAt)->format($bucketHours === 1 ? 'H:i' : 'j M'),
                 'starts_at' => $startsAt,
                 'percentage' => min(100.0, $seen / $due * 100),
                 'received' => $seen,

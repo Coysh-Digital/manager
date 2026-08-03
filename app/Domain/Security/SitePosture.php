@@ -10,6 +10,7 @@ use App\Models\Connector;
 use App\Models\Finding;
 use App\Models\Heartbeat;
 use App\Models\Site;
+use App\Support\ViewerTimezone;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -140,7 +141,7 @@ final class SitePosture
             $running = max(0, $running + $opened - $resolved);
 
             $points[] = [
-                'label' => $start->format('j M'),
+                'label' => ViewerTimezone::apply($start)->format('j M'),
                 'value' => $running,
                 'opened' => $opened,
                 'resolved' => $resolved,

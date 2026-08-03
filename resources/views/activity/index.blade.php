@@ -50,7 +50,7 @@
                     @forelse ($events as $event)
                         <tr class="border-b border-border hover:bg-row-hover">
                             <td class="px-3 py-2.5 font-mono text-[11.5px] text-text-3 tabular">{{ $event->seq }}</td>
-                            <td class="whitespace-nowrap px-3 py-2.5 font-mono text-[11.5px] text-text-3">{{ $event->created_at->format('d M Y H:i') }}</td>
+                            <td class="whitespace-nowrap px-3 py-2.5 font-mono text-[11.5px] text-text-3"><x-timestamp :at="$event->created_at" format="d M Y H:i" /></td>
                             <td class="px-3 py-2.5"><code class="font-mono text-[12px]">{{ $event->action }}</code></td>
                             <td class="px-3 py-2.5 text-text-2">{{ $event->site_label ?? '—' }}</td>
                             <td class="px-3 py-2.5 text-text-2">{{ $event->actor_label ?? Str::title($event->actor_type) }}</td>

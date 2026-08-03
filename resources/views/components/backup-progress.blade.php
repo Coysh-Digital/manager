@@ -62,7 +62,7 @@
         @if ($backup->expiresAt)
             {{-- The honest end of the wait. Nothing here can make a site answer, so the useful thing
                  to say is when this stops being counted as running. --}}
-            Given up on at {{ $backup->expiresAt->format('H:i') }} if nothing further arrives.
+            Given up on at <x-timestamp :at="$backup->expiresAt" format="H:i" /> if nothing further arrives.
         @endif
     </p>
 </div>

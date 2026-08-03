@@ -13,6 +13,7 @@ use App\Http\Controllers\Concerns\ResolvesSiteContext;
 use App\Models\BackupArtifact;
 use App\Models\Membership;
 use App\Models\Site;
+use App\Support\ViewerTimezone;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 
@@ -63,7 +64,10 @@ final class SiteBackupController
 
             // Oldest first for the chart: a size trend read right to left is nobody's instinct.
             'trend' => $stored->sortBy('taken_at')->values()->map(fn (BackupArtifact $artifact): array => [
-                'label' => $artifact->taken_at->format('j M'),
+                // Built here rather than in the view, so it goes through the reader's zone here too.
+                // A backup taken at 23:30 UTC is the next day in Sydney, and a chart labelled in the
+                // server's zone disagrees with the table under it.
+                'label' => ViewerTimezone::apply($artifact->taken_at)->format('j M'),
                 'value' => round($artifact->plaintext_bytes / 1048576, 2),
                 'size' => $artifact->humanSize(),
                 'state' => $artifact->verified_at !== null ? 'verified' : 'stored',

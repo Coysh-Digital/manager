@@ -189,7 +189,7 @@
                                     <tr class="border-b border-border last:border-b-0 hover:bg-row-hover">
                                         <td class="whitespace-nowrap py-2.5 pl-3.5 pr-3">
                                             <div class="flex flex-wrap items-center gap-2">
-                                                <span>{{ $artifact->taken_at->format('j M Y, H:i') }}</span>
+                                                <span><x-timestamp :at="$artifact->taken_at" format="j M Y, H:i" /></span>
                                                 @if ($artifact->isPending())
                                                     <x-status-badge tone="warn" label="Uploading" />
                                                 @elseif ($artifact->state === App\Models\BackupArtifact::STATE_FAILED)

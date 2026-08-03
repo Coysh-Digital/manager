@@ -181,6 +181,12 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
 
     Route::get('account', [AccountController::class, 'show'])->name('account.show');
 
+    // Which clock this account reads dated times in. Outside the recent-authentication group below,
+    // with the notes and for the same reason: it is a display preference, it grants nothing, and
+    // asking somebody to re-enter their password to stop subtracting eleven hours in their head is
+    // how a setting goes unused.
+    Route::post('account/timezone', [AccountController::class, 'updateTimezone'])->name('account.timezone');
+
     // Where Laravel's RequirePassword middleware sends anyone whose confirmation has gone stale.
     Route::get('confirm-password', [ConfirmPasswordController::class, 'show'])->name('password.confirm');
     Route::post('confirm-password', [ConfirmPasswordController::class, 'store'])->name('password.confirm.store');

@@ -42,6 +42,12 @@ final class AccountController
         return view('account.show', [
             'user' => $user,
             'organisation' => app(Organisation::class),
+
+            // Named on the "use the organisation's" option rather than left implicit. A default is
+            // only a useful default when the reader can see what it resolves to.
+            'organisationTimezone' => app(Organisation::class)->timezone,
+            'timezones' => timezone_identifiers_list(),
+
             'recoveryCodesRemaining' => $user->unusedRecoveryCodeCount(),
             'sessions' => $this->sessions($request),
 
@@ -254,6 +260,49 @@ final class AccountController
         );
 
         return back()->with('status', 'Your name has been updated.');
+    }
+
+    /**
+     * The zone this account reads dated times in.
+     *
+     * Its own action rather than a third field on updateProfile, which validates the name and
+     * nothing else — the hosted edition documents relying on precisely that, and widening it to
+     * carry a display preference would put a security assumption behind a convenience.
+     *
+     * Blank is a real answer and stores null, meaning "use the organisation's". A preference nobody
+     * has expressed must not become a third one: writing the current organisation zone here would
+     * pin the account to it and quietly stop the organisation setting reaching them again.
+     */
+    public function updateTimezone(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'timezone' => ['nullable', 'string', 'timezone'],
+        ]);
+
+        $timezone = ($validated['timezone'] ?? '') === '' ? null : $validated['timezone'];
+
+        if ($timezone === $user->timezone) {
+            return back()->with('status', 'Nothing to change.');
+        }
+
+        $before = ['timezone' => $user->timezone];
+
+        $user->forceFill(['timezone' => $timezone])->save();
+
+        $this->audit->record(
+            action: 'user.timezone.updated',
+            actor: $user,
+            targetType: 'user',
+            targetId: $user->external_id,
+            before: $before,
+            after: ['timezone' => $timezone],
+        );
+
+        return back()->with('status', $timezone === null
+            ? 'Times will be shown in the organisation\'s time zone.'
+            : "Times will be shown in {$timezone}.");
     }
 
     public function regenerateRecoveryCodes(Request $request): RedirectResponse
