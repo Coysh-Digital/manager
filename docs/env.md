@@ -154,8 +154,9 @@ not end-to-end encryption.
 | `MANAGER_BACKUP_DISK` | `backups` | Which filesystem disk artifacts are written to. |
 | `MANAGER_BACKUP_DRIVER` | `local` | `local` or `s3`. The local default works but is a poor place for the only copy of a customer's database. |
 | `MANAGER_BACKUP_S3_BUCKET` | empty | With `MANAGER_BACKUP_S3_KEY`, `_SECRET`, `_REGION`, `_ENDPOINT` and `_PATH_STYLE`. Scope the credentials to this bucket alone: a key with access to the backup store has access to every managed site's database. |
-| `MANAGER_BACKUP_MAX_BYTES` | `2147483648` | Largest artifact accepted. A policy statement rather than a buffer size - nothing is held in memory. |
-| `MANAGER_BACKUP_UPLOAD_WINDOW` | `3600` | Seconds a declared artifact may wait for its bytes before being written off. |
+| `MANAGER_BACKUP_MAX_BYTES` | `2147483648` | Largest artifact accepted, and since `manager-protocol` 1.5.0 the only ceiling there is. A policy statement rather than a buffer size - nothing is held in memory. Raise your reverse proxy's body limit to match. |
+| `MANAGER_BACKUP_UPLOAD_WINDOW` | `21600` | Seconds a declared artifact may wait for its bytes before being written off. Six hours, because that is what an artifact of the size now permitted takes on a real uplink. |
+| `MANAGER_BACKUP_PART_BYTES` | `268435456` | Bytes per part when an artifact is too large for a single request. Lower it in tests so a small artifact exercises the multipart path. |
 | `MANAGER_BACKUP_QUOTA_BYTES` | unset | Total bytes one organisation may hold across every site. Unset means no limit - an operator who has not asked for one should not discover one. Worth setting where several sites share a volume: one site filling it takes backups down for all of them. |
 
 ## Object storage

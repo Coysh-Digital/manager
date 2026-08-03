@@ -67,11 +67,28 @@ final class BackupService
     ) {}
 
     /**
+     * @var list<string> Declaration schemas this build accepts, most preferred first.
+     *
+     * Served on the signed claim response so a connector can pick the newest it also implements. That
+     * is what lets v3 arrive without a cutover: a connector seeing no list, or none it recognises,
+     * sends v2 and is still understood.
+     *
+     * v2 stays here permanently. Removing it would be a decision to stop accepting backups from every
+     * connector in the field, not a tidy-up.
+     */
+    public const ACCEPTED_DECLARATIONS = ['backup.v3', 'backup.v2'];
+
+    /**
      * Record what a connector is about to upload.
      *
-     * Dispatches on the declared format. The two branches share nothing but the quota check and the
-     * idempotency rule, and that separation is deliberate: the v1 branch unseals a key with this
-     * platform's own secret, and the v2 branch must never be able to reach that code by accident.
+     * Dispatches on the declared format. The sealed branch and the v1 branch share nothing but the
+     * quota check and the idempotency rule, and that separation is deliberate: the v1 branch unseals a
+     * key with this platform's own secret, and a sealed declaration must never be able to reach that
+     * code by accident.
+     *
+     * v2 and v3 are the same branch because they describe the same artifact. The envelope, the signing
+     * prefix, the encryption and the chunk size are identical; what differs is only the sizes each
+     * document permits, and that difference lives entirely in the schema each is held to.
      *
      * @param  array<string, mixed>  $declaration
      *
@@ -82,7 +99,8 @@ final class BackupService
         $version = $declaration['schema_version'] ?? null;
 
         return match ($version) {
-            'backup.v2' => $this->declareV2($site, $job, $declaration),
+            'backup.v3' => $this->declareSealed($site, $job, $declaration, 'backup.v3'),
+            'backup.v2' => $this->declareSealed($site, $job, $declaration, 'backup.v2'),
             'backup.v1' => $this->declareV1($site, $job, $declaration),
 
             // Named rather than guessed at. A declaration in a format this build does not implement is
@@ -201,7 +219,7 @@ final class BackupService
              */
             Organisation::query()->whereKey($site->organisation_id)->lockForUpdate()->first();
 
-            $remaining = $this->quota->remainingBytes($site->organisation);
+            $remaining = $this->quota->remainingBytes($site->organisation, (int) $artifact['ciphertext_bytes']);
 
             if ($remaining !== null && $artifact['ciphertext_bytes'] > $remaining) {
                 sodium_memzero($plaintextKey);
@@ -282,9 +300,19 @@ final class BackupService
      *
      * @throws BackupRejectedException
      */
-    private function declareV2(Site $site, RemoteJob $job, array $declaration): BackupArtifact
+    private function declareSealed(Site $site, RemoteJob $job, array $declaration, string $schema): BackupArtifact
     {
-        $problems = SchemaValidator::forSchema('backup.v2')->validate($declaration);
+        /*
+         | Strict pairing, not a matrix.
+         |
+         | A v3 declaration carries a v3 manifest and a v2 declaration carries a v2 one. Allowing the
+         | four combinations would mean a v2 declaration could carry a manifest declaring twenty
+         | gigabytes — passing the outer schema's ceiling because the number it bounds is in the other
+         | document. One rule instead of four, and the connector applies the same one.
+         */
+        $manifestSchema = $schema === 'backup.v3' ? 'backup-manifest.v3' : 'backup-manifest.v2';
+
+        $problems = SchemaValidator::forSchema($schema)->validate($declaration);
 
         if ($problems !== []) {
             /*
@@ -300,7 +328,7 @@ final class BackupService
              | printable in a message that reaches a customer's log.
              */
             throw new BackupRejectedException(
-                'That artifact declaration did not satisfy backup.v2: '.implode(', ', array_slice($problems, 0, 10)).'.'
+                "That artifact declaration did not satisfy {$schema}: ".implode(', ', array_slice($problems, 0, 10)).'.'
             );
         }
 
@@ -341,12 +369,28 @@ final class BackupService
             throw new BackupRejectedException('That artifact manifest is not valid JSON.');
         }
 
-        $manifestProblems = SchemaValidator::forSchema('backup-manifest.v2')->validate($manifest);
+        $manifestProblems = SchemaValidator::forSchema($manifestSchema)->validate($manifest);
 
         if ($manifestProblems !== []) {
+            /*
+             | `$manifestProblems`, not `$problems`.
+             |
+             | This interpolated the wrong variable. `$problems` is necessarily empty by the time
+             | execution reaches here — the declaration passed its own schema several checks ago — so
+             | the one message written to name the failing field named nothing at all, and read as
+             | "That artifact manifest did not satisfy backup-manifest.v2: ." Exactly the diagnosis
+             | cost that adding the paths was meant to remove, in the half of the pair nobody tested.
+             */
             throw new BackupRejectedException(
-                'That artifact manifest did not satisfy backup-manifest.v2: '.implode(', ', array_slice($problems, 0, 10)).'.'
+                "That artifact manifest did not satisfy {$manifestSchema}: ".implode(', ', array_slice($manifestProblems, 0, 10)).'.'
             );
+        }
+
+        if (($manifest['manifest_version'] ?? null) !== $manifestSchema) {
+            // Belt and braces: the schema's own enum already pins this, so reaching here would mean a
+            // schema file had been edited. Stated anyway, because the pairing is the rule that stops a
+            // large manifest riding in under a small declaration.
+            throw new BackupRejectedException("A {$schema} declaration must carry a {$manifestSchema} manifest.");
         }
 
         /** @var array<string, mixed> $encryption */
@@ -374,9 +418,23 @@ final class BackupService
         }
 
         $declaredBytes = (int) $declaration['artifact_bytes'];
+        $ceiling = (int) config('manager.backups.max_bytes');
 
-        if ($declaredBytes > (int) config('manager.backups.max_bytes')) {
-            throw new BackupRejectedException('That artifact is larger than this platform accepts.');
+        if ($declaredBytes > $ceiling) {
+            /*
+             | The number, and where it comes from.
+             |
+             | 'larger than this platform accepts' was adequate while the ceiling was a protocol
+             | constant nobody could change. It is not adequate now that this line *is* the ceiling:
+             | the whole point of moving it out of `backup.v2` is that an operator can raise it, and
+             | nobody raises a number they were not told. Sizes only — an artifact's size is already
+             | in the declaration the connector sent, so this reveals nothing it does not know.
+             */
+            throw new BackupRejectedException(sprintf(
+                'That artifact is %d bytes and this platform accepts up to %d (MANAGER_BACKUP_MAX_BYTES).',
+                $declaredBytes,
+                $ceiling,
+            ));
         }
 
         $recipients = $this->readRecipients($wrapping);
@@ -407,7 +465,16 @@ final class BackupService
 
             Organisation::query()->whereKey($site->organisation_id)->lockForUpdate()->first();
 
-            $remaining = $this->quota->remainingBytes($site->organisation);
+            /*
+             | The incoming size is passed rather than left to be inferred.
+             |
+             | An edition that sells storage in blocks has to know how much is arriving before it can
+             | decide how many blocks to grant. Granting one block beyond current usage quietly assumed
+             | no single artifact could be larger than a block, which stopped being true the moment the
+             | 2 GiB ceiling came off — and would have refused the twenty-gigabyte backup this whole
+             | change exists to allow, after everything else had been fixed.
+             */
+            $remaining = $this->quota->remainingBytes($site->organisation, $declaredBytes);
 
             // Measured against the whole file, which is what storage will hold — the encrypted stream
             // plus its envelope. Under v1 those were the same number; here they are not.
@@ -438,6 +505,12 @@ final class BackupService
                 'artifact_id' => $manifest['artifact_id'],
                 'sequence' => $manifest['sequence'],
                 'artifact_sha256' => $declaration['artifact_sha256'],
+
+                // Only v3 declares one. Null on every v2 artifact, which is also every artifact taken
+                // before this existed — and an artifact with no CRC simply cannot take the multipart
+                // path, which is correct: it was small enough not to need it.
+                'artifact_crc32c' => $declaration['artifact_crc32c'] ?? null,
+
                 'artifact_bytes' => $declaredBytes,
                 /*
                  | What *this platform* did, never what the connector said it intended.
@@ -639,6 +712,11 @@ final class BackupService
             // that every implementation of the contract receives the same thing.
             base64_encode((string) hex2bin($expected)),
             $artifact->expectedUploadBytes(),
+
+            // Empty for a v2 artifact, which predates the field. An implementation needing it for a
+            // multipart assembly must refuse rather than assume — an artifact large enough to need
+            // parts is, by construction, one declared under v3.
+            (string) ($artifact->artifact_crc32c ?? ''),
         );
 
         if ($grant === null) {
@@ -651,6 +729,11 @@ final class BackupService
             'storage_key' => $grant->storageKey,
             'storage_disk' => (string) config('manager.backups.disk'),
             'upload_mode' => 'direct',
+
+            // The store's handle for a multipart upload in progress, so the confirmation step can
+            // complete it. Null for an ordinary grant. Not a bearer credential — it names an upload
+            // rather than authorising one — but it is kept out of audit rows and logs regardless.
+            'upload_reference' => $grant->reference,
         ])->save();
 
         return $grant;
@@ -682,6 +765,11 @@ final class BackupService
         $bytes = $this->grants->confirm(
             $artifact->storage_key,
             base64_encode((string) hex2bin($expected)),
+
+            // Present when the upload was assembled from parts, in which case completing it is part
+            // of confirming it — and completing it is where the store checks the assembled whole
+            // against the checksum committed to before the first part was sent.
+            $artifact->upload_reference,
         );
 
         if ($bytes === null) {

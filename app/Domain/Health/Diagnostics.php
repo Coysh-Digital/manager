@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Health;
 
+use App\Contracts\DirectUploadGrants;
 use App\Contracts\MailAdministration;
 use App\Domain\Backup\BackupKeypair;
 use App\Domain\Backup\BackupService;
@@ -11,6 +12,7 @@ use App\Domain\Connector\PlatformKeypair;
 use App\Domain\Notifications\OutboundUrlGuard;
 use App\Models\CapabilityGrant;
 use App\Models\User;
+use App\Support\SelfHosted\NoDirectUploads;
 use coyshdigital\managerprotocol\Protocol;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -76,6 +78,29 @@ final class Diagnostics
                 'Backup size ceiling',
                 "{$bytes} bytes.",
                 'MANAGER_BACKUP_MAX_BYTES is set low enough to refuse every backup. Unset it to use the protocol default.',
+            );
+        }
+
+        /*
+         | Raised past what a single request can carry, on an edition that cannot split one.
+         |
+         | An object store refuses a single PUT over five gigabytes, so above that an artifact has to
+         | arrive in parts — and only an edition binding {@see DirectUploadGrants} to something real
+         | can issue them. Self-hosted binds {@see NoDirectUploads}, so every byte comes through this
+         | application instead: a ceiling above 5 GB there is a promise the upload path cannot keep,
+         | and without this it would be discovered at the end of a multi-hour upload.
+         |
+         | A warning rather than a failure. An operator may have raised it deliberately while pointing
+         | sites at their own bucket, in which case the artifact never comes here at all and the
+         | ceiling is exactly right. This check cannot tell, so it says what it sees.
+         */
+        if ($bytes > Protocol::SINGLE_PUT_MAX_BYTES && app(DirectUploadGrants::class) instanceof NoDirectUploads) {
+            return Check::warn(
+                'Backup size ceiling',
+                "Artifacts up to {$readable}.",
+                'Above 5 GB an artifact cannot be uploaded in one request, and this edition streams '
+                .'every byte through the application. Sites uploading directly to their own storage '
+                .'are unaffected; anything else will fail at the end of the upload.',
             );
         }
 

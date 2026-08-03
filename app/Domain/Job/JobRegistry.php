@@ -192,9 +192,24 @@ final class JobRegistry
                     'max_megabytes' => ['type' => 'integer', 'minimum' => 0],
                 ],
             ],
-            // A dump plus encryption plus an upload, on a site that may be large and a connection that
-            // may be slow. Bounded all the same: an unreported job expires rather than sitting claimed.
-            maxRuntimeSeconds: 3600,
+            /*
+             | A dump plus encryption plus an upload, on a site that may be large and a connection
+             | that may be slow. Bounded all the same: an unreported job expires rather than sitting
+             | claimed.
+             |
+             | Seven hours: the default `manager.backups.upload_window` of six, plus an hour for the
+             | dump and the encryption that happen before the upload starts. The previous value was
+             | one hour, sized for a world where the wire contract capped an artifact at 2 GB — it
+             | would now expire a job while its artifact was still arriving, and fail a site that had
+             | done every part of the work correctly.
+             |
+             | A literal rather than read from that config key, which is what it looks like it should
+             | be. This registry is evaluated by a data provider, before the container exists, so
+             | `config()` here throws "Target class [config] does not exist" during the test run
+             | rather than at any point a person would see. An operator who lengthens the upload
+             | window well past six hours should raise this too.
+             */
+            maxRuntimeSeconds: 25200,
             idempotency: JobDefinition::AT_MOST_ONCE,
 
             // Cancelling tells the connector nothing — by the time a cancellation is noticed the dump

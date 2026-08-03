@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "66de41985215055afe97fdfa1260dd88",
+    "content-hash": "970860b9d3a9970b1187b0475106e401",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -342,22 +342,22 @@
         },
         {
             "name": "coysh-digital/manager-protocol",
-            "version": "1.3.0",
+            "version": "1.5.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/Coysh-Digital/manager-protocol.git",
-                "reference": "5ae5f492fb32ef84457b17bb8aef15e7dd323e94"
+                "reference": "bef2092d04db7ae1266f2e924d751fd7932eff0d"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/Coysh-Digital/manager-protocol/zipball/5ae5f492fb32ef84457b17bb8aef15e7dd323e94",
-                "reference": "5ae5f492fb32ef84457b17bb8aef15e7dd323e94",
+                "url": "https://api.github.com/repos/Coysh-Digital/manager-protocol/zipball/bef2092d04db7ae1266f2e924d751fd7932eff0d",
+                "reference": "bef2092d04db7ae1266f2e924d751fd7932eff0d",
                 "shasum": ""
             },
             "require": {
                 "ext-json": "*",
                 "ext-sodium": "*",
-                "php": ">=8.2"
+                "php": ">=8.1"
             },
             "require-dev": {
                 "pestphp/pest": "^3.0",
@@ -391,7 +391,7 @@
                 "issues": "https://github.com/Coysh-Digital/manager-protocol/issues",
                 "source": "https://github.com/Coysh-Digital/manager-protocol"
             },
-            "time": "2026-07-31T14:53:21+00:00"
+            "time": "2026-08-03T06:45:41+00:00"
         },
         {
             "name": "dasprid/enum",
@@ -11431,7 +11431,8 @@
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {
-        "php": "^8.3"
+        "php": "^8.3",
+        "ext-dom": "*"
     },
     "platform-dev": {},
     "plugin-api-version": "2.9.0"

@@ -34,6 +34,21 @@ final class BackupUploadController
         BackupService $backups,
         CorrelationId $correlationId,
     ): JsonResponse {
+        /*
+         | No time limit on this request, and only on this request.
+         |
+         | Everything else here should finish in a second and a runaway one should be cut off, so the
+         | ceiling stays where it is globally — the shipped image sets sixty seconds. This route is
+         | different in kind: it is bounded by how fast a customer's uplink can move a file whose size
+         | the operator has already agreed to accept, and there is no number that is both large enough
+         | for a slow twenty-gigabyte upload and small enough to be a useful guard.
+         |
+         | Safe because nothing here does work per byte beyond hashing. The body is streamed past and
+         | written out, never held, so a long request is a slow network rather than a process
+         | accumulating anything.
+         */
+        set_time_limit(0);
+
         /** @var Site $site */
         $site = $request->attributes->get('manager.site');
 

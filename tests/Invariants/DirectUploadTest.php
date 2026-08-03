@@ -81,7 +81,7 @@ beforeEach(function (): void {
 
         public bool $issue = true;
 
-        public function grantFor(Site $site, RemoteJob $job, string $expectedSha256Base64, int $maxBytes): ?UploadGrant
+        public function grantFor(Site $site, RemoteJob $job, string $expectedSha256Base64, int $maxBytes, string $expectedCrc32c = ''): ?UploadGrant
         {
             if (! $this->issue) {
                 return null;
@@ -105,7 +105,7 @@ beforeEach(function (): void {
             );
         }
 
-        public function confirm(string $storageKey, string $expectedSha256Base64): ?int
+        public function confirm(string $storageKey, string $expectedSha256Base64, ?string $reference = null): ?int
         {
             $object = $this->objects[$storageKey] ?? null;
 

@@ -105,7 +105,9 @@ return [
     | backup. That is not end-to-end encryption and the documentation does not claim it is.
     |
     | The size ceiling is a policy statement, not a buffer size. Nothing is ever held in memory: an
-    | artifact larger than this is a site whose backup strategy needs a conversation.
+    | artifact larger than this is a site whose backup strategy needs a conversation — and since
+    | manager-protocol 1.5.0 it is a conversation an operator can have, because the wire contract no
+    | longer decides it for them.
     |
     */
 
@@ -116,15 +118,38 @@ return [
         'disk' => env('MANAGER_BACKUP_DISK', 'backups'),
 
         /*
-         | Blank is not absent — see max_payload_bytes above, and this is the one that bit.
+         | The only ceiling there is, and blank is not absent.
          |
          | A blank MANAGER_BACKUP_MAX_BYTES made this zero, and every upload was refused with
          | HTTP 413 "payload too large" before a byte of the body was read. A 2.1 MB backup failed
          | that way on a live site, repeatedly, and the message named the size of the payload rather
          | than the size of the limit — so it read as the artifact being too big rather than the
-         | ceiling being nothing.
+         | ceiling being nothing. Hence the `?:`; see max_payload_bytes above.
+         |
+         | Until manager-protocol 1.5.0 this number could only ever refuse *more* than the protocol
+         | already did, because `backup.v2` declared `artifact_bytes` with its own 2 GiB maximum. It
+         | could not permit more — so a hosted edition that owns and bills for the storage could not
+         | lift it, and neither could an operator with a large database and a large disk. `backup.v3`
+         | carries no maximum, so raising this now actually works, and the refusal names it.
+         |
+         | The default is unchanged, deliberately. A self-hosted installation writing to a disk its own
+         | operator owns should not silently acquire an unlimited ceiling because the protocol stopped
+         | enforcing one.
          */
         'max_bytes' => ((int) env('MANAGER_BACKUP_MAX_BYTES', Protocol::MAX_ARTIFACT_BYTES)) ?: Protocol::MAX_ARTIFACT_BYTES,
+
+        /*
+         | Bytes per part when an artifact is too large for a single request.
+         |
+         | Object stores refuse one request over 5 GB and permit at most ten thousand parts, so this
+         | decides the largest artifact that can be uploaded at all: 256 MiB gives a ceiling far above
+         | anything `max_bytes` would plausibly be set to, while keeping a failed part cheap to retry.
+         |
+         | Lower it in tests. It is what makes a 26 MiB artifact exercise six parts and therefore the
+         | same code path a twenty-gigabyte one takes; the alternative is a suite that never runs the
+         | multipart path and a first real exercise of it on somebody's production backup.
+         */
+        'part_bytes' => ((int) env('MANAGER_BACKUP_PART_BYTES', Protocol::ARTIFACT_PART_BYTES)) ?: Protocol::ARTIFACT_PART_BYTES,
 
         /*
          | Total bytes one organisation may hold, across every site. Unset by default, because an
@@ -140,9 +165,19 @@ return [
             ? null
             : (int) env('MANAGER_BACKUP_QUOTA_BYTES'),
 
-        // How long a declared artifact may sit without its bytes arriving before it is written off.
-        // Generous, because a large dump on a slow connection is not a failure.
-        'upload_window' => (int) env('MANAGER_BACKUP_UPLOAD_WINDOW', 3600),
+        /*
+         | How long a declared artifact may sit without its bytes arriving before it is written off.
+         |
+         | Six hours, because that is what an artifact of the size now permitted actually takes. Twenty
+         | gigabytes on a 20 Mbit uplink is around two and a half hours before anything goes wrong; the
+         | previous hour was sized for a world with a 2 GB ceiling in the wire contract, and it would
+         | have written off a large backup as "declared but never uploaded" while it was still
+         | uploading — then failed it, on a site that had done every part of the work correctly.
+         |
+         | This is also the number a presigned grant's lifetime is derived from, so the two cannot
+         | drift apart into a window that outlives the credential it depends on.
+         */
+        'upload_window' => ((int) env('MANAGER_BACKUP_UPLOAD_WINDOW', 21600)) ?: 21600,
     ],
 
     /*

@@ -198,9 +198,19 @@ it('deletes what falls outside every window', function (): void {
 });
 
 it('writes off a declaration whose bytes never arrived', function (): void {
+    /*
+     | Aged against the configured window rather than a literal.
+     |
+     | This said four hours, which was comfortably stale while the window was one hour and became
+     | comfortably fresh when the window grew to six. The number that decides is
+     | manager.backups.upload_window, so the test reads it — otherwise raising the window to suit a
+     | twenty-gigabyte upload silently turns this assertion into one about nothing.
+     */
+    $window = (int) config('manager.backups.upload_window');
+
     $stale = BackupArtifact::factory()->for($this->site)->pending()->create([
         'organisation_id' => $this->organisation->id,
-        'created_at' => now()->subHours(4),
+        'created_at' => now()->subSeconds($window * 2),
     ]);
 
     $recent = BackupArtifact::factory()->for($this->site)->pending()->create([

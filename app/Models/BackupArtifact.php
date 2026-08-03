@@ -27,6 +27,7 @@ use Illuminate\Support\Carbon;
  * @property string $state
  * @property string|null $storage_key
  * @property string|null $storage_disk
+ * @property string|null $upload_reference
  * @property string $scheme
  * @property string $stream_header
  * @property string|null $wrapped_key
@@ -53,6 +54,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $artifact_id
  * @property int|null $sequence
  * @property string|null $artifact_sha256
+ * @property string|null $artifact_crc32c
  * @property int|null $artifact_bytes
  * @property string|null $upload_mode
  * @property string|null $stage
