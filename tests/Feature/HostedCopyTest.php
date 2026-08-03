@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use App\Contracts\MailAdministration;
 use App\Contracts\ServerAccess;
+use App\Domain\Health\Check;
+use App\Domain\Health\Diagnostics;
 use App\Models\BackupArtifact;
 use App\Models\Connector;
 use App\Models\Membership;
@@ -131,4 +133,73 @@ it('never hides an instruction for the customer\'s own Craft site', function ():
     $this->actingAs($this->owner)->get('/sites')
         ->assertOk()
         ->assertSee('command line');
+});
+
+/*
+ | The health panel
+ |-------------------------------------------------------------------------------------------------
+ |
+ | Reported from use: most of the pass/fail list on Settings is not relevant to a customer of the
+ | hosted edition. It is not — almost every check is about the machine, and a red row somebody
+ | cannot act on invites a support ticket whose answer is "yes, we know, that one is ours".
+ */
+
+it('shows a hosted customer only the checks about their own data', function (): void {
+    hosted();
+
+    $response = $this->actingAs($this->owner)->get('/settings')->assertOk();
+
+    // What survives: the reader's own audit log, and what may be backed up.
+    $response->assertSee('Audit log protection')
+        ->assertSee('Backup size ceiling');
+
+    // What does not: the machine.
+    $response->assertDontSee('Application key')
+        ->assertDontSee('Database role')
+        ->assertDontSee('Replay-protection store')
+        ->assertDontSee('Session cookie')
+        ->assertDontSee('Migrations')
+        ->assertDontSee('Debug mode');
+});
+
+it('says why the rest is missing rather than leaving a short list unexplained', function (): void {
+    hosted();
+
+    $this->actingAs($this->owner)->get('/settings')
+        ->assertOk()
+        ->assertSee('are ours to watch and are not shown here');
+});
+
+it('leaves the whole panel in place for somebody who runs the thing', function (): void {
+    $this->actingAs($this->owner)->get('/settings')
+        ->assertOk()
+        ->assertSee('Platform health')
+        ->assertSee('Application key')
+        ->assertSee('Audit log protection');
+});
+
+it('keeps every check for the operator, whatever the screen shows', function (): void {
+    /*
+     | The filter is on the reading, not on the checking. `manager:doctor` and the back-office are
+     | for the operator, who is exactly the person the hidden rows are for — a hosted deployment
+     | that stopped reporting its own database role to us would be the filter doing real damage.
+    */
+    hosted();
+
+    $everything = app(Diagnostics::class)->all();
+    $shown = app(Diagnostics::class)->forReader();
+
+    $names = array_map(fn (Check $check): string => $check->name, $everything);
+
+    expect($names)->toContain('Application key')
+        ->and($names)->toContain('Database role')
+        ->and(count($shown))->toBeLessThan(count($everything));
+});
+
+it('treats a new check as the operator\'s until somebody says otherwise', function (): void {
+    // The default matters more than the two exceptions: forgetting to think about the audience
+    // hides a row from a customer, which is recoverable, rather than showing them one about a
+    // machine they do not run.
+    expect(Check::pass('Something new', 'Fine.')->isForOperator())->toBeTrue()
+        ->and(Check::pass('Something new', 'Fine.')->forEveryone()->isForOperator())->toBeFalse();
 });

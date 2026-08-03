@@ -51,7 +51,7 @@ final class SettingsController
     {
         return view('settings.index', [
             'organisation' => $organisation,
-            'checks' => $this->diagnostics->all(),
+            'checks' => $this->diagnostics->forReader(),
             'membership' => app(Membership::class),
 
             // Whether this reader is the one who holds the mail configuration. False on a hosted

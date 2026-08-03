@@ -22,7 +22,12 @@
              the one somebody is looking at would be the wrong one. --}}
         <div class="mb-3.5 overflow-hidden rounded-[10px] border border-border bg-surface shadow-[var(--shadow)]">
             <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-border px-4 py-3">
-                <span class="text-[13.5px] font-medium">Platform health</span>
+                {{-- "Platform health" is the operator's framing. A customer of a hosted edition is
+                     not looking at a platform they run, and the two rows they do see are about
+                     their own data. --}}
+                <span class="text-[13.5px] font-medium">
+                    {{ app(App\Contracts\ServerAccess::class)->reachable() ? 'Platform health' : 'Your data' }}
+                </span>
 
                 {{-- What this installation is, beside how it is doing. Two questions a support
                      conversation opens with, and this screen only answered one of them. The edition
@@ -47,6 +52,17 @@
                     @endif
                 </span>
             </div>
+
+            @unless (app(App\Contracts\ServerAccess::class)->reachable())
+                {{-- Said once, rather than leaving somebody to wonder what happened to the rest.
+                     The checks that are missing are about the machine — the database role, the
+                     queue, the disk, the session cookie — and a red row a customer cannot act on
+                     invites a support ticket whose answer is "yes, we know, that one is ours". --}}
+                <p class="border-b border-border bg-surface-2 px-4 py-2.5 text-[12px] leading-relaxed text-text-3">
+                    Checks about the servers themselves — the database, the queue, the disk, the keys
+                    — are ours to watch and are not shown here. These are the ones about your data.
+                </p>
+            @endunless
 
             <div class="grid grid-cols-1 gap-px bg-border sm:grid-cols-2">
                 @foreach ($checks as $check)
