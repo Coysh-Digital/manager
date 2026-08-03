@@ -95,10 +95,10 @@
                     <select name="timezone"
                             class="h-[34px] w-full rounded-[7px] border border-border-2 bg-surface px-2.5 text-[13px]">
                         {{-- Blank is a real answer, not a prompt. Somebody who has never set this
-                             should read times in the organisation's zone, and should be able to go
+                             reads times in the installation's own zone, and should be able to go
                              back to that having once set their own. --}}
                         <option value="" @selected(old('timezone', $user->timezone) === null || old('timezone', $user->timezone) === '')>
-                            Use the organisation's ({{ $organisationTimezone }})
+                            Use this installation's ({{ $defaultTimezone }})
                         </option>
 
                         @foreach ($timezones as $timezone)
@@ -114,7 +114,7 @@
                     This is yours alone and changes nothing anybody else sees. It decides how dated
                     times are printed — audit entries, when a backup was taken, when a site fell
                     silent — and nothing about when anything runs: a backup schedule reads the
-                    organisation's zone, so moving this will not move the hour your sites are backed
+                    zone set on that site, so moving this will not move the hour any site is backed
                     up at.
                 </p>
 

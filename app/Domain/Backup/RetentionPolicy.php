@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Backup;
 
 use App\Models\BackupArtifact;
-use App\Models\Organisation;
+use App\Models\Site;
 use Illuminate\Support\Collection;
 
 /**
@@ -31,9 +31,9 @@ use Illuminate\Support\Collection;
  *    one once that day falls out of the daily window; until then all five are inside it and all five
  *    are kept. Retention answers "how far back", not "how many".
  *
- *  - **An organisation is never left with nothing.** If every period is empty — a fleet that stopped
- *    reporting six months ago — the single newest artifact is kept regardless. Somebody who has not
- *    taken a backup in a long time is precisely the person who will need the one they have.
+ *  - **A site is never left with nothing.** If every period is empty — a site that stopped reporting
+ *    six months ago — the single newest artifact is kept regardless. Somebody who has not taken a
+ *    backup in a long time is precisely the person who will need the one they have.
  */
 final class RetentionPolicy
 {
@@ -48,12 +48,19 @@ final class RetentionPolicy
         public readonly int $months,
     ) {}
 
-    public static function forOrganisation(Organisation $organisation): self
+    /**
+     * The policy a particular site is kept under.
+     *
+     * Per site rather than per organisation, because how far back a shop needs to reach is not how
+     * far back a brochure site does, and one policy across a fleet means picking the more expensive
+     * one for everybody.
+     */
+    public static function forSite(Site $site): self
     {
         return new self(
-            days: max(0, $organisation->backup_retention_days),
-            weeks: max(0, $organisation->backup_retention_weeks),
-            months: max(0, $organisation->backup_retention_months),
+            days: max(0, $site->backup_retention_days),
+            weeks: max(0, $site->backup_retention_weeks),
+            months: max(0, $site->backup_retention_months),
         );
     }
 

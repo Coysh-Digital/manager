@@ -205,10 +205,20 @@
                                 </button>
                             </div>
 
+                            <label class="flex flex-col gap-1 sm:w-[220px]">
+                                <span class="font-mono text-[10.5px] uppercase tracking-[0.07em] text-text-3">Time zone</span>
+                                <select name="timezone"
+                                        class="h-[34px] rounded-[7px] border border-border bg-surface px-2.5 text-[13px]">
+                                    @foreach ($timezones as $zone)
+                                        <option value="{{ $zone }}" @selected(old('timezone', $site->timezone) === $zone)>{{ $zone }}</option>
+                                    @endforeach
+                                </select>
+                            </label>
+
                             {{-- The current state as a sentence, including the zone, because an hour
                                  without one is a number somebody has to guess at — and the guess is
-                                 usually their own zone rather than the organisation's, which is the
-                                 one the scheduler reads. --}}
+                                 usually their own rather than the site's, which is the one the
+                                 scheduler reads. --}}
                             <p class="max-w-[80ch] text-[12px] leading-relaxed text-text-3">
                                 {{ $site->backupScheduleSentence() }}
                                 <span data-backup-schedule-note=""@if ($schedule === 'off') hidden @endif>
@@ -218,6 +228,71 @@
                             </p>
                         </form>
                     </div>
+                    {{-- Retention, beside the schedule that produces what it keeps.
+
+                         Owner-level rather than administrator: shortening this decides how far back
+                         this site can be recovered from, which is a different kind of decision from
+                         asking for a backup. --}}
+                    @if ($membership->isOwner())
+                        <div class="border-b border-border">
+                            <form method="POST" action="{{ route('sites.backups.retention', $site) }}"
+                                  class="flex flex-col gap-3 px-4 py-3.5">
+                                @csrf
+
+                                <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
+                                    <label class="flex flex-col gap-1 sm:w-[150px]">
+                                        <span class="font-mono text-[10.5px] uppercase tracking-[0.07em] text-text-3">Keep everything for</span>
+                                        <div class="flex items-center gap-2">
+                                            <input type="number" name="backup_retention_days" min="0" max="3650" required
+                                                   value="{{ old('backup_retention_days', $site->backup_retention_days) }}"
+                                                   class="h-[34px] w-[80px] rounded-[7px] border border-border bg-surface px-2.5 text-[13px] tabular">
+                                            <span class="text-[12.5px] text-text-2">days</span>
+                                        </div>
+                                        @error('backup_retention_days')<span class="text-[12px] text-danger">{{ $message }}</span>@enderror
+                                    </label>
+
+                                    <label class="flex flex-col gap-1 sm:w-[150px]">
+                                        <span class="font-mono text-[10.5px] uppercase tracking-[0.07em] text-text-3">Then one a week for</span>
+                                        <div class="flex items-center gap-2">
+                                            <input type="number" name="backup_retention_weeks" min="0" max="520" required
+                                                   value="{{ old('backup_retention_weeks', $site->backup_retention_weeks) }}"
+                                                   class="h-[34px] w-[80px] rounded-[7px] border border-border bg-surface px-2.5 text-[13px] tabular">
+                                            <span class="text-[12.5px] text-text-2">weeks</span>
+                                        </div>
+                                        @error('backup_retention_weeks')<span class="text-[12px] text-danger">{{ $message }}</span>@enderror
+                                    </label>
+
+                                    <label class="flex flex-col gap-1 sm:w-[150px]">
+                                        <span class="font-mono text-[10.5px] uppercase tracking-[0.07em] text-text-3">Then one a month for</span>
+                                        <div class="flex items-center gap-2">
+                                            <input type="number" name="backup_retention_months" min="0" max="120" required
+                                                   value="{{ old('backup_retention_months', $site->backup_retention_months) }}"
+                                                   class="h-[34px] w-[80px] rounded-[7px] border border-border bg-surface px-2.5 text-[13px] tabular">
+                                            <span class="text-[12.5px] text-text-2">months</span>
+                                        </div>
+                                        @error('backup_retention_months')<span class="text-[12px] text-danger">{{ $message }}</span>@enderror
+                                    </label>
+
+                                    <button type="submit"
+                                            class="h-[34px] rounded-[7px] border border-border-2 bg-surface px-3.5 text-[12.5px] font-medium text-text hover:bg-row-hover">
+                                        Save retention
+                                    </button>
+                                </div>
+
+                                <p class="max-w-[80ch] text-[12px] leading-relaxed text-text-3">
+                                    Currently keeping <span class="font-medium text-text-2">{{ $retention->describe() }}</span>.
+                                    Retention is by period rather than by count: the last backup of each
+                                    period survives, so the oldest copy is genuinely old rather than the
+                                    oldest of a recent batch. A site producing bad backups nightly under
+                                    a &ldquo;keep the last ten&rdquo; rule would push out the last good
+                                    one and nothing would look wrong.
+                                    Changing this governs <em>future</em> backups: each is given an
+                                    expiry when it is stored, from the policy in force at that moment.
+                                </p>
+                            </form>
+                        </div>
+                    @endif
+
                 @elseif ($site->hasBackupSchedule())
                     {{-- A member cannot change it, but "when is this backed up" is not privileged
                          information and leaving it blank reads as "never". --}}

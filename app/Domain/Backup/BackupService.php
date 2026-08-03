@@ -790,7 +790,7 @@ final class BackupService
             'state' => BackupArtifact::STATE_STORED,
             'stored_at' => Carbon::now(),
             'verified_at' => Carbon::now(),
-            'expires_at' => $this->expiryFor($artifact->organisation_id),
+            'expires_at' => $this->expiryFor($artifact->site_id),
         ])->save();
 
         $this->timeline->platform(
@@ -884,7 +884,7 @@ final class BackupService
                 // Verified at the same moment it was stored, because it was not stored until it
                 // verified. Recorded separately so a later re-verification has somewhere to go.
                 'verified_at' => Carbon::now(),
-                'expires_at' => $this->expiryFor($artifact->organisation_id),
+                'expires_at' => $this->expiryFor($artifact->site_id),
             ])->save();
 
             $this->timeline->platform(
@@ -1143,9 +1143,11 @@ final class BackupService
      * silently re-date artifacts already taken. An operator who shortens retention is saying what
      * should happen to future backups; deciding it also applies retroactively is not theirs to assume.
      */
-    public function expiryFor(int $organisationId): ?Carbon
+    public function expiryFor(int $siteId): ?Carbon
     {
-        $days = (int) (Organisation::query()->whereKey($organisationId)->value('backup_retention_days') ?? 30);
+        // The site's own window, not its organisation's. Read as a scalar rather than through the
+        // model because this runs on the connector's upload path, where one column is all it needs.
+        $days = (int) (Site::query()->whereKey($siteId)->value('backup_retention_days') ?? 30);
 
         return $days <= 0 ? null : Carbon::now()->addDays($days);
     }

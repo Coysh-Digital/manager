@@ -20,12 +20,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $external_id
  * @property string $name
  * @property bool $mfa_required
- * @property int $backup_retention_days
  * @property int $backup_keep_count
- * @property int $backup_retention_weeks
- * @property int $backup_retention_months
  * @property string $backup_format_floor
- * @property string $timezone
  */
 class Organisation extends Model
 {
@@ -46,12 +42,8 @@ class Organisation extends Model
      */
     protected $attributes = [
         'mfa_required' => false,
-        'backup_retention_days' => 30,
         'backup_keep_count' => 3,
-        'backup_retention_weeks' => 4,
-        'backup_retention_months' => 12,
         'backup_format_floor' => 'v1',
-        'timezone' => 'UTC',
     ];
 
     protected $fillable = [

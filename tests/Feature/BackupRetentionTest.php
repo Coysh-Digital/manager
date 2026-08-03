@@ -29,13 +29,15 @@ use Illuminate\Support\Facades\Storage;
 beforeEach(function (): void {
     Storage::fake('backups');
 
-    $this->organisation = Organisation::factory()->create([
+    $this->organisation = Organisation::factory()->create();
+
+    // Retention is the site's, not the organisation's: a busy shop and a brochure site do not
+    // warrant the same history, and one policy across a fleet means picking the more expensive one.
+    $this->site = Site::factory()->for($this->organisation)->connected()->create([
         'backup_retention_days' => 30,
         'backup_retention_weeks' => 0,
         'backup_retention_months' => 0,
     ]);
-
-    $this->site = Site::factory()->for($this->organisation)->connected()->create();
 
     $this->artifact = function (array $attributes = []) {
         $artifact = BackupArtifact::factory()->for($this->site)->create(array_merge([
@@ -109,7 +111,7 @@ it('does not let a run of bad backups push out the last good one', function (): 
      | representative of its month and the recent run cannot displace it, because they are not
      | competing for the same slot.
      */
-    $this->organisation->forceFill([
+    $this->site->forceFill([
         'backup_retention_days' => 3,
         'backup_retention_weeks' => 0,
         'backup_retention_months' => 6,
@@ -144,7 +146,7 @@ it('thins older backups to one a week and then one a month', function (): void {
      */
     Carbon::setTestNow(Carbon::parse('2026-08-05 12:00:00', 'UTC'));
 
-    $this->organisation->forceFill([
+    $this->site->forceFill([
         'backup_retention_days' => 7,
         'backup_retention_weeks' => 4,
         'backup_retention_months' => 6,
@@ -181,7 +183,7 @@ it('thins older backups to one a week and then one a month', function (): void {
 });
 
 it('deletes what falls outside every window', function (): void {
-    $this->organisation->forceFill([
+    $this->site->forceFill([
         'backup_retention_days' => 7,
         'backup_retention_weeks' => 2,
         'backup_retention_months' => 2,
@@ -250,12 +252,12 @@ it('changes nothing when asked not to', function (): void {
 });
 
 it('never deletes an artifact belonging to another organisation', function (): void {
-    $other = Organisation::factory()->create([
+    $other = Organisation::factory()->create();
+    $theirSite = Site::factory()->for($other)->connected()->create([
         'backup_retention_days' => 30,
         'backup_retention_weeks' => 0,
         'backup_retention_months' => 0,
     ]);
-    $theirSite = Site::factory()->for($other)->connected()->create();
 
     $theirs = BackupArtifact::factory()->for($theirSite)->create([
         'organisation_id' => $other->id,
@@ -267,16 +269,16 @@ it('never deletes an artifact belonging to another organisation', function (): v
 
     $this->artisan('manager:backups:prune')->assertSuccessful();
 
-    // Retention is per organisation. One organisation's policy must never reach another's artifacts.
+    // Retention is per site. One site's policy must never reach another's artifacts.
     expect($theirs->fresh()->state)->toBe(BackupArtifact::STATE_STORED);
 });
 
 it('honours a retention of zero days as keep indefinitely', function (): void {
-    $this->organisation->forceFill(['backup_retention_days' => 0])->save();
+    $this->site->forceFill(['backup_retention_days' => 0])->save();
 
     // expires_at is computed at storage time from the policy then in force, so an artifact stored under
     // an indefinite policy simply has no expiry rather than one in the past.
-    expect(app(BackupService::class)->expiryFor($this->organisation->id))->toBeNull();
+    expect(app(BackupService::class)->expiryFor($this->site->id))->toBeNull();
 });
 
 /*
@@ -291,22 +293,20 @@ it('lets an owner change retention, and records what it was', function (): void 
 
     $this->actingAs($owner)
         ->withSession(['auth.password_confirmed_at' => now()->timestamp])
-        ->post('/settings/retention', [
+        ->post("/sites/{$this->site->external_id}/backups/retention", [
             'backup_retention_days' => 14,
             'backup_retention_weeks' => 8,
             'backup_retention_months' => 24,
-            'timezone' => 'Europe/London',
         ])->assertRedirect();
 
-    $this->organisation->refresh();
+    $this->site->refresh();
 
-    expect($this->organisation->backup_retention_days)->toBe(14)
-        ->and($this->organisation->backup_retention_weeks)->toBe(8)
-        ->and($this->organisation->backup_retention_months)->toBe(24)
-        ->and($this->organisation->timezone)->toBe('Europe/London');
+    expect($this->site->backup_retention_days)->toBe(14)
+        ->and($this->site->backup_retention_weeks)->toBe(8)
+        ->and($this->site->backup_retention_months)->toBe(24);
 
-    // How far back an organisation can recover from is worth a line in the audit log, with the
-    // previous values, because "we thought we kept a year" is a conversation that happens after.
+    // How far back a site can be recovered from is worth a line in the audit log, with the previous
+    // values, because "we thought we kept a year" is a conversation that happens after.
     $event = AuditEvent::query()->where('action', 'backup.retention.changed')->firstOrFail();
 
     expect($event->before['backup_retention_days'])->toBe(30)
@@ -321,28 +321,28 @@ it('does not let an administrator change retention', function (): void {
     // kind of decision from managing a site.
     $this->actingAs($admin)
         ->withSession(['auth.password_confirmed_at' => now()->timestamp])
-        ->post('/settings/retention', [
+        ->post("/sites/{$this->site->external_id}/backups/retention", [
             'backup_retention_days' => 1,
             'backup_retention_weeks' => 0,
             'backup_retention_months' => 0,
-            'timezone' => 'UTC',
         ])->assertForbidden();
 
-    expect($this->organisation->fresh()->backup_retention_days)->toBe(30);
+    expect($this->site->fresh()->backup_retention_days)->toBe(30);
 });
 
 it('refuses a time zone that is not one', function (): void {
     $owner = User::factory()->create(['email_verified_at' => now()]);
     Membership::factory()->for($owner)->for($this->organisation)->owner()->create();
 
-    // The schedule reads this to decide what "03:00" means. A junk value would silently move every
-    // backup in the organisation to a different hour, or to none.
+    // The schedule reads this to decide what "03:00" means, and it lives with the schedule now
+    // rather than with retention. A junk value would silently move this site's backup to a
+    // different hour, or to none.
     $this->actingAs($owner)
         ->withSession(['auth.password_confirmed_at' => now()->timestamp])
-        ->post('/settings/retention', [
-            'backup_retention_days' => 30,
-            'backup_retention_weeks' => 4,
-            'backup_retention_months' => 12,
+        ->post("/sites/{$this->site->external_id}/backups/schedule", [
+            'backup_schedule' => 'daily',
+            'backup_schedule_hour' => 3,
+            'backup_schedule_day' => 1,
             'timezone' => 'Middle/Earth',
         ])->assertSessionHasErrors('timezone');
 });
@@ -355,15 +355,14 @@ it('does not re-date backups already taken', function (): void {
 
     $this->actingAs($owner)
         ->withSession(['auth.password_confirmed_at' => now()->timestamp])
-        ->post('/settings/retention', [
+        ->post("/sites/{$this->site->external_id}/backups/retention", [
             'backup_retention_days' => 1,
             'backup_retention_weeks' => 0,
             'backup_retention_months' => 0,
-            'timezone' => 'UTC',
         ])->assertRedirect();
 
-    // An operator shortening retention is saying what should happen to future backups. Deciding it
-    // also applies to the ones they already have is not something a settings form should assume.
+    // Somebody shortening retention is saying what should happen to future backups. Deciding it
+    // also applies to the ones they already have is not something a form should assume.
     expect($existing->fresh()->expires_at?->toDateString())
         ->toBe(now()->addDays(300)->toDateString());
 });

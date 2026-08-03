@@ -31,7 +31,7 @@ use Illuminate\Support\Carbon;
  * from the site's own configuration. The schedule decides *when* to ask and nothing else.
  */
 beforeEach(function (): void {
-    $this->organisation = Organisation::factory()->create(['timezone' => 'Europe/London']);
+    $this->organisation = Organisation::factory()->create();
     $this->key = RecoveryKey::factory()->for($this->organisation)->create();
     $this->organisation->forceFill(['backup_format_floor' => Protocol::BACKUP_FORMAT_V2])->save();
 
@@ -39,6 +39,10 @@ beforeEach(function (): void {
         $site = Site::factory()->for($this->organisation)->connected()->create(array_merge([
             'backup_schedule' => 'daily',
             'backup_schedule_hour' => 3,
+
+            // The site's own zone. A fleet split between London and Sydney has no single quiet
+            // hour, which is why this stopped being the organisation's.
+            'timezone' => 'Europe/London',
         ], $attributes));
 
         Connector::factory()->for($site)->create();
@@ -47,7 +51,7 @@ beforeEach(function (): void {
         return $site;
     };
 
-    // 03:00 in the organisation's own time zone, which is the whole reason the column exists.
+    // 03:00 in the site's own time zone, which is the whole reason the column exists.
     $this->atScheduledHour = fn () => Carbon::setTestNow(
         Carbon::parse('2026-08-05 03:30', 'Europe/London')->utc(),
     );
@@ -220,10 +224,11 @@ it('judges each organisation by its own keys and its own clock', function (): vo
     // stand in for the second's.
     $ready = ($this->makeSite)();
 
-    $other = Organisation::factory()->create(['timezone' => 'Europe/London']);
+    $other = Organisation::factory()->create();
     $otherSite = Site::factory()->for($other)->connected()->create([
         'backup_schedule' => 'daily',
         'backup_schedule_hour' => 3,
+        'timezone' => 'Europe/London',
     ]);
     Connector::factory()->for($otherSite)->create();
     CapabilityGrant::factory()->for($otherSite)->capability('backups:create')->create();
@@ -253,6 +258,7 @@ it('lets an administrator set a schedule, and records the change', function (): 
             'backup_schedule' => 'weekly',
             'backup_schedule_hour' => 2,
             'backup_schedule_day' => 6,
+            'timezone' => 'Europe/London',
         ])->assertRedirect();
 
     $site->refresh();
@@ -315,6 +321,7 @@ it('will not let a schedule be set before there is a key to encrypt to', functio
             'backup_schedule' => 'daily',
             'backup_schedule_hour' => 2,
             'backup_schedule_day' => 1,
+            'timezone' => 'Europe/London',
         ])
         ->assertRedirect()
         ->assertSessionHasErrors('backup_schedule');
@@ -338,6 +345,7 @@ it('always lets a schedule be turned off', function (): void {
             'backup_schedule' => 'off',
             'backup_schedule_hour' => 3,
             'backup_schedule_day' => 1,
+            'timezone' => 'Europe/London',
         ])
         ->assertRedirect()
         ->assertSessionHasNoErrors();
@@ -383,12 +391,14 @@ it('sets the schedule on the screen that shows what it produced', function (): v
         ->assertDontSee('name="backup_schedule"', false);
 });
 
-it('names the zone the schedule is in, which is the organisation\'s and not the reader\'s', function (): void {
+it('names the zone the schedule is in, which is the site\'s and not the reader\'s', function (): void {
     // An hour with no zone beside it is a number somebody guesses at, and the guess is their own
-    // zone rather than the organisation's — which is the one ScheduleBackupsCommand reads.
-    $this->organisation->forceFill(['timezone' => 'Europe/London'])->save();
-
-    $site = ($this->makeSite)(['backup_schedule' => 'daily', 'backup_schedule_hour' => 3]);
+    // zone rather than the site's — which is the one ScheduleBackupsCommand reads.
+    $site = ($this->makeSite)([
+        'backup_schedule' => 'daily',
+        'backup_schedule_hour' => 3,
+        'timezone' => 'Europe/London',
+    ]);
 
     expect($site->fresh()->backupScheduleSentence())->toBe('Every day at 03:00 (Europe/London).');
 
@@ -414,6 +424,7 @@ it('refuses a schedule change from somebody who is not an administrator', functi
             'backup_schedule' => 'daily',
             'backup_schedule_hour' => 3,
             'backup_schedule_day' => 1,
+            'timezone' => 'Europe/London',
         ])->assertForbidden();
 
     expect($site->fresh()->backup_schedule)->toBe('off');
@@ -432,6 +443,7 @@ it('keeps the recent-authentication gate the schedule had before it moved', func
             'backup_schedule' => 'daily',
             'backup_schedule_hour' => 3,
             'backup_schedule_day' => 1,
+            'timezone' => 'Europe/London',
         ])->assertRedirect(route('password.confirm'));
 
     expect($site->fresh()->backup_schedule)->toBe('off');

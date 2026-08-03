@@ -7,7 +7,7 @@ namespace App\Console\Commands;
 use App\Domain\Backup\BackupService;
 use App\Domain\Backup\RetentionPolicy;
 use App\Models\BackupArtifact;
-use App\Models\Organisation;
+use App\Models\Site;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 
@@ -43,20 +43,28 @@ final class PruneBackupsCommand extends Command
         $abandoned = 0;
         $kept = 0;
 
-        foreach (Organisation::query()->cursor() as $organisation) {
+        /*
+         | Per site, not per organisation, and the grouping is the policy rather than a detail.
+         |
+         | Retention keeps the last backup of each period, so the set it reasons over decides which
+         | backups compete with each other. Grouped by organisation, a busy site taking one every
+         | night would satisfy every period on its own and a quiet site's monthly copy could be the
+         | one discarded — a site losing its history because a different site was healthy.
+        */
+        foreach (Site::query()->cursor() as $site) {
             $artifacts = BackupArtifact::query()
                 ->stored()
                 // Eager loaded because deleting one audits against its site, and a sweep over a
                 // fleet's worth of artifacts would otherwise be a query each.
                 ->with('site')
-                ->where('organisation_id', $organisation->id)
+                ->where('site_id', $site->id)
                 ->orderByDesc('taken_at')
                 ->get();
 
             // Computed over the whole set rather than artifact by artifact. Whether a backup survives
             // depends on whether a newer one exists in the same week, which is not a question a single
             // row can answer about itself.
-            $protected = RetentionPolicy::forOrganisation($organisation)->keep($artifacts);
+            $protected = RetentionPolicy::forSite($site)->keep($artifacts);
 
             foreach ($artifacts as $artifact) {
                 if (! $artifact->hasExpired()) {
@@ -76,7 +84,7 @@ final class PruneBackupsCommand extends Command
                     continue;
                 }
 
-                $backups->delete($artifact, 'Past the organisation\'s retention period');
+                $backups->delete($artifact, 'Past this site\'s retention period');
                 $deleted++;
             }
         }

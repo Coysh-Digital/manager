@@ -90,7 +90,12 @@ final class ResumableInput
         'sites.backups.schedule' => [
             'return' => 'sites.backups',
             'label' => 'change when a site is backed up',
-            'fields' => ['backup_schedule', 'backup_schedule_hour', 'backup_schedule_day'],
+            'fields' => ['backup_schedule', 'backup_schedule_hour', 'backup_schedule_day', 'timezone'],
+        ],
+        'sites.backups.retention' => [
+            'return' => 'sites.backups',
+            'label' => 'change how long a site\'s backups are kept',
+            'fields' => ['backup_retention_days', 'backup_retention_weeks', 'backup_retention_months'],
         ],
         'team.invite' => [
             'return' => 'settings.show',
