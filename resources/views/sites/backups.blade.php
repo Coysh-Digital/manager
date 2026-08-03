@@ -210,7 +210,7 @@
                                 <select name="timezone"
                                         class="h-[34px] rounded-[7px] border border-border bg-surface px-2.5 text-[13px]">
                                     @foreach ($timezones as $zone)
-                                        <option value="{{ $zone }}" @selected(old('timezone', $site->timezone) === $zone)>{{ $zone }}</option>
+                                        <option value="{{ $zone }}" @selected(old('timezone', $defaultTimezone) === $zone)>{{ $zone }}</option>
                                     @endforeach
                                 </select>
                             </label>

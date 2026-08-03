@@ -222,6 +222,14 @@ final class SiteBackupController
             ...$this->siteContext($site),
             'membership' => app(Membership::class),
             'timezones' => timezone_identifiers_list(),
+
+            // The column can't tell "nobody has touched this" apart from "explicitly chose UTC", so
+            // an untouched schedule (the field decides nothing until one runs) shows the viewer's own
+            // zone instead. Once a real schedule is saved, the site's own zone always wins.
+            'defaultTimezone' => $site->backup_schedule === 'off'
+                ? ViewerTimezone::for()
+                : $site->timezone,
+
             'retention' => RetentionPolicy::forSite($site),
             'artifacts' => $artifacts,
             'latest' => $stored->first(),
