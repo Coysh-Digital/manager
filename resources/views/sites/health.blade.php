@@ -298,11 +298,16 @@
                 </div>
 
                 @if ($runtimeReport->volumes() !== [])
+                    @php $showsLocation = $runtimeReport->reportsVolumeLocation(); @endphp
+
                     <div class="relative overflow-x-auto">
                         <table class="w-full min-w-[480px] text-[13px]">
                             <thead>
                                 <tr class="bg-surface-2">
-                                    @foreach (['Volume', 'Size', 'Files'] as $heading)
+                                    {{-- Where drawn only when something can fill it. An older
+                                         connector sends system.v1, which cannot say, and a column of
+                                         em-dashes teaches people to ignore a column. --}}
+                                    @foreach ($showsLocation ? ['Volume', 'Where', 'Size', 'Files'] : ['Volume', 'Size', 'Files'] as $heading)
                                         <th class="whitespace-nowrap border-b border-border px-3 py-2 text-left font-mono text-[10px] font-medium uppercase tracking-[0.07em] text-text-3 {{ $loop->first ? 'pl-3.5' : '' }}">
                                             {{ $heading }}
                                         </th>
@@ -311,7 +316,12 @@
                             </thead>
                             <tbody>
                                 @foreach ($runtimeReport->volumes() as $volume)
-                                    <tr class="border-b border-border last:border-b-0">
+                                    @php
+                                        $isLocal = \App\Models\RuntimeReport::isLocalVolume($volume);
+                                        $reason = \App\Models\RuntimeReport::unmeasuredReason($volume);
+                                    @endphp
+
+                                    <tr class="border-b border-border last:border-b-0 {{ $reason ? 'border-b-0' : '' }}">
                                         <td class="py-2 pl-3.5 pr-3">
                                             <span class="font-mono text-[12px]">{{ $volume['handle'] }}</span>
                                             @if (($volume['measured'] ?? true) === false)
@@ -321,13 +331,50 @@
                                                 <x-status-badge tone="grey" label="Not measured" class="ml-2" />
                                             @endif
                                         </td>
+
+                                        @if ($showsLocation)
+                                            <td class="whitespace-nowrap px-3 py-2 text-[12px]">
+                                                @if ($isLocal === true)
+                                                    <span class="text-text-2">This server</span>
+                                                @elseif ($isLocal === false)
+                                                    {{-- Named as what it means rather than as a
+                                                         provider: the report carries no bucket, no
+                                                         region and no endpoint, on purpose. --}}
+                                                    <span class="text-text-2">Remote storage</span>
+                                                @else
+                                                    <span class="text-text-3">—</span>
+                                                @endif
+                                            </td>
+                                        @endif
+
                                         <td class="whitespace-nowrap px-3 py-2 font-mono text-[12px] tabular">
-                                            {{ ($volume['measured'] ?? true) === false ? '—' : number_format(($volume['bytes'] ?? 0) / 1073741824, 2).' GB' }}
+                                            @if (($volume['measured'] ?? true) === false && ($volume['unmeasured_reason'] ?? null) === 'timeout')
+                                                {{-- A floor, and said as one. The figure is real and
+                                                     throwing it away would leave a huge volume with
+                                                     no number at all. --}}
+                                                at least {{ number_format(($volume['bytes'] ?? 0) / 1073741824, 2) }} GB
+                                            @elseif (($volume['measured'] ?? true) === false)
+                                                —
+                                            @else
+                                                {{ number_format(($volume['bytes'] ?? 0) / 1073741824, 2) }} GB
+                                            @endif
                                         </td>
                                         <td class="whitespace-nowrap px-3 py-2 font-mono text-[12px] tabular text-text-3">
                                             {{ isset($volume['files']) ? number_format($volume['files']) : '—' }}
                                         </td>
                                     </tr>
+
+                                    @if ($reason)
+                                        {{-- Under the row rather than in a tooltip. "Not measured"
+                                             covered three unrelated situations wanting three
+                                             different responses, and which one applies is the whole
+                                             of what somebody needs. --}}
+                                        <tr class="border-b border-border last:border-b-0">
+                                            <td colspan="{{ $showsLocation ? 4 : 3 }}" class="pb-2.5 pl-3.5 pr-3 text-[12px] leading-relaxed text-text-3">
+                                                {{ $reason }}
+                                            </td>
+                                        </tr>
+                                    @endif
                                 @endforeach
                             </tbody>
                         </table>
@@ -338,11 +385,14 @@
                     File sizes, never file names — a byte count says how much is there and nothing
                     about what.
                     @if ($runtimeReport->hasUnmeasuredVolumes())
-                        One or more volumes could not be walked inside the time budget, or are on
-                        remote storage, so the total above is a floor.
+                        A volume that could not be measured contributes nothing to the total above,
+                        so treat it as a floor.
                     @endif
-                    Remote volumes are reported as unmeasured rather than as empty: walking them
-                    would mean an API call per directory, billed to the site, for a dashboard.
+                    @if ($runtimeReport->hasRemoteVolumes())
+                        A volume on remote storage is not on this server's disk at all, so it counts
+                        towards neither the total nor the free space above it — those describe the
+                        machine Craft runs on.
+                    @endif
                 </p>
             </div>
         @endif

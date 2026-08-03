@@ -116,4 +116,84 @@ class RuntimeReport extends Model
 
         return false;
     }
+
+    /**
+     * Why a volume was not measured, in a sentence rather than a word.
+     *
+     * Three unrelated situations shared one grey badge until `system.v2` separated them, and they
+     * want three different responses: nothing at all, a larger budget, and somebody fixing a
+     * configuration. Reporting them identically is why "Not measured" read as a fault when most of
+     * the time it is not one.
+     *
+     * Null for a volume that was measured, and for a report from a connector too old to say — an
+     * older plugin sends `system.v1`, which has no reason to give, and inventing one from the shape
+     * of what arrived would be guessing on a screen.
+     *
+     * @param  array<string, mixed>  $volume
+     */
+    public static function unmeasuredReason(array $volume): ?string
+    {
+        if (($volume['measured'] ?? true) !== false) {
+            return null;
+        }
+
+        return match ($volume['unmeasured_reason'] ?? null) {
+            'remote' => 'On remote storage. Walking it would mean an API call per directory, billed to the site, to fill in a dashboard — so it is left alone.',
+            'timeout' => 'The walk ran out of the connector\'s time budget, so the figures beside it are a floor rather than a total. Raise storageWalkSeconds in the site\'s config/manager-connector.php to measure more of it.',
+            'unreadable' => 'The path resolved but could not be opened. Unlike the other two this is a fault worth looking at: check the volume\'s filesystem settings and that the web user can read it.',
+            default => null,
+        };
+    }
+
+    /**
+     * Whether a volume's bytes sit on the server's own disk.
+     *
+     * Null when the connector did not say, which is every `system.v1` report. A screen showing
+     * "Remote" against a local volume would be claiming the bytes are not on a disk they are on, so
+     * not knowing has to stay distinguishable from knowing.
+     *
+     * @param  array<string, mixed>  $volume
+     */
+    public static function isLocalVolume(array $volume): ?bool
+    {
+        return match ($volume['location'] ?? null) {
+            'local' => true,
+            'remote' => false,
+            default => null,
+        };
+    }
+
+    /**
+     * Whether this report says where any of its volumes live.
+     *
+     * The column is drawn only when something can fill it. A column of em-dashes teaches people to
+     * ignore a column.
+     */
+    public function reportsVolumeLocation(): bool
+    {
+        foreach ($this->volumes() as $volume) {
+            if (self::isLocalVolume($volume) !== null) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Whether anything here is stored somewhere other than the site's own disk.
+     *
+     * Worth saying once under the table rather than per row: the disk figures above it describe the
+     * server, and a remote volume's bytes are not on it.
+     */
+    public function hasRemoteVolumes(): bool
+    {
+        foreach ($this->volumes() as $volume) {
+            if (self::isLocalVolume($volume) === false) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }
