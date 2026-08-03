@@ -284,14 +284,29 @@
                     <a href="https://managerforcraft.com/docs/recovery-keys" target="_blank" rel="noopener noreferrer" class="text-primary hover:text-primary-hover">How recovery keys work ↗</a>
                 </p>
 
+                {{-- Whether a command is an instruction anybody here can follow. Self-hosted it is the
+                     better one — it streams and verifies in a single pass, which no web request can
+                     promise. On a hosted edition the shell belongs to whoever runs the service, and a
+                     paragraph ending "run this on the server" reads as the answer while being
+                     impossible to act on. --}}
                 <p class="mt-3.5 mb-1.5 text-[12.5px] font-medium">Backups this platform holds a key for</p>
-                <p class="mb-2.5 text-[12.5px] text-text-2">
-                    A backup taken before any recovery key was enrolled is encrypted to a key this
-                    platform can unwrap, and needs no key of yours. Run this on the server — it streams,
-                    decrypts and verifies against the checksum recorded when the backup was taken, in one
-                    pass and with no timeout to lose.
-                </p>
-                <pre class="overflow-x-auto rounded-lg bg-surface-2 p-3"><code class="font-mono text-[12px]">php artisan manager:backups:fetch &lt;identifier&gt; ./backup.sql</code></pre>
+
+                @if (app(App\Contracts\ServerAccess::class)->reachable())
+                    <p class="mb-2.5 text-[12.5px] text-text-2">
+                        A backup taken before any recovery key was enrolled is encrypted to a key this
+                        platform can unwrap, and needs no key of yours. Run this on the server — it streams,
+                        decrypts and verifies against the checksum recorded when the backup was taken, in one
+                        pass and with no timeout to lose.
+                    </p>
+                    <pre class="overflow-x-auto rounded-lg bg-surface-2 p-3"><code class="font-mono text-[12px]">php artisan manager:backups:fetch &lt;identifier&gt; ./backup.sql</code></pre>
+                @else
+                    <p class="mb-2.5 text-[12.5px] text-text-2">
+                        A backup taken before any recovery key was enrolled is encrypted to a key this
+                        platform can unwrap, and no key of yours will open one — ask us and we will produce
+                        it. Every backup taken since a key was enrolled is sealed to your keys alone, so
+                        this is the last set we are able to do it for.
+                    </p>
+                @endif
 
                 <p class="mt-2.5 text-[12px] text-text-3">
                     Restoring is not automated. It needs a confirmation flow and a tested recovery path of

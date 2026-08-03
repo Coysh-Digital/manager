@@ -40,7 +40,11 @@
 
                     <x-changelog-link :href="\App\Domain\Updates\ChangelogLink::manager()" label="Changelog" />
 
-                    <span class="font-mono text-[11px] text-text-3">php artisan manager:doctor</span>
+                    {{-- The same checks below, from a shell. Worth pointing at when the reader has
+                         one; noise when the machine belongs to somebody else. --}}
+                    @if (app(App\Contracts\ServerAccess::class)->reachable())
+                        <span class="font-mono text-[11px] text-text-3">php artisan manager:doctor</span>
+                    @endif
                 </span>
             </div>
 

@@ -8,8 +8,15 @@
         <h1 class="text-[22px] font-semibold tracking-[-0.015em]">Activity log</h1>
         <p class="text-[13px] text-text-2">
             Append-only. Entries cannot be edited or deleted, and each one commits to the entry before it,
-            so any alteration is detectable. Verify the chain with
-            <code class="font-mono text-[12px]">php artisan manager:audit:verify</code>.
+            so any alteration is detectable.
+
+            {{-- The command is only an answer to somebody who can run it. Hosted, the claim still
+                 holds and is still worth stating; the instruction is for a machine they have no
+                 account on. --}}
+            @if (app(App\Contracts\ServerAccess::class)->reachable())
+                Verify the chain with
+                <code class="font-mono text-[12px]">php artisan manager:audit:verify</code>.
+            @endif
         </p>
     </div>
 

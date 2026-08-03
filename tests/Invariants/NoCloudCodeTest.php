@@ -10,12 +10,14 @@ use App\Contracts\MailAdministration;
 use App\Contracts\ObjectStore;
 use App\Contracts\ProductLabel;
 use App\Contracts\Provisioner;
+use App\Contracts\ServerAccess;
 use App\Contracts\StorageQuota;
 use App\Support\SelfHosted\ConfiguredQuota;
 use App\Support\SelfHosted\DerivedKeyService;
 use App\Support\SelfHosted\DiskObjectStore;
 use App\Support\SelfHosted\NoDirectUploads;
 use App\Support\SelfHosted\NullProvisioner;
+use App\Support\SelfHosted\OwnServerAccess;
 use App\Support\SelfHosted\SelfHostedBilling;
 use App\Support\SelfHosted\SelfHostedLabel;
 use App\Support\SelfHosted\SelfHostedMail;
@@ -178,6 +180,7 @@ it('keeps the edition seams as contracts rather than as dependencies', function 
         MailAdministration::class => SelfHostedMail::class,
         BillingAdministration::class => SelfHostedBilling::class,
         BackupSizeLimit::class => SiteDecidesBackupSize::class,
+        ServerAccess::class => OwnServerAccess::class,
     ];
 
     foreach ($seams as $contract => $implementation) {
