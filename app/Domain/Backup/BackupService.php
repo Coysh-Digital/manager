@@ -1090,7 +1090,7 @@ final class BackupService
     /**
      * Mark a declared artifact that never arrived, or never verified.
      */
-    public function fail(BackupArtifact $artifact, string $reason): BackupArtifact
+    public function fail(BackupArtifact $artifact, string $reason, bool $notify = true): BackupArtifact
     {
         $key = $artifact->storage_key;
 
@@ -1119,10 +1119,19 @@ final class BackupService
             failureReason: $reason,
         );
 
-        // Tell somebody. An audit entry is a record for afterwards, not a way of finding out — and
-        // this failure is silent by nature: the screen shows the previous backup, which succeeded,
-        // and nothing about the estate looks different until a restore is needed.
-        $this->notifier->dispatch(BackupFailureNotice::event($artifact->site, $reason, $artifact->external_id));
+        /*
+         | Tell somebody. An audit entry is a record for afterwards, not a way of finding out — and
+         | this failure is silent by nature: the screen shows the previous backup, which succeeded,
+         | and nothing about the estate looks different until a restore is needed.
+         |
+         | Suppressed for a backup somebody cancelled on purpose. A notification saying a backup
+         | failed, sent to a channel, seconds after a person deliberately stopped it, teaches people
+         | that the channel cries wolf — and the one thing this notification has to keep is being
+         | believed. The audit entry still records it.
+        */
+        if ($notify) {
+            $this->notifier->dispatch(BackupFailureNotice::event($artifact->site, $reason, $artifact->external_id));
+        }
 
         return $artifact;
     }

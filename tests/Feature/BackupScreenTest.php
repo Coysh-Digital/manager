@@ -2,18 +2,23 @@
 
 declare(strict_types=1);
 
+use App\Domain\Job\JobService;
+use App\Domain\Notifications\NotificationEvent;
+use App\Jobs\DeliverNotification;
 use App\Models\AuditEvent;
 use App\Models\BackupArtifact;
 use App\Models\BackupEvent;
 use App\Models\CapabilityGrant;
 use App\Models\Connector;
 use App\Models\Membership;
+use App\Models\NotificationDestination;
 use App\Models\Organisation;
 use App\Models\RecoveryKey;
 use App\Models\RemoteJob;
 use App\Models\Site;
 use App\Models\User;
 use coyshdigital\managerprotocol\Jobs;
+use Illuminate\Support\Facades\Queue;
 
 beforeEach(function (): void {
     $this->organisation = Organisation::factory()->create(['name' => 'Coysh Digital']);
@@ -430,4 +435,145 @@ it('refuses to remove a failed artifact for anybody but an owner', function (): 
         ->assertForbidden();
 
     expect(BackupArtifact::query()->find($artifact->id))->not->toBeNull();
+});
+
+/*
+ | Cancelling a backup that is on its way
+ |--------------------------------------------------------------------------------------------------
+ |
+ | Reported from use: a backup sitting at "Collected by site" with no way to call it off. Until the
+ | expiry sweep runs seven hours later the screen keeps saying it is coming, the idempotency key
+ | stays outstanding so a fresh one cannot be requested, and whatever arrives is stored and billed.
+ */
+
+it('stops waiting for a backup a site has already collected', function (): void {
+    $job = RemoteJob::factory()->for($this->site)->create([
+        'type' => Jobs::BACKUP_CREATE,
+        'state' => Jobs::STATE_CLAIMED,
+        'claimed_by_connector_id' => Connector::query()->where('site_id', $this->site->id)->value('id'),
+    ]);
+
+    $this->actingAs($this->owner)->post('/backups/cancel', ['job' => $job->external_id])
+        ->assertRedirect();
+
+    expect($job->fresh()->state)->toBe(Jobs::STATE_CANCELLED);
+});
+
+it('says what cancelling does not do', function (): void {
+    // The distinction the whole feature rests on. The platform never calls out, so a site part-way
+    // through a dump cannot be reached — a button that implied otherwise would be worse than none.
+    $job = RemoteJob::factory()->for($this->site)->create([
+        'type' => Jobs::BACKUP_CREATE,
+        'state' => Jobs::STATE_CLAIMED,
+    ]);
+
+    $this->actingAs($this->owner)->post('/backups/cancel', ['job' => $job->external_id])
+        ->assertRedirect()
+        ->assertSessionHas('status', fn (string $status): bool => str_contains($status, 'may still finish its own copy'));
+});
+
+it('settles a declared artifact so it stops claiming to be uploading', function (): void {
+    // Otherwise cancelling clears the in-flight notice and leaves a row a few inches away still
+    // saying the backup is on its way.
+    $job = RemoteJob::factory()->for($this->site)->create([
+        'type' => Jobs::BACKUP_CREATE,
+        'state' => Jobs::STATE_CLAIMED,
+    ]);
+
+    $artifact = BackupArtifact::factory()->for($this->site)->pending()->create([
+        'organisation_id' => $this->organisation->id,
+        'remote_job_id' => $job->id,
+    ]);
+
+    $this->actingAs($this->owner)->post('/backups/cancel', ['job' => $job->external_id])->assertRedirect();
+
+    expect($artifact->fresh()->state)->toBe(BackupArtifact::STATE_FAILED)
+        ->and($artifact->fresh()->wrapped_key)->toBeNull();
+});
+
+it('does not cry wolf about a backup somebody stopped on purpose', function (): void {
+    // A channel told "backup failed" seconds after a person deliberately cancelled learns to be
+    // ignored, and being believed is the only thing that notification has.
+    Queue::fake();
+
+    NotificationDestination::factory()->for($this->organisation)->create([
+        'enabled' => true,
+        'events' => [NotificationEvent::BACKUP_FAILED],
+    ]);
+
+    $job = RemoteJob::factory()->for($this->site)->create([
+        'type' => Jobs::BACKUP_CREATE,
+        'state' => Jobs::STATE_CLAIMED,
+    ]);
+
+    BackupArtifact::factory()->for($this->site)->pending()->create([
+        'organisation_id' => $this->organisation->id,
+        'remote_job_id' => $job->id,
+    ]);
+
+    $this->actingAs($this->owner)->post('/backups/cancel', ['job' => $job->external_id])->assertRedirect();
+
+    Queue::assertNotPushed(DeliverNotification::class);
+});
+
+it('refuses the declaration that arrives after a cancellation', function (): void {
+    // The other half of "we stop accepting it". The declare endpoint already requires a claimed
+    // job, so this asserts that the guarantee holds rather than adding a rule.
+    $job = RemoteJob::factory()->for($this->site)->create([
+        'type' => Jobs::BACKUP_CREATE,
+        'state' => Jobs::STATE_CLAIMED,
+    ]);
+
+    $this->actingAs($this->owner)->post('/backups/cancel', ['job' => $job->external_id])->assertRedirect();
+
+    expect($job->fresh()->isFinished())->toBeTrue()
+        ->and(RemoteJob::query()->where('external_id', $job->external_id)->where('state', Jobs::STATE_CLAIMED)->exists())
+        ->toBeFalse();
+});
+
+it('lets a fresh backup be requested once one is cancelled', function (): void {
+    /*
+     | The reason this matters more than tidiness. `backup:manual` is an at-most-once idempotency
+     | key, so while the abandoned job sits claimed the button refuses — somebody who cancelled
+     | because they wanted to take one *now* could not.
+     */
+    CapabilityGrant::factory()->for($this->site)->capability('backups:create')->create();
+
+    $first = app(JobService::class)->enqueue(
+        $this->site,
+        Jobs::BACKUP_CREATE,
+        idempotencyKey: 'backup:manual',
+    );
+
+    $this->actingAs($this->owner)->post('/backups/cancel', ['job' => $first->external_id])->assertRedirect();
+
+    $second = app(JobService::class)->enqueue(
+        $this->site,
+        Jobs::BACKUP_CREATE,
+        idempotencyKey: 'backup:manual',
+    );
+
+    expect($second->id)->not->toBe($first->id);
+});
+
+it('refuses a cancellation from another organisation, and from a member', function (): void {
+    $other = Organisation::factory()->create();
+    $theirSite = Site::factory()->for($other)->connected()->create();
+
+    $theirs = RemoteJob::factory()->for($theirSite)->create([
+        'type' => Jobs::BACKUP_CREATE,
+        'state' => Jobs::STATE_CLAIMED,
+    ]);
+
+    $this->actingAs($this->owner)->post('/backups/cancel', ['job' => $theirs->external_id])->assertNotFound();
+
+    $mine = RemoteJob::factory()->for($this->site)->create([
+        'type' => Jobs::BACKUP_CREATE,
+        'state' => Jobs::STATE_CLAIMED,
+    ]);
+
+    $this->actingAs($this->member)->post('/backups/cancel', ['job' => $mine->external_id])->assertForbidden();
+
+    expect($theirs->fresh()->state)->toBe(Jobs::STATE_CLAIMED)
+        ->and($mine->fresh()->state)->toBe(Jobs::STATE_CLAIMED);
 });

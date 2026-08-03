@@ -18,6 +18,7 @@ use App\Models\BackupArtifact;
 use App\Models\BackupEvent;
 use App\Models\Membership;
 use App\Models\Organisation;
+use App\Models\RemoteJob;
 use App\Models\Site;
 use coyshdigital\managerprotocol\Jobs;
 use Illuminate\Contracts\View\View;
@@ -203,6 +204,73 @@ final class BackupController
             'status',
             "Backup requested for {$site->name}. It will run when the site next checks in."
         );
+    }
+
+    /**
+     * Stop waiting for a backup that was asked for.
+     *
+     * Reported from use: a backup sitting at "Collected by site" with no way to call it off. Until
+     * the expiry sweep runs — seven hours later — the screen keeps saying it is coming, the
+     * idempotency key stays outstanding so a fresh one cannot be requested, and whatever eventually
+     * arrives is stored and billed.
+     *
+     * What this does **not** do is stop the site. The platform never calls out; a connector that has
+     * already collected the job is dumping a database on a machine we cannot reach, and pretending
+     * otherwise would be the kind of button that lies. What it does is end the platform's half: the
+     * job is finished as cancelled, so the declaration that follows is refused by the declare
+     * endpoint, which already requires a claimed job. The copy on the screen says this and no more.
+     *
+     * Administrators, and deliberately outside the recent-authentication group. Stopping something
+     * is the one action here that is not an escalation — it grants nothing, it destroys no stored
+     * backup, and its whole value is being available at the moment somebody realises they did not
+     * want this. A gate here would be a gate on the brake pedal.
+     */
+    public function cancel(Request $request, Organisation $organisation): RedirectResponse
+    {
+        abort_unless(app(Membership::class)->canAdminister(), 403);
+
+        $validated = $request->validate(['job' => ['required', 'string', 'max:64']]);
+
+        $job = RemoteJob::query()
+            ->where('external_id', $validated['job'])
+            ->where('type', Jobs::BACKUP_CREATE)
+            ->whereHas('site', fn ($query) => $query->where('organisation_id', $organisation->id))
+            ->first();
+
+        abort_if($job === null, 404);
+
+        try {
+            $this->jobs->cancel($job, $request->user(), 'Cancelled from the backups screen');
+        } catch (JobRejectedException) {
+            // Already finished. Two people pressing the same button, or a site reporting in while
+            // somebody was deciding — neither is an error worth a red banner.
+            return back()->with('status', 'That backup had already finished.');
+        }
+
+        /*
+         | Settle the artifact, if the site got as far as declaring one.
+         |
+         | Without this the row stays `pending`, which the screen renders as "Uploading" — so
+         | cancelling would clear the in-flight notice and leave a different row a few inches away
+         | still saying the backup was on its way. Nothing was stored, so nothing is lost.
+         |
+         | Notification suppressed: a channel told "backup failed" seconds after somebody
+         | deliberately stopped it is a channel that learns to cry wolf.
+        */
+        $artifact = BackupArtifact::query()
+            ->where('remote_job_id', $job->id)
+            ->whereIn('state', [BackupArtifact::STATE_PENDING, BackupArtifact::STATE_UPLOADED])
+            ->first();
+
+        if ($artifact !== null) {
+            $this->backups->fail($artifact, 'Cancelled before it finished', notify: false);
+        }
+
+        return back()->with('status', implode(' ', [
+            'Backup cancelled.',
+            'We have stopped waiting for it and will refuse it if it arrives —',
+            'the site may still finish its own copy, which we cannot stop from here.',
+        ]));
     }
 
     /**

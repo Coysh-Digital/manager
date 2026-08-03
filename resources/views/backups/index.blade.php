@@ -78,7 +78,7 @@
                 </div>
 
                 @foreach ($inFlight as $backup)
-                    <x-backup-progress :backup="$backup" :window="$checkInWindow" show-site />
+                    <x-backup-progress :backup="$backup" :window="$checkInWindow" show-site :can-cancel="$membership->canAdminister()" />
                 @endforeach
             </div>
         @endif

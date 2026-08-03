@@ -8,7 +8,7 @@
     The site column is optional so the fleet screen can name the site and a single site's screen can
     leave it out.
 --}}
-@props(['backup', 'window', 'showSite' => false])
+@props(['backup', 'window', 'showSite' => false, 'canCancel' => false])
 
 @php
     $phases = App\Domain\Backup\InFlightBackup::PHASES;
@@ -43,6 +43,18 @@
                 · requested by {{ $backup->requestedBy }}
             @endif
         </span>
+
+        {{-- Says what it does rather than what somebody hopes it does. The confirmation is where
+             the distinction lives: we stop accepting the backup, we do not stop the site making
+             one, and a button labelled "Cancel" with nothing beside it would imply otherwise. --}}
+        @if ($canCancel)
+            <form method="POST" action="{{ route('backups.cancel') }}"
+                  onsubmit="return confirm('Stop waiting for this backup? It will be refused if it arrives. The site may still finish its own copy — nothing here can reach it to stop that.');">
+                @csrf
+                <input type="hidden" name="job" value="{{ $backup->jobId }}">
+                <button type="submit" class="text-[11.5px] text-text-3 hover:text-danger">Cancel</button>
+            </form>
+        @endif
     </div>
 
     {{-- Five segments, filled to the phase reached. Text beside it, never colour alone. --}}
