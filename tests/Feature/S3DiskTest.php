@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Support\SelfHosted\DiskObjectStore;
 use Illuminate\Support\Facades\Storage;
 use League\Flysystem\AwsS3V3\AwsS3V3Adapter;
 
@@ -47,4 +48,55 @@ it('builds one for an S3-compatible service with a custom endpoint', function ()
 
     expect(Storage::disk('backups')->getAdapter())
         ->toBeInstanceOf(AwsS3V3Adapter::class);
+});
+
+/*
+|--------------------------------------------------------------------------------------------------
+| Handing the browser a URL of its own
+|--------------------------------------------------------------------------------------------------
+|
+| Downloading an artifact streams it through the application unless the store can sign a URL, and on a
+| multi-gigabyte backup that difference is a worker held for the length of the transfer against one
+| that is not involved at all. It is not a Cloud-only capability and should not be: a self-hoster who
+| has already pointed the backup disk at MinIO or Backblaze has paid for an object store and should
+| get the benefit of it.
+*/
+
+it('gives no temporary URL for a local volume, rather than pretending', function (): void {
+    config(['manager.backups.disk' => 'local']);
+
+    /*
+     | Null is an ordinary answer here, not a failure: the caller streams instead, which is correct and
+     | is the reason the contract allows null at all.
+     |
+     | This assertion is load-bearing rather than decorative. Laravel's local driver *does* answer
+     | providesTemporaryUrls(), signing a URL to a route it serves itself — so the obvious
+     | implementation hands out a link that ignores the filename we asked for and serves a customer's
+     | artifact from outside this application's authorisation and audit. This test failed on exactly
+     | that before the driver check went in.
+    */
+    expect(app(DiskObjectStore::class)->temporaryUrl('org-1/site-1/2026/08/a.artifact', 300))->toBeNull();
+});
+
+it('signs a URL when the backup disk is S3-compatible', function (): void {
+    config([
+        'manager.backups.disk' => 'backups',
+        'filesystems.disks.backups.driver' => 's3',
+        'filesystems.disks.backups.bucket' => 'example-backups',
+        'filesystems.disks.backups.region' => 'eu-west-2',
+        'filesystems.disks.backups.key' => 'AKIAEXAMPLE',
+        'filesystems.disks.backups.secret' => 'not-a-real-secret',
+    ]);
+
+    $url = app(DiskObjectStore::class)->temporaryUrl('org-1/site-1/2026/08/01JZXABCDEF.artifact', 300);
+
+    expect($url)->toBeString()
+        ->and($url)->toContain('X-Amz-Signature=')
+        ->and($url)->toContain('X-Amz-Expires=300')
+        // The browser saves it under the name `manager-restore` expects to be handed. A redirect
+        // leaves nowhere to set a filename afterwards, so it has to be inside the signature.
+        ->and(urldecode((string) $url))->toContain('attachment; filename="01JZXABCDEF.artifact"');
+
+    // The secret signs the URL; it must never appear in one.
+    expect($url)->not->toContain('not-a-real-secret');
 });

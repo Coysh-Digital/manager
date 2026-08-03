@@ -71,18 +71,57 @@ it('lists artifacts with their checksum and retention date', function (): void {
         ->assertSee('mysql');
 });
 
-it('offers a command rather than a download button', function (): void {
+it('offers the ciphertext for download and a command for decrypting it', function (): void {
+    /*
+     | This assertion used to be that there was no download button at all, and the reason given was
+     | that a download which works until a database is big enough to matter is worse than a command
+     | that always works. That reason is about *decrypting* inside a web request, and it is still
+     | enforced — by the two assertions at the bottom, which are the part worth keeping.
+     |
+     | What it also did, unintentionally, was forbid handing over the bytes as they are already
+     | stored. A v2 artifact is sealed to the organisation's own recovery keys, so the console cannot
+     | decrypt it and says so, and told people to run `manager-restore decrypt` on a file the product
+     | gave them no way to obtain. On Cloud that made the flagship feature unusable without an
+     | operator opening an SSH session. So the button exists now, and it is ciphertext only.
+    */
     CapabilityGrant::factory()->for($this->site)->capability('backups:create')->create();
-    BackupArtifact::factory()->for($this->site)->create(['organisation_id' => $this->organisation->id]);
+    $artifact = BackupArtifact::factory()->for($this->site)->create(['organisation_id' => $this->organisation->id]);
 
     $html = $this->actingAs($this->owner)->get('/backups')->assertOk()->getContent();
 
-    // A download that works until a database is big enough to matter is worse than a command that
-    // always works, and a restore button would imply a recovery path that has not been designed.
-    expect($html)->toContain('manager:backups:fetch')
+    expect($html)->toContain(route('backups.download', $artifact))
+        ->and($html)->toContain('manager-restore decrypt')
+        ->and($html)->toContain('manager:backups:fetch')
         ->and($html)->toContain('Restoring is not automated')
-        ->and($html)->not->toContain('>Download<')
-        ->and($html)->not->toContain('>Restore<');
+
+        // The protection the old assertion was actually providing. Nothing on this screen offers
+        // plaintext through the browser, and no restore button implies a recovery path nobody has
+        // designed.
+        ->and($html)->not->toContain('>Restore<')
+        ->and($html)->not->toContain('.sql</a>');
+});
+
+it('names the recovery key that opens each backup', function (): void {
+    // An organisation can hold several keys, and rotating them means an older backup needs an older
+    // key. The platform recorded which one when it sealed the artifact, so making somebody download
+    // the file and run `inspect` to find out would be a strange thing to insist on.
+    CapabilityGrant::factory()->for($this->site)->capability('backups:create')->create();
+
+    $artifact = BackupArtifact::factory()->for($this->site)->create([
+        'organisation_id' => $this->organisation->id,
+        'format_version' => BackupArtifact::FORMAT_V2,
+    ]);
+
+    $artifact->recipients()->create([
+        'fingerprint' => 'MGRK-TEST-0001',
+        'public_key' => str_repeat('a', 44),
+        'wrapped_key' => str_repeat('b', 44),
+        'label' => 'Ops laptop',
+    ]);
+
+    $this->actingAs($this->owner)->get('/backups')
+        ->assertOk()
+        ->assertSee('Sealed to Ops laptop');
 });
 
 it('queues a backup when an administrator asks for one', function (): void {

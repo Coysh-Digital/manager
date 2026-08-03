@@ -27,12 +27,18 @@ use Illuminate\Http\Request;
 /**
  * The backups screen.
  *
- * Shows artifacts, what they cost in storage, and when each will be deleted. There is deliberately no
- * download button and no restore button:
+ * Shows artifacts, what they cost in storage, and when each will be deleted.
  *
- *  - **Download.** Decrypting a multi-gigabyte artifact through a web request means holding a worker
- *    against a timeout it will probably lose, and leaving a half-written file that cannot be told apart
- *    from a complete one. The screen shows the checksum and the command instead.
+ *  - **Download.** Ciphertext only, and it goes through {@see BackupDownloadController} — on Cloud as
+ *    a redirect to the store, so the bytes never pass through a worker. This screen used to say there
+ *    was deliberately no download button, and the argument given was that decrypting a multi-gigabyte
+ *    artifact inside a web request holds a worker against a timeout it will lose. That is still true,
+ *    and nothing here decrypts. What the argument missed is that a customer whose backup is sealed to
+ *    their own recovery keys was being told to run `manager-restore decrypt` and given no way to
+ *    obtain the file to run it on.
+ *  - **Decryption.** Still a command, still off the web request. `manager:backups:fetch` for an
+ *    artifact this platform holds a key for; `manager-restore decrypt` on the customer's own machine
+ *    for one it does not.
  *  - **Restore.** Not built at all. The specification is explicit that it waits until its threat model,
  *    confirmation flow and failure recovery are designed and tested, and a button that only worked
  *    sometimes would be worse than the absence of one.
@@ -52,7 +58,11 @@ final class BackupController
     public function index(Organisation $organisation): View
     {
         $artifacts = BackupArtifact::query()
-            ->with('site')
+            // Recipients so each row can name the recovery key that opens it. Without this the only
+            // way to learn which of several keys a given backup needs is to download it and run
+            // `manager-restore inspect`, which is a strange thing to make somebody do when the
+            // platform recorded the answer at the moment it sealed the artifact.
+            ->with(['site', 'recipients'])
             ->where('organisation_id', $organisation->id)
             ->whereIn('state', [BackupArtifact::STATE_STORED, BackupArtifact::STATE_PENDING, BackupArtifact::STATE_FAILED])
             ->orderByDesc('taken_at')

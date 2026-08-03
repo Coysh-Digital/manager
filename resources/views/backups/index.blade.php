@@ -189,6 +189,16 @@
                                         @if ($artifact->failure_reason)
                                             <span class="text-[11.5px] text-danger">{{ $artifact->failure_reason }}</span>
                                         @endif
+                                        {{-- Which recovery key opens this one. An organisation can have
+                                             several, and rotating them means older backups need older
+                                             keys — so "which key do I need" is a real question with a
+                                             recorded answer, and making somebody download the file and
+                                             inspect it to find out would be perverse. --}}
+                                        @if ($artifact->isZeroKnowledge() && $artifact->recipients->isNotEmpty())
+                                            <span class="block text-[11.5px] text-text-3">
+                                                Sealed to {{ $artifact->recipients->map(fn ($r) => $r->label ?? $r->fingerprint)->join(', ') }}
+                                            </span>
+                                        @endif
                                     </td>
                                     <td class="border-b border-border px-4 py-2.5 whitespace-nowrap">
                                         {{ $artifact->taken_at->diffForHumans(short: true) }}
@@ -206,15 +216,21 @@
                                         {{ $artifact->expires_at?->diffForHumans(short: true) ?? '—' }}
                                     </td>
                                     <td class="border-b border-border px-4 py-2.5 text-right">
-                                        @if ($artifact->isRetrievable() && $membership->isOwner())
-                                            <form method="POST" action="{{ route('backups.destroy', $artifact) }}"
-                                                  onsubmit="return confirm('Delete this backup? Its encryption key is destroyed with it and it cannot be recovered.');">
-                                                @csrf
-                                                @method('DELETE')
-                                                <input type="hidden" name="reason" value="Deleted by hand">
-                                                <button type="submit" class="text-[12.5px] text-text-2 hover:text-danger">Delete</button>
-                                            </form>
-                                        @endif
+                                        <div class="flex items-center justify-end gap-3">
+                                            @if ($artifact->isRetrievable() && $membership->canAdminister())
+                                                <a href="{{ route('backups.download', $artifact) }}"
+                                                   class="text-[12.5px] text-text-2 hover:text-primary">Download</a>
+                                            @endif
+                                            @if ($artifact->isRetrievable() && $membership->isOwner())
+                                                <form method="POST" action="{{ route('backups.destroy', $artifact) }}"
+                                                      onsubmit="return confirm('Delete this backup? Its encryption key is destroyed with it and it cannot be recovered.');">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <input type="hidden" name="reason" value="Deleted by hand">
+                                                    <button type="submit" class="text-[12.5px] text-text-2 hover:text-danger">Delete</button>
+                                                </form>
+                                            @endif
+                                        </div>
                                     </td>
                                 </tr>
                             @endforeach
@@ -223,18 +239,36 @@
                 </div>
             </div>
 
-            {{-- No download button, and the reason is stated rather than left as a gap somebody wonders
-                 about. A button that works until a database is big enough to matter is worse than a
-                 command that always works. --}}
+            {{-- Download hands over ciphertext and nothing else. This panel used to say there was no
+                 download button at all, and gave the timeout argument for it — which is an argument
+                 about decrypting inside a web request, not about handing over the bytes as they are
+                 already stored. The first is still refused here. The second was leaving customers
+                 told to run a command against a file they had no way to obtain. --}}
             <div class="mt-3.5 rounded-[10px] border border-border bg-surface p-4">
                 <p class="mb-1.5 text-[13px] font-medium">Retrieving a backup</p>
                 <p class="mb-2.5 text-[12.5px] text-text-2">
-                    Run this on the server. It streams the artifact, decrypts it, and verifies it against
-                    the checksum recorded when the backup was taken — a download through the browser
-                    would hold a worker against a timeout and could leave a half-written file that looks
-                    complete.
+                    <strong>Download</strong> gives you the artifact exactly as it is stored, still
+                    encrypted. Decrypt it on your own machine with the recovery key named on the row —
+                    the secret half never comes here, which is the entire point of it. Nothing is
+                    decrypted through the browser: on a database of any size that would hold a worker
+                    against a timeout and could leave a half-written file that looks complete.
+                </p>
+                <pre class="overflow-x-auto rounded-lg bg-surface-2 p-3"><code class="font-mono text-[12px]">manager-restore decrypt --key=your-key.secret --out=backup.sql &lt;identifier&gt;.artifact</code></pre>
+                <p class="mt-2.5 text-[12px] text-text-3">
+                    Check the file before waiting on it: <code class="font-mono">manager-restore inspect &lt;identifier&gt;.artifact</code>
+                    needs no key and prints the size and checksum listed above.
+                    <a href="https://managerforcraft.com/docs/recovery-keys" target="_blank" rel="noopener noreferrer" class="text-primary hover:text-primary-hover">How recovery keys work ↗</a>
+                </p>
+
+                <p class="mt-3.5 mb-1.5 text-[12.5px] font-medium">Backups this platform holds a key for</p>
+                <p class="mb-2.5 text-[12.5px] text-text-2">
+                    A backup taken before any recovery key was enrolled is encrypted to a key this
+                    platform can unwrap, and needs no key of yours. Run this on the server — it streams,
+                    decrypts and verifies against the checksum recorded when the backup was taken, in one
+                    pass and with no timeout to lose.
                 </p>
                 <pre class="overflow-x-auto rounded-lg bg-surface-2 p-3"><code class="font-mono text-[12px]">php artisan manager:backups:fetch &lt;identifier&gt; ./backup.sql</code></pre>
+
                 <p class="mt-2.5 text-[12px] text-text-3">
                     Restoring is not automated. It needs a confirmation flow and a tested recovery path of
                     its own, and until those exist a restore button would be a way of pretending

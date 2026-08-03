@@ -10,6 +10,7 @@ use App\Http\Controllers\Auth\PasskeyChallengeController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\TwoFactorChallengeController;
 use App\Http\Controllers\BackupController;
+use App\Http\Controllers\BackupDownloadController;
 use App\Http\Controllers\CapabilityController;
 use App\Http\Controllers\FindingController;
 use App\Http\Controllers\HealthController;
@@ -186,6 +187,18 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
         // secret until it is consumed, so a stale session must not be able to mint one.
         Route::post('sites', [SiteController::class, 'store'])->name('sites.store');
         Route::delete('backups/{artifact}', [BackupController::class, 'destroy'])->name('backups.destroy');
+
+        /*
+         | Downloading an artifact's ciphertext.
+         |
+         | Behind recent authentication with the other two, and for the same reason: this hands over a
+         | complete copy of a customer's database, encrypted, and a session left open on an unlocked
+         | machine must not be enough. It decrypts nothing — see the controller for why that
+         | distinction is the whole design, and why this route can exist when a plaintext one still
+         | should not.
+        */
+        Route::get('backups/{artifact}/ciphertext', BackupDownloadController::class)
+            ->name('backups.download');
 
         // Everything below acts on one named site, so all of it is tenant-scoped by the same
         // middleware the read screens use.
