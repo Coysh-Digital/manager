@@ -97,7 +97,8 @@ readable by somebody else.
 Pinning closes that:
 
 ```php
-// config/manager-connector.php, on the Craft server
+// config/manager-connector.php, on the Craft server.
+// Create it if the site does not have one - installing the plugin does not.
 return [
     'platformUrl' => 'https://manager.example.com',
 

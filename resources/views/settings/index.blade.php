@@ -639,9 +639,10 @@ manager-restore keygen --label="Ops laptop" --out=~/keys/recovery</code></pre>
                     <p class="max-w-[80ch] text-[12px] leading-relaxed text-text-3">
                         We never see the secret half and have nowhere to put one. After activating the
                         key you will be asked to prove you hold it, and then to add its fingerprint to
-                        <code class="font-mono">config/manager-connector.php</code> on each site — that
-                        pin lives on your server, and it is what stops us handing your sites a key of
-                        our own.
+                        <code class="font-mono">config/manager-connector.php</code> on each site,
+                        creating that file if the site does not have one — installing the connector
+                        does not. That pin lives on your server, and it is what
+                        stops us handing your sites a key of our own.
                         <x-changelog-link href="https://managerforcraft.com/docs/recovery-keys" label="Full instructions" />
                     </p>
 

@@ -18,7 +18,7 @@ Three things, in order:
 
 1. **A recovery key**, active, on the organisation. [Recovery keys](/recovery-keys).
 2. **The fingerprint pinned** in `config/manager-connector.php` on each site. Same page. Do not skip
-   it.
+   it. Most sites do not have that file - nothing creates it - so this usually means writing it.
 3. **The `backups:create` permission**, granted per site.
 
 That third one is not a checkbox. On the site's Capabilities tab you will be asked to confirm your

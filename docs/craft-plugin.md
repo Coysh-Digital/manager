@@ -38,6 +38,16 @@ Settings live in `config/manager-connector.php`, in your version control, rather
 database. That means pointing a site at a different Manager for Craft takes a deployment - which is
 the right amount of friction for a setting that decides who your site reports to.
 
+**Installing the plugin does not create this file.** Nothing publishes it and nothing writes it, so
+a working site can perfectly well have no `config/manager-connector.php` at all - the plugin reads
+its defaults and you supply the platform address when you pair. Copy
+`vendor/coysh-digital/craft-manager-connector/src/config.php` as a starting point, or write the two
+lines below.
+
+Nor is any of this editable from the control panel. **Settings → Plugins → Manager Connector**
+redirects to **Utilities → Manager Connector**, which pairs the site and reports on it; it does not
+write settings, and neither does project config.
+
 ```php
 <?php
 
