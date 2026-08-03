@@ -53,6 +53,24 @@ interface ObjectStore
     public function bytes(string $key): int;
 
     /**
+     * A short-lived URL a browser can fetch an object from directly, or null if this store has none.
+     *
+     * Null is an ordinary answer, not a failure: a local volume has no URL to give and never will.
+     * Callers fall back to streaming the object through the application, which is correct but holds a
+     * worker for as long as the transfer takes. Where a store *can* answer — S3, and anything
+     * S3-compatible behind a Flysystem disk — the browser fetches the bytes itself, the transfer is
+     * resumable, and no worker is involved at all. On a multi-gigabyte artifact that is the whole
+     * difference between a download that works and one that works until a database gets big enough.
+     *
+     * Implementations must name the object after the key's final segment, because a caller that
+     * redirects never sees the response and cannot set a filename afterwards.
+     *
+     * What a URL from here grants is a read of one object for a few minutes. It must embed no
+     * credential that outlives it and name no other object.
+     */
+    public function temporaryUrl(string $key, int $seconds): ?string;
+
+    /**
      * A short description of where artifacts are going, for diagnostics.
      *
      * Never a credential, and never a full URL with anything embedded in it.

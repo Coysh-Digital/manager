@@ -478,9 +478,11 @@ it('lists this site\'s artifacts and flags a stale one', function (): void {
         ->assertOk()
         ->assertSee('Over a week old')
         ->assertSee('Checksum matched')
-        // No download button, and no restore button. Both absences are deliberate.
+        // Ciphertext can be downloaded; plaintext still cannot, and there is still no restore button.
+        // Both of those absences are deliberate — see BackupScreenTest for the full argument.
         ->assertSee('manager:backups:fetch')
-        ->assertDontSee('Download');
+        ->assertSee('manager-restore decrypt')
+        ->assertDontSee('Restore</');
 });
 
 it('shows another site\'s backups nowhere near this one', function (): void {

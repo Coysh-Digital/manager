@@ -216,15 +216,21 @@
                                         </td>
 
                                         <td class="px-3 py-2.5 text-right">
-                                            @if ($artifact->isRetrievable() && $membership->isOwner())
-                                                <form method="POST" action="{{ route('backups.destroy', $artifact) }}"
-                                                      onsubmit="return confirm('Delete this backup? Its encryption key is destroyed with it and it cannot be recovered.');">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <input type="hidden" name="reason" value="Deleted by hand">
-                                                    <button type="submit" class="text-[12.5px] text-text-2 hover:text-danger">Delete</button>
-                                                </form>
-                                            @endif
+                                            <div class="flex items-center justify-end gap-3">
+                                                @if ($artifact->isRetrievable() && $membership->canAdminister())
+                                                    <a href="{{ route('backups.download', $artifact) }}"
+                                                       class="text-[12.5px] text-text-2 hover:text-primary">Download</a>
+                                                @endif
+                                                @if ($artifact->isRetrievable() && $membership->isOwner())
+                                                    <form method="POST" action="{{ route('backups.destroy', $artifact) }}"
+                                                          onsubmit="return confirm('Delete this backup? Its encryption key is destroyed with it and it cannot be recovered.');">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <input type="hidden" name="reason" value="Deleted by hand">
+                                                        <button type="submit" class="text-[12.5px] text-text-2 hover:text-danger">Delete</button>
+                                                    </form>
+                                                @endif
+                                            </div>
                                         </td>
                                     </tr>
                                 @endforeach
@@ -240,15 +246,21 @@
                     </div>
                 </div>
 
-                {{-- No download button, and the reason is stated rather than left as a gap somebody
-                     wonders about. --}}
+                {{-- Download is ciphertext. Decryption is still a command and still off the web
+                     request — that distinction is the whole design, and it is why a download button
+                     can exist here when a plaintext one still should not. --}}
                 <div class="mt-3 rounded-[10px] border border-border bg-surface p-4">
                     <p class="mb-1.5 text-[13px] font-medium">Retrieving one</p>
                     <p class="mb-2.5 max-w-[80ch] text-[12.5px] text-text-2">
-                        Run this on the server. It streams the artifact, decrypts it and verifies it
-                        against the checksum recorded when the backup was taken — a download through the
-                        browser would hold a worker against a timeout and could leave a half-written file
-                        that looks complete.
+                        <strong>Download</strong> hands over the artifact exactly as it is stored, still
+                        encrypted. Decrypt it on your own machine, where the recovery key is — nothing is
+                        decrypted through the browser, because on a database of any size that would hold a
+                        worker against a timeout and could leave a half-written file that looks complete.
+                    </p>
+                    <pre class="overflow-x-auto rounded-lg bg-surface-2 p-3"><code class="font-mono text-[12px]">manager-restore decrypt --key=your-key.secret --out=backup.sql {{ $latest?->external_id ?? '<identifier>' }}.artifact</code></pre>
+                    <p class="mt-2.5 mb-1.5 max-w-[80ch] text-[12.5px] text-text-2">
+                        A backup taken before any recovery key was enrolled is encrypted to a key this
+                        platform can unwrap instead. For one of those, run this on the server:
                     </p>
                     <pre class="overflow-x-auto rounded-lg bg-surface-2 p-3"><code class="font-mono text-[12px]">php artisan manager:backups:fetch {{ $latest?->external_id ?? '<identifier>' }} ./backup.sql</code></pre>
                     <p class="mt-2.5 text-[12px] text-text-3">

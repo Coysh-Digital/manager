@@ -7,6 +7,7 @@ namespace App\Console\Commands;
 use App\Domain\Audit\AuditRecorder;
 use App\Domain\Backup\BackupRejectedException;
 use App\Domain\Backup\BackupService;
+use App\Http\Controllers\BackupDownloadController;
 use App\Models\BackupArtifact;
 use Illuminate\Console\Command;
 use RuntimeException;
@@ -20,9 +21,13 @@ use RuntimeException;
  * Decrypting a multi-gigabyte artifact through a web request means a PHP-FPM worker held for minutes
  * against a timeout it will probably lose, and a half-written file at the other end with no way to tell
  * it apart from a complete one. A command has no timeout, streams in bounded chunks, verifies the
- * checksum recorded when the backup was taken, and can be run on the machine that needs the file. The
- * interface shows the checksum and the command to run instead of offering something that works until
- * the database is big enough to matter.
+ * checksum recorded when the backup was taken, and can be run on the machine that needs the file.
+ *
+ * There *is* a download button now — {@see BackupDownloadController} — and it
+ * does not contradict any of the above, because it decrypts nothing. It hands over the stored
+ * ciphertext, on Cloud as a redirect the application never carries the bytes for. This command remains
+ * the only way to turn an artifact this platform holds a key for into SQL, and for one sealed to an
+ * organisation's own recovery keys it refuses outright and names `manager-restore` instead.
  *
  * Restore is deliberately not implemented — see docs/backup.md. This hands over a verified plaintext
  * dump; what happens next is a decision with its own threat model, and a `--restore` flag would be a

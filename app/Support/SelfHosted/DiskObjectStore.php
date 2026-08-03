@@ -7,6 +7,7 @@ namespace App\Support\SelfHosted;
 use App\Contracts\ObjectStore;
 use App\Domain\Backup\BackupService;
 use Illuminate\Contracts\Filesystem\Filesystem;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 
@@ -65,6 +66,47 @@ final class DiskObjectStore implements ObjectStore
     public function bytes(string $key): int
     {
         return $this->disk()->size($key);
+    }
+
+    /**
+     * Whether this disk can hand the browser a URL of its own.
+     *
+     * The two arrangements this one class covers genuinely differ here, which is the reason the
+     * contract allows null. A local volume has no URL to give and never will, so downloads stream
+     * through the application — correct, but a worker held for the length of the transfer. A disk
+     * pointed at MinIO, Backblaze or S3 itself can sign one, and then the browser fetches the bytes
+     * directly and the application is not involved past the redirect. That is not a Cloud-only
+     * capability and it would be wrong to make an operator pay for their own object store twice.
+     *
+     * The local driver is excluded deliberately, and it is worth saying why, because it will happily
+     * answer. Laravel signs a URL to a route it serves itself, which looks like the same thing and is
+     * not: it ignores the response headers passed below, so the browser saves a customer's artifact
+     * under whatever the path implies instead of the name `manager-restore` expects to be handed, and
+     * it serves the bytes from outside this application's authorisation and audit with the signature
+     * as the only guard. Streaming through the download route is slower and correct. This was found
+     * by a test asserting a local disk gives no URL — which, before this check, it did.
+     */
+    public function temporaryUrl(string $key, int $seconds): ?string
+    {
+        $name = (string) config('manager.backups.disk');
+
+        if ((string) config("filesystems.disks.{$name}.driver") !== 's3') {
+            return null;
+        }
+
+        $disk = $this->disk();
+
+        if (! $disk instanceof FilesystemAdapter || ! $disk->providesTemporaryUrls()) {
+            return null;
+        }
+
+        return $disk->temporaryUrl($key, now()->addSeconds($seconds), [
+            'ResponseContentType' => 'application/octet-stream',
+
+            // The key's final segment is the artifact's own identifier, so this is the name
+            // `manager-restore` expects to be handed. A redirect leaves nowhere to set it later.
+            'ResponseContentDisposition' => 'attachment; filename="'.basename($key).'"',
+        ]);
     }
 
     public function describe(): string
