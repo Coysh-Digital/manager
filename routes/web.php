@@ -148,6 +148,16 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
      | survive — only the panel stops leading with it. Administrators, matching the button that asks
      | for a backup in the first place.
      */
+    /*
+     | Stopping a backup that is on its way.
+     |
+     | Outside the recent-authentication group with the notices below, and for a reason worth
+     | stating: this is the brake rather than the accelerator. It grants nothing, destroys no stored
+     | backup, and is worth having at the moment somebody realises they did not want it — which is
+     | usually the moment they are least willing to go and find their password.
+     */
+    Route::post('backups/cancel', [BackupController::class, 'cancel'])->name('backups.cancel');
+
     Route::post('backups/failures/dismiss', [BackupController::class, 'dismissFailure'])
         ->name('backups.failures.dismiss');
     Route::post('backups/failures/clear', [BackupController::class, 'clearFailures'])

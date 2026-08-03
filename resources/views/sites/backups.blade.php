@@ -119,7 +119,7 @@
                     <div data-backup-progress-list
                          data-backup-status-url="{{ route('sites.backups.status', $site) }}">
                         @foreach ($inFlight as $backup)
-                            <x-backup-progress :backup="$backup" :window="$checkInWindow" />
+                            <x-backup-progress :backup="$backup" :window="$checkInWindow" :can-cancel="$membership->canAdminister()" />
                         @endforeach
                     </div>
                 @endif

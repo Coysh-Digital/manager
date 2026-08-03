@@ -212,10 +212,25 @@ final class JobRegistry
             maxRuntimeSeconds: 25200,
             idempotency: JobDefinition::AT_MOST_ONCE,
 
-            // Cancelling tells the connector nothing — by the time a cancellation is noticed the dump
-            // has either happened or it has not. Presented honestly rather than offering a button that
-            // stops nothing.
-            cancellable: false,
+            /*
+             | Cancellable, and what that means is narrower than the word.
+             |
+             | This said false, with the reasoning that cancelling tells the connector nothing: by
+             | the time a site noticed, the dump has either happened or it has not. That is still
+             | true, and it is why nothing here claims to stop a site working.
+             |
+             | What it missed is that the platform's own half is worth stopping. A backup nobody
+             | wants any more otherwise sits in-flight for seven hours until the expiry sweep, the
+             | screen keeps saying it is coming, a second one cannot be requested because the
+             | idempotency key is still outstanding, and whatever eventually arrives is stored and
+             | billed. Cancelling ends the waiting and makes the declaration that follows be
+             | refused — the declare endpoint already requires a claimed job, so that half needs no
+             | new rule, only a reason to trust it.
+             |
+             | The interface says exactly this much and no more: it stops us accepting the backup,
+             | it does not stop the site making one.
+            */
+            cancellable: true,
             resultSchema: [
                 'type' => 'object',
                 'additionalProperties' => false,
