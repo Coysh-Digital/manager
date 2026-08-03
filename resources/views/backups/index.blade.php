@@ -87,11 +87,24 @@
             <div class="mb-3.5 overflow-hidden rounded-[10px] border border-amber-line bg-surface shadow-[var(--shadow)]">
                 <div class="flex flex-wrap items-baseline justify-between gap-3 border-b border-border px-4 py-3">
                     <span class="text-[13.5px] font-medium">Did not complete</span>
-                    <span class="text-[12px] text-text-2">Asked for in the last 7 days, and nothing was stored</span>
+
+                    <span class="flex items-baseline gap-3 text-[12px] text-text-2">
+                        Asked for in the last 7 days, and nothing was stored
+
+                        @if ($membership->canAdminister())
+                            {{-- Clearing hides these; it does not delete the jobs or the audit
+                                 entries behind them. Said here rather than in a dialog, because it
+                                 is the thing somebody wants to know before pressing it. --}}
+                            <form method="POST" action="{{ route('backups.failures.clear') }}">
+                                @csrf
+                                <button type="submit" class="text-[12px] text-text-3 hover:text-text">Clear all</button>
+                            </form>
+                        @endif
+                    </span>
                 </div>
 
                 @foreach ($failedJobs as $failure)
-                    <x-backup-failure :failure="$failure" show-site />
+                    <x-backup-failure :failure="$failure" show-site :can-dismiss="$membership->canAdminister()" />
                 @endforeach
             </div>
         @endif
@@ -228,6 +241,17 @@
                                                     @method('DELETE')
                                                     <input type="hidden" name="reason" value="Deleted by hand">
                                                     <button type="submit" class="text-[12.5px] text-text-2 hover:text-danger">Delete</button>
+                                                </form>
+                                            @elseif ($artifact->neverStored() && $membership->isOwner())
+                                                {{-- A different word and a different sentence, because it is a
+                                                     different act. There is no key to destroy and no copy to lose:
+                                                     this row is the record of a backup that never happened, and
+                                                     without this it could never be removed. --}}
+                                                <form method="POST" action="{{ route('backups.destroy', $artifact) }}"
+                                                      onsubmit="return confirm('Remove this row? Nothing was stored for it, and the activity log keeps the record.');">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="text-[12.5px] text-text-2 hover:text-danger">Remove</button>
                                                 </form>
                                             @endif
                                         </div>

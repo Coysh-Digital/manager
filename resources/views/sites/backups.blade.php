@@ -127,8 +127,21 @@
                 @if ($failedJobs->isNotEmpty())
                     <div class="border-t border-border">
                         @foreach ($failedJobs as $failure)
-                            <x-backup-failure :failure="$failure" />
+                            <x-backup-failure :failure="$failure" :can-dismiss="$membership->canAdminister()" />
                         @endforeach
+
+                        @if ($membership->canAdminister() && $failedJobs->count() > 1)
+                            {{-- Only worth its own row when there is more than one to clear;
+                                 otherwise the Dismiss beside the single notice already is it. --}}
+                            <form method="POST" action="{{ route('backups.failures.clear') }}"
+                                  class="border-t border-border px-4 py-2.5">
+                                @csrf
+                                <input type="hidden" name="site" value="{{ $site->external_id }}">
+                                <button type="submit" class="text-[12px] text-text-3 hover:text-text">
+                                    Clear these notices
+                                </button>
+                            </form>
+                        @endif
                     </div>
                 @endif
 
@@ -228,6 +241,17 @@
                                                         @method('DELETE')
                                                         <input type="hidden" name="reason" value="Deleted by hand">
                                                         <button type="submit" class="text-[12.5px] text-text-2 hover:text-danger">Delete</button>
+                                                    </form>
+                                                @elseif ($artifact->neverStored() && $membership->isOwner())
+                                                    {{-- A different word and a different sentence, because it is a
+                                                         different act. There is no key to destroy and no copy to
+                                                         lose: this row is the record of a backup that never
+                                                         happened, and without this it could never be removed. --}}
+                                                    <form method="POST" action="{{ route('backups.destroy', $artifact) }}"
+                                                          onsubmit="return confirm('Remove this row? Nothing was stored for it, and the activity log keeps the record.');">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="submit" class="text-[12.5px] text-text-2 hover:text-danger">Remove</button>
                                                     </form>
                                                 @endif
                                             </div>

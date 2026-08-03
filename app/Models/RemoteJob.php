@@ -33,6 +33,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $finished_at
  * @property array<string, mixed>|null $result
  * @property string|null $failure_reason
+ * @property Carbon|null $notice_dismissed_at
  * @property int $claim_count
  */
 class RemoteJob extends Model
@@ -68,6 +69,11 @@ class RemoteJob extends Model
             'claimed_at' => 'datetime',
             'expires_at' => 'datetime',
             'finished_at' => 'datetime',
+
+            // When somebody stopped wanting the backups screen to lead with this failure. Not
+            // fillable: it is set by the screen that shows the notice, never by anything creating a
+            // job.
+            'notice_dismissed_at' => 'datetime',
         ];
     }
 

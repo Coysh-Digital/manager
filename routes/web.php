@@ -141,6 +141,19 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
     Route::get('backups/status', [BackupController::class, 'status'])->name('backups.status');
 
     /*
+     | Clearing a "Did not complete" notice.
+     |
+     | Outside the recent-authentication group deliberately, and for the same reason notes are: this
+     | destroys nothing. The job row, its failure reason and the audit entry for the failure all
+     | survive — only the panel stops leading with it. Administrators, matching the button that asks
+     | for a backup in the first place.
+     */
+    Route::post('backups/failures/dismiss', [BackupController::class, 'dismissFailure'])
+        ->name('backups.failures.dismiss');
+    Route::post('backups/failures/clear', [BackupController::class, 'clearFailures'])
+        ->name('backups.failures.clear');
+
+    /*
      | Notes.
      |
      | Any member may write one — it changes nothing about the site, and the value comes entirely

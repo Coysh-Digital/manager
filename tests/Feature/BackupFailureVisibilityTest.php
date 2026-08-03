@@ -6,6 +6,7 @@ use App\Contracts\BackupSizeLimit;
 use App\Domain\Job\JobService;
 use App\Domain\Notifications\NotificationEvent;
 use App\Jobs\DeliverNotification;
+use App\Models\AuditEvent;
 use App\Models\BackupArtifact;
 use App\Models\CapabilityGrant;
 use App\Models\Connector;
@@ -89,6 +90,104 @@ it('stops shouting about a failure once it is old', function (): void {
     $this->actingAs($this->owner)->get('/backups')
         ->assertOk()
         ->assertDontSee('larger than this connector is configured');
+});
+
+it('stops showing a failure somebody has dealt with', function (): void {
+    /*
+     * The seven-day window above is right for a failure nobody has looked at, and wrong for one
+     * that has been read and fixed: it goes on being shouted about for a week, and a panel people
+     * have learned to scroll past reports nothing at all.
+     */
+    $job = RemoteJob::factory()->for($this->site)->create([
+        'type' => Jobs::BACKUP_CREATE,
+        'state' => Jobs::STATE_FAILED,
+        'failure_reason' => 'the database is larger than this connector is configured to back up',
+    ]);
+
+    $this->actingAs($this->owner)
+        ->post('/backups/failures/dismiss', ['job' => $job->external_id])
+        ->assertRedirect();
+
+    $this->actingAs($this->owner)->get('/backups')
+        ->assertOk()
+        ->assertDontSee('larger than this connector is configured');
+
+    // The record survives. Dismissing hides a notice; it does not deny that the backup failed, and
+    // it must not rewrite when it did.
+    $job->refresh();
+
+    expect($job->notice_dismissed_at)->not->toBeNull()
+        ->and($job->failure_reason)->toBe('the database is larger than this connector is configured to back up')
+        ->and($job->state)->toBe(Jobs::STATE_FAILED);
+});
+
+it('does not rewrite when a job failed just because its notice was cleared', function (): void {
+    // failedAt reads updated_at, and so does the seven-day window. An Eloquent update() would touch
+    // it on the way past and quietly restate a Tuesday failure as having happened just now.
+    $failedAt = now()->subDays(3);
+
+    $job = RemoteJob::factory()->for($this->site)->create([
+        'type' => Jobs::BACKUP_CREATE,
+        'state' => Jobs::STATE_FAILED,
+        'failure_reason' => 'the upload did not complete',
+        'updated_at' => $failedAt,
+    ]);
+
+    $this->actingAs($this->owner)->post('/backups/failures/dismiss', ['job' => $job->external_id]);
+
+    expect($job->fresh()->updated_at->timestamp)->toBe($failedAt->timestamp);
+});
+
+it('clears every notice at once, and records that somebody did', function (): void {
+    RemoteJob::factory()->count(3)->for($this->site)->create([
+        'type' => Jobs::BACKUP_CREATE,
+        'state' => Jobs::STATE_FAILED,
+        'failure_reason' => 'the upload did not complete',
+    ]);
+
+    $this->actingAs($this->owner)->post('/backups/failures/clear')->assertRedirect();
+
+    $this->actingAs($this->owner)->get('/backups')
+        ->assertOk()
+        ->assertDontSee('Did not complete');
+
+    // One entry for the lot. Silencing a panel is worth recording — it is how a fleet stops
+    // reporting a problem it still has — but three rows saying so is a log nobody reads.
+    $event = AuditEvent::query()->where('action', 'backup.failures.dismissed')->get();
+
+    expect($event)->toHaveCount(1)
+        ->and($event->first()->after['notices'])->toBe(3);
+});
+
+it('will not let one organisation clear another organisation\'s notices', function (): void {
+    $other = Organisation::factory()->create();
+    $otherSite = Site::factory()->for($other)->connected()->create();
+
+    $job = RemoteJob::factory()->for($otherSite)->create([
+        'type' => Jobs::BACKUP_CREATE,
+        'state' => Jobs::STATE_FAILED,
+        'failure_reason' => 'the upload did not complete',
+    ]);
+
+    $this->actingAs($this->owner)->post('/backups/failures/dismiss', ['job' => $job->external_id]);
+    $this->actingAs($this->owner)->post('/backups/failures/clear');
+
+    expect($job->fresh()->notice_dismissed_at)->toBeNull();
+});
+
+it('refuses to clear a notice for a member who is not an administrator', function (): void {
+    $member = User::factory()->create(['email_verified_at' => now()]);
+    Membership::factory()->for($member)->for($this->organisation)->create();
+
+    $job = RemoteJob::factory()->for($this->site)->create([
+        'type' => Jobs::BACKUP_CREATE,
+        'state' => Jobs::STATE_FAILED,
+        'failure_reason' => 'the upload did not complete',
+    ]);
+
+    $this->actingAs($member)->post('/backups/failures/dismiss', ['job' => $job->external_id])->assertForbidden();
+
+    expect($job->fresh()->notice_dismissed_at)->toBeNull();
 });
 
 it('tells somebody when a site reports the backup failed', function (): void {

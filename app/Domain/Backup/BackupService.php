@@ -27,6 +27,7 @@ use coyshdigital\managerprotocol\SchemaValidator;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use JsonException;
+use LogicException;
 use RuntimeException;
 use Throwable;
 
@@ -1044,6 +1045,46 @@ final class BackupService
                 'plaintext_sha256' => $artifact->plaintext_sha256,
             ],
         );
+    }
+
+    /**
+     * Remove the row for a backup that never happened.
+     *
+     * The counterpart to {@see self::delete()}, and the difference is what there is to be honest
+     * about. Deleting a stored artifact leaves a tombstone because something existed and no longer
+     * does, and a customer is entitled to see that recorded. A failed declaration held no
+     * ciphertext and no key, so a tombstone for it records the absence of a thing that was already
+     * absent — and on a site failing nightly those rows are most of the screen.
+     *
+     * The audit entry is what remains, and it carries the failure reason, so nothing is lost that
+     * anybody can act on. Its timeline rows and recipient rows go with it, by the cascade the
+     * schema already declares.
+     *
+     * Recorded before the row is removed, because the audit entry reads from it.
+     */
+    public function discard(BackupArtifact $artifact, ?User $actor = null): void
+    {
+        // Not a validation message for a person: nothing routes a stored artifact here, and if
+        // something starts to, the answer is delete() rather than a wider definition of discard.
+        if (! $artifact->neverStored()) {
+            throw new LogicException('Only an artifact that never stored anything can be discarded.');
+        }
+
+        $this->audit->record(
+            action: 'backup.discarded',
+            site: $artifact->site,
+            actor: $actor,
+            actorType: $actor === null ? 'system' : 'user',
+            targetType: 'backup_artifact',
+            targetId: $artifact->external_id,
+            after: [
+                'state' => $artifact->state,
+                'failure_reason' => $artifact->failure_reason,
+                'declared_at' => $artifact->taken_at?->toIso8601String(),
+            ],
+        );
+
+        $artifact->delete();
     }
 
     /**
