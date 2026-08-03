@@ -7,6 +7,7 @@ namespace App\Domain\Health;
 use App\Contracts\BackupSizeLimit;
 use App\Contracts\DirectUploadGrants;
 use App\Contracts\MailAdministration;
+use App\Contracts\ServerAccess;
 use App\Domain\Backup\BackupKeypair;
 use App\Domain\Backup\BackupService;
 use App\Domain\Connector\PlatformKeypair;
@@ -39,6 +40,30 @@ final class Diagnostics
         private readonly OutboundUrlGuard $outboundUrls,
         private readonly BackupSizeLimit $backupSize,
     ) {}
+
+    /**
+     * The checks this reader has any business seeing.
+     *
+     * Filtered on {@see ServerAccess}, and reusing that seam rather than adding one is deliberate:
+     * every check hidden here is about the machine serving the page, and somebody who cannot reach
+     * that machine cannot act on any of them. The same question, asked once.
+     *
+     * `manager:doctor` and the back-office keep calling {@see self::all()}, because the operator is
+     * exactly who the hidden ones are for.
+     *
+     * @return list<Check>
+     */
+    public function forReader(): array
+    {
+        if (app(ServerAccess::class)->reachable()) {
+            return $this->all();
+        }
+
+        return array_values(array_filter(
+            $this->all(),
+            static fn (Check $check): bool => ! $check->isForOperator(),
+        ));
+    }
 
     /**
      * Every check, in the order an operator would want to read them.
@@ -86,10 +111,14 @@ final class Diagnostics
          | own check below rather than a hedge in this one.
          */
         if ($bytes === null) {
+            // The other half of "shown to everybody". How large a backup this platform will accept
+            // is a fact about the reader's own data rather than about our machine, and on a hosted
+            // edition this branch is the only one reachable — the ceiling is lifted there, so the
+            // row says so instead of leaving somebody to wonder.
             return Check::pass(
                 'Backup size ceiling',
                 'No ceiling. Artifacts are bounded by storage quota and disk.',
-            );
+            )->forEveryone();
         }
 
         $readable = round($bytes / 1024 / 1024).' MB';
@@ -766,15 +795,25 @@ final class Diagnostics
             $expected = ['audit_events_reject_mutation', 'audit_events_reject_truncate'];
             $missing = array_diff($expected, $names);
 
-            return $missing === []
+            /*
+             | Shown to everybody, hosted included, and it is one of only two that are.
+             |
+             | It is not about the machine, it is about the reader's own audit log — and "entries
+             | cannot be edited or deleted" is a claim the interface makes to them in as many words.
+             | Somebody told that is entitled to see it checked rather than asserted, and it is the
+             | one row here where a customer of a hosted edition learns something about their data
+             | rather than about our infrastructure.
+            */
+            return ($missing === []
                 ? Check::pass('Audit log protection', 'Both append-only triggers present.')
                 : Check::fail(
                     'Audit log protection',
                     'Missing: '.implode(', ', $missing).'.',
                     'The audit log can be edited without them. Re-run migrations.',
-                );
+                ))->forEveryone();
         } catch (Throwable $e) {
-            return Check::fail('Audit log protection', 'Cannot inspect triggers.', 'Check the database connection.');
+            return Check::fail('Audit log protection', 'Cannot inspect triggers.', 'Check the database connection.')
+                ->forEveryone();
         }
     }
 
