@@ -201,6 +201,25 @@ class BackupArtifact extends Model
     }
 
     /**
+     * Whether this row is a record of a backup that never existed.
+     *
+     * A declaration that failed, or one that was never uploaded and has since been failed by the
+     * prune command, holds no ciphertext and no key. It is a row on a screen and nothing else, and
+     * until there was a way to remove one they accumulated for ever: the delete button asks
+     * {@see self::isRetrievable()}, which these can never satisfy, and nothing else ever deleted
+     * them.
+     *
+     * Deliberately not expired or deleted artifacts. Those may well have held bytes, and their
+     * tombstone — the state, the reason, the destroyed key — is the record that they did. This is
+     * for the ones where there is nothing to be the record of.
+     */
+    public function neverStored(): bool
+    {
+        return $this->storage_key === null
+            && in_array($this->state, [self::STATE_PENDING, self::STATE_FAILED], true);
+    }
+
+    /**
      * The checksum the uploaded bytes must have.
      *
      * The two formats upload different things. A v1 artifact is a bare encrypted stream, so its

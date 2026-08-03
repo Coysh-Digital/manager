@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Domain\Audit\AuditRecorder;
 use App\Domain\Backup\BackupReadiness;
 use App\Domain\Backup\BackupService;
 use App\Domain\Backup\BackupTimeline;
@@ -53,6 +54,7 @@ final class BackupController
         private readonly BackupTimeline $timeline,
         private readonly BackupReadiness $readiness,
         private readonly RecoveryKeyService $recoveryKeys,
+        private readonly AuditRecorder $audit,
     ) {}
 
     public function index(Organisation $organisation): View
@@ -205,16 +207,108 @@ final class BackupController
 
     /**
      * Delete an artifact before its retention date.
+     *
+     * Two different things, on one button, because to somebody looking at the list they are the
+     * same gesture. A stored artifact is deleted and leaves a tombstone; a declaration that never
+     * stored anything is discarded outright. {@see BackupService::discard()} for why the second is
+     * not simply the first with a different reason string.
      */
     public function destroy(Request $request, BackupArtifact $artifact, Organisation $organisation): RedirectResponse
     {
         abort_if($artifact->organisation_id !== $organisation->id, 404);
         abort_unless(app(Membership::class)->isOwner(), 403);
 
+        if ($artifact->neverStored()) {
+            $this->backups->discard($artifact, $request->user());
+
+            return back()->with('status', 'Removed. Nothing was stored for that backup; the audit log still records it.');
+        }
+
         $validated = $request->validate(['reason' => ['required', 'string', 'min:3', 'max:255']]);
 
         $this->backups->delete($artifact, $validated['reason'], $request->user());
 
         return back()->with('status', 'Backup deleted. Its encryption key was destroyed with it.');
+    }
+
+    /**
+     * Stop showing one "Did not complete" notice.
+     *
+     * Administrators rather than owners, matching "Back up now" above: this is the same person
+     * dealing with the same failure. Nothing is destroyed — the job, its reason and the audit row
+     * for the failure all survive — which is also why it sits outside the recent-authentication
+     * group that deleting a backup sits inside.
+     */
+    public function dismissFailure(Request $request, Organisation $organisation): RedirectResponse
+    {
+        abort_unless(app(Membership::class)->canAdminister(), 403);
+
+        $validated = $request->validate(['job' => ['required', 'string', 'max:64']]);
+
+        return $this->reportDismissal(
+            // Zero rows is a stale screen rather than an error: two people can press this on the
+            // same notice, and the second should see the outcome they asked for.
+            $this->failed->dismiss($organisation->id, $validated['job']),
+            $request,
+            $organisation,
+            null,
+        );
+    }
+
+    /**
+     * Stop showing every notice currently on the screen, or every notice for one site.
+     */
+    public function clearFailures(Request $request, Organisation $organisation): RedirectResponse
+    {
+        abort_unless(app(Membership::class)->canAdminister(), 403);
+
+        $site = null;
+
+        if ($request->filled('site')) {
+            $site = Site::query()
+                ->where('organisation_id', $organisation->id)
+                ->where('external_id', $request->string('site')->toString())
+                ->first();
+
+            abort_if($site === null, 404);
+        }
+
+        return $this->reportDismissal(
+            $this->failed->dismissAll($organisation->id, $site),
+            $request,
+            $organisation,
+            $site,
+        );
+    }
+
+    /**
+     * The audit row and the sentence, for either of the two above.
+     *
+     * One entry for however many notices went, rather than one each. Silencing a panel is worth
+     * recording — it is how a fleet stops reporting a problem it still has — but forty rows saying
+     * so is a log nobody reads.
+     */
+    private function reportDismissal(int $cleared, Request $request, Organisation $organisation, ?Site $site): RedirectResponse
+    {
+        if ($cleared === 0) {
+            return back()->with('status', 'There was nothing left to clear.');
+        }
+
+        $this->audit->record(
+            action: 'backup.failures.dismissed',
+            organisation: $organisation,
+            site: $site,
+            actor: $request->user(),
+            targetType: 'organisation',
+            targetId: $organisation->external_id,
+            after: [
+                'notices' => $cleared,
+                'scope' => $site instanceof Site ? 'site' : 'organisation',
+            ],
+        );
+
+        return back()->with('status', $cleared === 1
+            ? 'Notice cleared. The failure is still in the activity log.'
+            : "{$cleared} notices cleared. The failures are still in the activity log.");
     }
 }

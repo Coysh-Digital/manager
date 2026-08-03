@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Models\AuditEvent;
 use App\Models\BackupArtifact;
 use App\Models\BackupEvent;
 use App\Models\CapabilityGrant;
@@ -364,4 +365,69 @@ it('destroys the key when an owner deletes an artifact', function (): void {
         ->and($artifact->wrapped_key)->toBeNull()
         ->and($artifact->storage_key)->toBeNull()
         ->and($artifact->deleted_reason)->toBe('Client asked us to');
+});
+
+it('removes a failed artifact outright, rather than tombstoning a backup that never existed', function (): void {
+    /*
+     * These accumulated with no way to remove them. The delete button asks isRetrievable(), which a
+     * failed declaration can never satisfy, and the nightly prune only ever creates more of them —
+     * so a site failing every night filled the screen for good.
+     *
+     * Discarded rather than deleted, because a tombstone here would record the absence of something
+     * that was already absent: no ciphertext was ever stored and no key was ever wrapped. The audit
+     * entry, which carries the reason, is the record.
+     */
+    $artifact = BackupArtifact::factory()->for($this->site)->pending()->create([
+        'organisation_id' => $this->organisation->id,
+        'state' => BackupArtifact::STATE_FAILED,
+        'failure_reason' => 'The artifact was declared but never uploaded',
+    ]);
+
+    $this->actingAs($this->owner)->withSession($this->recentAuth)
+        ->delete("/backups/{$artifact->external_id}")
+        ->assertRedirect();
+
+    expect(BackupArtifact::query()->find($artifact->id))->toBeNull()
+        ->and(AuditEvent::query()->where('action', 'backup.discarded')->count())->toBe(1);
+});
+
+it('gives a failed artifact a way to be removed at all', function (): void {
+    $artifact = BackupArtifact::factory()->for($this->site)->pending()->create([
+        'organisation_id' => $this->organisation->id,
+        'state' => BackupArtifact::STATE_FAILED,
+        'failure_reason' => 'The artifact was declared but never uploaded',
+    ]);
+
+    // The affordance, not just the route behind it: this row was unremovable because nothing on the
+    // screen offered to remove it.
+    $this->actingAs($this->owner)->get('/backups')
+        ->assertOk()
+        ->assertSee(route('backups.destroy', $artifact));
+});
+
+it('will not discard an artifact that actually stored something', function (): void {
+    // Same button, two acts. A stored artifact keeps its tombstone and its destroyed key; only the
+    // rows that never held bytes disappear.
+    $artifact = BackupArtifact::factory()->for($this->site)->create([
+        'organisation_id' => $this->organisation->id,
+    ]);
+
+    $this->actingAs($this->owner)->withSession($this->recentAuth)
+        ->delete("/backups/{$artifact->external_id}", ['reason' => 'Client asked us to'])
+        ->assertRedirect();
+
+    expect($artifact->fresh()->state)->toBe(BackupArtifact::STATE_DELETED);
+});
+
+it('refuses to remove a failed artifact for anybody but an owner', function (): void {
+    $artifact = BackupArtifact::factory()->for($this->site)->pending()->create([
+        'organisation_id' => $this->organisation->id,
+        'state' => BackupArtifact::STATE_FAILED,
+    ]);
+
+    $this->actingAs($this->member)->withSession($this->recentAuth)
+        ->delete("/backups/{$artifact->external_id}")
+        ->assertForbidden();
+
+    expect(BackupArtifact::query()->find($artifact->id))->not->toBeNull();
 });
