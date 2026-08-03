@@ -50,8 +50,9 @@
                             @if ($latest === null)
                                 <x-status-badge tone="grey" label="None stored" />
                             @elseif ($latest->taken_at->lt(now()->subWeek()))
-                                {{-- A week is not a policy, it is a prompt. Manager does not schedule
-                                     backups, so an old one means nobody has asked lately. --}}
+                                {{-- A week is not a policy, it is a prompt. With no schedule it means
+                                     nobody has asked lately; with one it means the schedule is not
+                                     doing what somebody believes it is, which is worth more. --}}
                                 <x-status-badge tone="warn" label="Over a week old" />
                             @else
                                 <x-status-badge tone="ok" label="Recent" />
@@ -74,6 +75,26 @@
                             <span class="font-mono text-[13px] tabular">{{ $value }}</span>
                         </div>
                     @endforeach
+
+                    {{-- On or off, in the summary strip, because it is the difference between "no
+                         backups yet" and "no backups ever, and nothing is going to change that". A
+                         screen that lists artifacts without saying whether more are coming answers
+                         half the question somebody opened it with. --}}
+                    <div class="flex flex-col gap-1">
+                        <span class="font-mono text-[10px] uppercase tracking-[0.07em] text-text-3">Schedule</span>
+                        <span class="flex items-center gap-2">
+                            @if ($site->hasBackupSchedule())
+                                <x-status-badge tone="ok" label="On" />
+                                <span class="text-[12.5px] text-text-2">
+                                    {{ $site->backup_schedule === 'daily' ? 'Daily' : 'Weekly' }},
+                                    {{ sprintf('%02d:00', $site->backup_schedule_hour) }}
+                                </span>
+                            @else
+                                <x-status-badge tone="grey" label="Off" />
+                                <span class="text-[12.5px] text-text-2">Only when asked</span>
+                            @endif
+                        </span>
+                    </div>
 
                     @if ($membership->canAdminister())
                         {{-- Disabled with the reason beside it, rather than enabled and disappointing.
@@ -113,6 +134,96 @@
                             </p>
                         @endif
                     </div>
+                @endif
+
+                {{--
+                    The schedule, on the screen its effect is visible on.
+
+                    It used to be on this site's Settings form, sharing a Save button with the site's
+                    name and its expected domain — so the answer to "why has this site not been
+                    backed up" lived on a different screen from the evidence that it had not. The
+                    fields are unchanged; only where they are has moved.
+                --}}
+                @if ($membership->canAdminister())
+                    <div class="border-b border-border">
+                        <form method="POST" action="{{ route('sites.backups.schedule', $site) }}"
+                              class="flex flex-col gap-3 px-4 py-3.5"
+                              data-backup-schedule>
+                            @csrf
+
+                            @php
+                                // The saved value decides what is on screen at load, so a browser with
+                                // no JavaScript gets the right controls rather than all of them.
+                                // schedule.js maintains the same two attributes afterwards.
+                                $schedule = old('backup_schedule', $site->backup_schedule);
+                            @endphp
+
+                            <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
+                                <label class="flex flex-1 flex-col gap-1">
+                                    <span class="font-mono text-[10.5px] uppercase tracking-[0.07em] text-text-3">Back up this site</span>
+                                    <select name="backup_schedule"
+                                            data-backup-schedule-frequency
+                                            class="h-[34px] rounded-[7px] border border-border bg-surface px-2.5 text-[13px]">
+                                        @foreach (['off' => 'Only when asked', 'daily' => 'Every day', 'weekly' => 'Every week'] as $value => $label)
+                                            <option value="{{ $value }}" @selected($schedule === $value)>{{ $label }}</option>
+                                        @endforeach
+                                    </select>
+                                </label>
+
+                                <label class="flex flex-col gap-1 sm:w-[140px]"
+                                       data-backup-schedule-field="hour"@if ($schedule === 'off') hidden @endif>
+                                    <span class="font-mono text-[10.5px] uppercase tracking-[0.07em] text-text-3">At</span>
+                                    <select name="backup_schedule_hour"
+                                            class="h-[34px] rounded-[7px] border border-border bg-surface px-2.5 text-[13px]">
+                                        @for ($hour = 0; $hour < 24; $hour++)
+                                            <option value="{{ $hour }}" @selected((int) old('backup_schedule_hour', $site->backup_schedule_hour) === $hour)>
+                                                {{ sprintf('%02d:00', $hour) }}
+                                            </option>
+                                        @endfor
+                                    </select>
+                                </label>
+
+                                {{-- Shown only for a weekly schedule, because that is the only one the
+                                     scheduler reads it for. It used to be on screen for all three,
+                                     saved, audited as a change, and then ignored — a control that
+                                     does nothing is worse than no control, because somebody sets it
+                                     and believes it. --}}
+                                <label class="flex flex-col gap-1 sm:w-[140px]"
+                                       data-backup-schedule-field="day"@if ($schedule !== 'weekly') hidden @endif>
+                                    <span class="font-mono text-[10.5px] uppercase tracking-[0.07em] text-text-3">On</span>
+                                    <select name="backup_schedule_day"
+                                            class="h-[34px] rounded-[7px] border border-border bg-surface px-2.5 text-[13px]">
+                                        @foreach (['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] as $index => $day)
+                                            <option value="{{ $index + 1 }}" @selected((int) old('backup_schedule_day', $site->backup_schedule_day) === $index + 1)>{{ $day }}</option>
+                                        @endforeach
+                                    </select>
+                                </label>
+
+                                <button type="submit"
+                                        class="h-[34px] rounded-[7px] border border-border-2 bg-surface px-3.5 text-[12.5px] font-medium text-text hover:bg-row-hover">
+                                    Save schedule
+                                </button>
+                            </div>
+
+                            {{-- The current state as a sentence, including the zone, because an hour
+                                 without one is a number somebody has to guess at — and the guess is
+                                 usually their own zone rather than the organisation's, which is the
+                                 one the scheduler reads. --}}
+                            <p class="max-w-[80ch] text-[12px] leading-relaxed text-text-3">
+                                {{ $site->backupScheduleSentence() }}
+                                <span data-backup-schedule-note=""@if ($schedule === 'off') hidden @endif>
+                                    A scheduled backup is refused rather than attempted if this
+                                    organisation has no recovery key to encrypt it to.
+                                </span>
+                            </p>
+                        </form>
+                    </div>
+                @elseif ($site->hasBackupSchedule())
+                    {{-- A member cannot change it, but "when is this backed up" is not privileged
+                         information and leaving it blank reads as "never". --}}
+                    <p class="border-b border-border px-4 py-3 text-[12.5px] text-text-2">
+                        {{ $site->backupScheduleSentence() }}
+                    </p>
                 @endif
 
                 @if ($inFlight->isNotEmpty())

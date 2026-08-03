@@ -233,6 +233,12 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
 
             Route::post('backups/sites/{site}', [BackupController::class, 'store'])->name('backups.store');
 
+            // Deciding that a production database is dumped on a repeating schedule, which is the
+            // same act the button above performs and gated the same way. It kept this gate when it
+            // moved off the site settings form, rather than losing one by being relocated.
+            Route::post('sites/{site}/backups/schedule', [SiteBackupController::class, 'updateSchedule'])
+                ->name('sites.backups.schedule');
+
             Route::post('sites/{site}/capabilities/grant-confirmed', [CapabilityController::class, 'grantConfirmed'])
                 ->name('capabilities.grant-confirmed');
             Route::post('sites/{site}/capabilities/grant', [CapabilityController::class, 'grant'])

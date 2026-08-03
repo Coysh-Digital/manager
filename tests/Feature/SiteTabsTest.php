@@ -337,10 +337,16 @@ it('shows this site\'s outstanding findings', function (): void {
 it('offers the day of the week only for a schedule that reads it', function (): void {
     // The scheduler ignores the day unless the schedule is weekly, so showing it for a daily one
     // invites somebody to set a value that is saved, audited, and then never consulted.
+    //
+    // The form lives on the Backups screen now, which shows nothing but an explanation until the
+    // capability is granted — there is no point scheduling what the site has not been permitted to
+    // do.
+    CapabilityGrant::factory()->for($this->site)->capability('backups:create')->create();
+
     $this->site->forceFill(['backup_schedule' => 'daily'])->save();
 
     $this->actingAs($this->user)
-        ->get(route('sites.settings', $this->site))
+        ->get(route('sites.backups', $this->site))
         ->assertOk()
         ->assertSee('data-backup-schedule-field="day" hidden', false)
         ->assertDontSee('data-backup-schedule-field="hour" hidden', false);
@@ -348,7 +354,7 @@ it('offers the day of the week only for a schedule that reads it', function (): 
     $this->site->forceFill(['backup_schedule' => 'weekly'])->save();
 
     $this->actingAs($this->user)
-        ->get(route('sites.settings', $this->site))
+        ->get(route('sites.backups', $this->site))
         ->assertOk()
         ->assertDontSee('data-backup-schedule-field="day" hidden', false);
 
@@ -356,7 +362,7 @@ it('offers the day of the week only for a schedule that reads it', function (): 
     $this->site->forceFill(['backup_schedule' => 'off'])->save();
 
     $this->actingAs($this->user)
-        ->get(route('sites.settings', $this->site))
+        ->get(route('sites.backups', $this->site))
         ->assertOk()
         ->assertSee('data-backup-schedule-field="day" hidden', false)
         ->assertSee('data-backup-schedule-field="hour" hidden', false);

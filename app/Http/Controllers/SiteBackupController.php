@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Domain\Audit\AuditRecorder;
 use App\Domain\Backup\BackupReadiness;
 use App\Domain\Backup\BackupService;
 use App\Domain\Backup\FailedBackupJobs;
 use App\Domain\Backup\InFlightBackups;
+use App\Domain\Backup\RecoveryKeyService;
 use App\Domain\Capability\CapabilityService;
 use App\Http\Controllers\Concerns\ResolvesSiteContext;
 use App\Models\BackupArtifact;
@@ -16,6 +18,8 @@ use App\Models\Site;
 use App\Support\ViewerTimezone;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 
 /**
  * One site's backups.
@@ -37,7 +41,94 @@ final class SiteBackupController
         private readonly InFlightBackups $inFlight,
         private readonly FailedBackupJobs $failed,
         private readonly BackupReadiness $readiness,
+        private readonly RecoveryKeyService $recoveryKeys,
+        private readonly AuditRecorder $audit,
     ) {}
+
+    /**
+     * When this site is asked for a backup, without being asked.
+     *
+     * Moved here from the site's Settings screen, where it shared a form with the site's name, its
+     * expected domain and its environment. Nothing about those is a backup decision, and the
+     * schedule was the only control on that form whose effect is visible on a different screen
+     * entirely — so somebody looking at a list of backups wondering why there were none had to know
+     * to go and look somewhere else to find out.
+     *
+     * Administrators, and behind recent authentication, exactly as it was: this decides that a
+     * production database is dumped in full on a repeating schedule, which is the same act the
+     * "Back up now" button performs and that button is gated too.
+     */
+    public function updateSchedule(Request $request, Site $site): RedirectResponse
+    {
+        abort_unless(app(Membership::class)->canAdminister(), 403);
+
+        /*
+         | The schedule decides *when* to ask, and nothing else.
+         |
+         | There is deliberately no field here naming a destination, a recipient or a format. Those
+         | come from the organisation's recovery keys and from the site's own configuration file,
+         | and a timing form that could influence any of them would be a way to change who can read
+         | a backup from a screen that looks like it is about hours of the day.
+         */
+        $validated = $request->validate([
+            'backup_schedule' => ['required', 'in:off,daily,weekly'],
+            'backup_schedule_hour' => ['required', 'integer', 'min:0', 'max:23'],
+            'backup_schedule_day' => ['required', 'integer', 'min:1', 'max:7'],
+        ]);
+
+        /*
+         | Turning a schedule on with no recovery key produced the worst outcome this screen can:
+         | the form saved, the audit log recorded it, the screen read "Every day" indefinitely, and
+         | ScheduleBackupsCommand skipped the site every hour with the reason going to cron's stdout
+         | and nowhere else. Somebody could believe a site had been backed up nightly for months.
+         |
+         | Refused rather than saved-and-warned, because a schedule that is set and never runs is
+         | precisely the state that misleads. Turning one *off* is always allowed — needing a key to
+         | stop asking for backups would be absurd.
+        */
+        if ($validated['backup_schedule'] !== 'off'
+            && $validated['backup_schedule'] !== $site->backup_schedule
+            && $site->organisation !== null
+            && ! $this->recoveryKeys->hasActiveKey($site->organisation)) {
+            return back()->withErrors([
+                'backup_schedule' => 'Add a recovery key before scheduling backups. A backup is encrypted to '
+                    .'keys you hold, so until this organisation has one there is nothing to encrypt to and every '
+                    .'scheduled run would be skipped.',
+            ])->withInput();
+        }
+
+        $before = [
+            'backup_schedule' => $site->backup_schedule,
+            'backup_schedule_hour' => $site->backup_schedule_hour,
+            'backup_schedule_day' => $site->backup_schedule_day,
+        ];
+
+        $after = [
+            'backup_schedule' => $validated['backup_schedule'],
+            'backup_schedule_hour' => (int) $validated['backup_schedule_hour'],
+            'backup_schedule_day' => (int) $validated['backup_schedule_day'],
+        ];
+
+        if ($before === $after) {
+            return back()->with('status', 'Nothing to change.');
+        }
+
+        $site->forceFill($after)->save();
+
+        $this->audit->record(
+            action: 'site.backup_schedule.updated',
+            site: $site,
+            actor: $request->user(),
+            targetType: 'site',
+            targetId: $site->external_id,
+            before: $before,
+            after: $after,
+        );
+
+        return back()->with('status', $after['backup_schedule'] === 'off'
+            ? 'Scheduled backups are off. This site will only be backed up when somebody asks.'
+            : 'Saved. '.$site->fresh()?->backupScheduleSentence());
+    }
 
     public function show(Site $site): View
     {

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Domain\Audit\AuditRecorder;
-use App\Domain\Backup\RecoveryKeyService;
 use App\Domain\Capability\CapabilityPanel;
 use App\Domain\Pairing\EnrolmentService;
 use App\Http\Controllers\Concerns\ResolvesSiteContext;
@@ -30,7 +29,6 @@ final class SiteSettingsController
     public function __construct(
         private readonly CapabilityPanel $panel,
         private readonly AuditRecorder $audit,
-        private readonly RecoveryKeyService $recoveryKeys,
     ) {}
 
     public function show(Site $site): View
@@ -63,21 +61,6 @@ final class SiteSettingsController
             'name' => ['required', 'string', 'max:120'],
             'expected_domain' => ['required', 'string', 'max:255'],
             'environment' => ['required', 'in:production,staging,development'],
-
-            /*
-             | The backup schedule decides *when* to ask for a backup and nothing else.
-             |
-             | There is deliberately no field here naming a destination, a recipient or a format. Those
-             | are decided by the organisation's recovery keys and by the site's own configuration
-             | file, and a schedule form that could influence any of them would be a way to change who
-             | can read a backup from a screen that looks like it is about timing.
-             */
-            // Optional, falling back to what is already set. A caller that only means to rename a
-            // site should not have to restate its backup schedule, and a missing field must never be
-            // read as "turn backups off".
-            'backup_schedule' => ['sometimes', 'in:off,daily,weekly'],
-            'backup_schedule_hour' => ['sometimes', 'integer', 'min:0', 'max:23'],
-            'backup_schedule_day' => ['sometimes', 'integer', 'min:1', 'max:7'],
         ]);
 
         $domain = $enrolment->normaliseDomain($validated['expected_domain']);
@@ -88,45 +71,16 @@ final class SiteSettingsController
             ])->withInput();
         }
 
-        /*
-         | Turning a schedule on with no recovery key produced the worst outcome this screen can:
-         | the form saved, the audit log recorded it, the screen read "Every day" indefinitely, and
-         | ScheduleBackupsCommand skipped the site every hour with the reason going to cron's stdout
-         | and nowhere else. Somebody could believe a site had been backed up nightly for months.
-         |
-         | Refused rather than saved-and-warned, because a schedule that is set and never runs is
-         | precisely the state that misleads. Turning one *off* is always allowed — needing a key to
-         | stop asking for backups would be absurd.
-        */
-        $requested = $validated['backup_schedule'] ?? $site->backup_schedule;
-
-        if ($requested !== 'off'
-            && $requested !== $site->backup_schedule
-            && $site->organisation !== null
-            && ! $this->recoveryKeys->hasActiveKey($site->organisation)) {
-            return back()->withErrors([
-                'backup_schedule' => 'Add a recovery key before scheduling backups. A backup is encrypted to '
-                    .'keys you hold, so until this organisation has one there is nothing to encrypt to and every '
-                    .'scheduled run would be skipped.',
-            ])->withInput();
-        }
-
         $before = [
             'name' => $site->name,
             'expected_domain' => $site->expected_domain,
             'environment' => $site->environment,
-            'backup_schedule' => $site->backup_schedule,
-            'backup_schedule_hour' => $site->backup_schedule_hour,
-            'backup_schedule_day' => $site->backup_schedule_day,
         ];
 
         $after = [
             'name' => $validated['name'],
             'expected_domain' => $domain,
             'environment' => $validated['environment'],
-            'backup_schedule' => $validated['backup_schedule'] ?? $site->backup_schedule,
-            'backup_schedule_hour' => (int) ($validated['backup_schedule_hour'] ?? $site->backup_schedule_hour),
-            'backup_schedule_day' => (int) ($validated['backup_schedule_day'] ?? $site->backup_schedule_day),
         ];
 
         if ($before === $after) {
