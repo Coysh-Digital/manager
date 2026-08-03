@@ -359,7 +359,7 @@
                 </div>
             @else
                 <div class="overflow-hidden rounded-[10px] border border-border bg-surface">
-                    <div class="overflow-x-auto">
+                    <div class="relative overflow-x-auto">
                         <table class="table-sticky w-full min-w-[820px] text-[13px]">
                             <thead>
                                 <tr class="bg-surface-2">
