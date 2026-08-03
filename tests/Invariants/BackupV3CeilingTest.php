@@ -39,6 +39,19 @@ use Illuminate\Support\Str;
 beforeEach(function (): void {
     Storage::fake('backups');
 
+    /*
+     | Generated here rather than read from the environment.
+     |
+     | The claim response is signed, so the three negotiation tests at the foot of this file need a
+     | platform keypair. A configured installation has one and a fresh checkout does not — which is
+     | exactly the trap BackupPipelineTest names: a suite that only passes on a machine where somebody
+     | has run `manager:keys:generate` is a suite that stops running on CI. It did, and this is why.
+     */
+    config([
+        'manager.signing.public_key' => ($platform = Keys::generateKeypair())['public'],
+        'manager.signing.secret_key' => $platform['secret'],
+    ]);
+
     $this->organisation = Organisation::factory()->create();
     $this->site = Site::factory()->for($this->organisation)->connected()->create();
 
