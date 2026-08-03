@@ -60,7 +60,10 @@ final class ScheduleBackupsCommand extends Command
             ->cursor();
 
         foreach ($sites as $site) {
-            $timezone = $site->organisation->timezone ?: 'UTC';
+            // The site's own zone. "03:00" has to mean the quiet hour where this site is, and a
+            // fleet spread across London and Sydney cannot share one — which is why this stopped
+            // being the organisation's.
+            $timezone = $site->timezone ?: 'UTC';
             $now = Carbon::now($timezone);
 
             if ($now->hour !== $site->backup_schedule_hour) {

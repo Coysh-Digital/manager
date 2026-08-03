@@ -10,6 +10,7 @@ use App\Domain\Backup\BackupService;
 use App\Domain\Backup\FailedBackupJobs;
 use App\Domain\Backup\InFlightBackups;
 use App\Domain\Backup\RecoveryKeyService;
+use App\Domain\Backup\RetentionPolicy;
 use App\Domain\Capability\CapabilityService;
 use App\Http\Controllers\Concerns\ResolvesSiteContext;
 use App\Models\BackupArtifact;
@@ -74,6 +75,11 @@ final class SiteBackupController
             'backup_schedule' => ['required', 'in:off,daily,weekly'],
             'backup_schedule_hour' => ['required', 'integer', 'min:0', 'max:23'],
             'backup_schedule_day' => ['required', 'integer', 'min:1', 'max:7'],
+
+            // The zone belongs with the hour rather than with retention, because it is the thing
+            // that makes the hour mean anything. It used to be the organisation's, which cannot be
+            // right for a fleet split between London and Sydney.
+            'timezone' => ['required', 'string', 'timezone'],
         ]);
 
         /*
@@ -101,12 +107,14 @@ final class SiteBackupController
             'backup_schedule' => $site->backup_schedule,
             'backup_schedule_hour' => $site->backup_schedule_hour,
             'backup_schedule_day' => $site->backup_schedule_day,
+            'timezone' => $site->timezone,
         ];
 
         $after = [
             'backup_schedule' => $validated['backup_schedule'],
             'backup_schedule_hour' => (int) $validated['backup_schedule_hour'],
             'backup_schedule_day' => (int) $validated['backup_schedule_day'],
+            'timezone' => $validated['timezone'],
         ];
 
         if ($before === $after) {
@@ -130,6 +138,71 @@ final class SiteBackupController
             : 'Saved. '.$site->fresh()?->backupScheduleSentence());
     }
 
+    /**
+     * How far back this site's backups are kept.
+     *
+     * Both were the organisation's until now, and both are decisions about a particular site: a busy
+     * shop and a brochure site do not warrant the same history, and "03:00 where the site is" cannot
+     * mean one thing for a fleet split between London and Sydney. Every site kept whatever its
+     * organisation had, so nothing changed underneath anybody when they moved.
+     *
+     * Owner-level rather than administrator, which is what it was on the organisation form.
+     * Shortening retention decides how far back this site can be recovered from, and that is a
+     * different kind of decision from asking for a backup.
+     *
+     * Two things are deliberately not here. It cannot lengthen an existing artifact's life: expiry
+     * is computed when a backup is stored, from the policy in force then, so this governs future
+     * backups only. And it cannot set "keep the most recent N" — that is the rule this replaced,
+     * because a site producing bad backups on a schedule pushes out the last known-good copy while
+     * the count never drops below N and nothing looks wrong.
+     */
+    public function updateRetention(Request $request, Site $site): RedirectResponse
+    {
+        abort_unless(app(Membership::class)->isOwner(), 403);
+
+        $validated = $request->validate([
+            // Zero is meaningful in each of these and means "no window of this kind", not "unset".
+            // The policy keeps the newest artifact regardless, so all three at zero still leaves the
+            // site with its most recent backup rather than with nothing.
+            'backup_retention_days' => ['required', 'integer', 'min:0', 'max:3650'],
+            'backup_retention_weeks' => ['required', 'integer', 'min:0', 'max:520'],
+            'backup_retention_months' => ['required', 'integer', 'min:0', 'max:120'],
+        ]);
+
+        $before = [
+            'backup_retention_days' => $site->backup_retention_days,
+            'backup_retention_weeks' => $site->backup_retention_weeks,
+            'backup_retention_months' => $site->backup_retention_months,
+        ];
+
+        $after = [
+            'backup_retention_days' => (int) $validated['backup_retention_days'],
+            'backup_retention_weeks' => (int) $validated['backup_retention_weeks'],
+            'backup_retention_months' => (int) $validated['backup_retention_months'],
+        ];
+
+        if ($before === $after) {
+            return back()->with('status', 'Nothing to change.');
+        }
+
+        $site->forceFill($after)->save();
+
+        $this->audit->record(
+            action: 'backup.retention.changed',
+            site: $site,
+            actor: $request->user(),
+            targetType: 'site',
+            targetId: $site->external_id,
+            before: $before,
+            after: $after,
+        );
+
+        return back()->with(
+            'status',
+            'Retention updated. Backups already taken keep the expiry they were given.',
+        );
+    }
+
     public function show(Site $site): View
     {
         $artifacts = BackupArtifact::query()
@@ -148,6 +221,8 @@ final class SiteBackupController
         return view('sites.backups', [
             ...$this->siteContext($site),
             'membership' => app(Membership::class),
+            'timezones' => timezone_identifiers_list(),
+            'retention' => RetentionPolicy::forSite($site),
             'artifacts' => $artifacts,
             'latest' => $stored->first(),
             'storedCount' => $stored->count(),

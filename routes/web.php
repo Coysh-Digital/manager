@@ -249,6 +249,12 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
             Route::post('sites/{site}/backups/schedule', [SiteBackupController::class, 'updateSchedule'])
                 ->name('sites.backups.schedule');
 
+            // How far back this site's backups are kept. Owner-level rather than administrator,
+            // because shortening it decides how far back this site can be recovered from — which is
+            // a different kind of decision from asking for a backup.
+            Route::post('sites/{site}/backups/retention', [SiteBackupController::class, 'updateRetention'])
+                ->name('sites.backups.retention');
+
             Route::post('sites/{site}/capabilities/grant-confirmed', [CapabilityController::class, 'grantConfirmed'])
                 ->name('capabilities.grant-confirmed');
             Route::post('sites/{site}/capabilities/grant', [CapabilityController::class, 'grant'])
@@ -285,11 +291,6 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
          |
          | Bound on external_id like everything else, so a sequential identifier is never in a URL.
          */
-        // Retention and the time zone the backup schedule reads. Owner-level, because shortening
-        // retention decides how far back this organisation can recover from.
-        Route::post('settings/retention', [SettingsController::class, 'updateRetention'])
-            ->name('settings.retention');
-
         // Sends to the signed-in owner's own address and nowhere else. A destination field here
         // would be an open relay on an authenticated page.
         Route::post('settings/mail/test', [SettingsController::class, 'testMail'])

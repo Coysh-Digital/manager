@@ -34,6 +34,10 @@ use Illuminate\Support\Carbon;
  * @property string $backup_schedule
  * @property int $backup_schedule_hour
  * @property int $backup_schedule_day
+ * @property int $backup_retention_days
+ * @property int $backup_retention_weeks
+ * @property int $backup_retention_months
+ * @property string $timezone
  * @property Carbon|null $backup_scheduled_at
  * @property Carbon|null $certificate_checked_at
  * @property Carbon|null $certificate_expires_at
@@ -243,7 +247,7 @@ class Site extends Model
             return 'No schedule. This site is backed up only when somebody asks for one.';
         }
 
-        $zone = $this->organisation->timezone;
+        $zone = $this->timezone;
         $at = sprintf('%02d:00', $this->backup_schedule_hour);
 
         if ($this->backup_schedule === 'daily') {

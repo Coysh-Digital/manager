@@ -43,9 +43,9 @@ final class AccountController
             'user' => $user,
             'organisation' => app(Organisation::class),
 
-            // Named on the "use the organisation's" option rather than left implicit. A default is
-            // only a useful default when the reader can see what it resolves to.
-            'organisationTimezone' => app(Organisation::class)->timezone,
+            // Named on the "use the default" option rather than left implicit. A default is only a
+            // useful default when the reader can see what it resolves to.
+            'defaultTimezone' => (string) config('app.timezone', 'UTC'),
             'timezones' => timezone_identifiers_list(),
 
             'recoveryCodesRemaining' => $user->unusedRecoveryCodeCount(),
@@ -269,9 +269,9 @@ final class AccountController
      * nothing else — the hosted edition documents relying on precisely that, and widening it to
      * carry a display preference would put a security assumption behind a convenience.
      *
-     * Blank is a real answer and stores null, meaning "use the organisation's". A preference nobody
-     * has expressed must not become a third one: writing the current organisation zone here would
-     * pin the account to it and quietly stop the organisation setting reaching them again.
+     * Blank is a real answer and stores null, meaning "use this installation's own clock". A
+     * preference nobody has expressed must not be written down as though they had: storing the
+     * current default would pin the account to whatever it happened to be that day.
      */
     public function updateTimezone(Request $request): RedirectResponse
     {
@@ -301,7 +301,7 @@ final class AccountController
         );
 
         return back()->with('status', $timezone === null
-            ? 'Times will be shown in the organisation\'s time zone.'
+            ? 'Times will be shown in this installation\'s own time zone.'
             : "Times will be shown in {$timezone}.");
     }
 
