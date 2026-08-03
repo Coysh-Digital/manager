@@ -118,25 +118,40 @@ return [
         'disk' => env('MANAGER_BACKUP_DISK', 'backups'),
 
         /*
-         | The only ceiling there is, and blank is not absent.
+         | The operator's ceiling, and null means they have not set one.
          |
-         | A blank MANAGER_BACKUP_MAX_BYTES made this zero, and every upload was refused with
-         | HTTP 413 "payload too large" before a byte of the body was read. A 2.1 MB backup failed
-         | that way on a live site, repeatedly, and the message named the size of the payload rather
-         | than the size of the limit — so it read as the artifact being too big rather than the
-         | ceiling being nothing. Hence the `?:`; see max_payload_bytes above.
+         | Null rather than a number is the change, and it closes a trap rather than loosening one.
+         | env() falls back only for an *absent* key, so a blank MANAGER_BACKUP_MAX_BYTES line came
+         | through as '' and (int) '' is 0 — a ceiling of zero, which refused every upload with
+         | HTTP 413 before a byte of the body was read. A 2.1 MB backup failed that way on a live
+         | console for four nights. The `?:` that used to sit here caught that one shape and only
+         | that one; now every degenerate value — absent, blank, zero, negative — maps to "no
+         | ceiling", so **there is no value of this variable that refuses everything.**
          |
-         | Until manager-protocol 1.5.0 this number could only ever refuse *more* than the protocol
-         | already did, because `backup.v2` declared `artifact_bytes` with its own 2 GiB maximum. It
-         | could not permit more — so a hosted edition that owns and bills for the storage could not
-         | lift it, and neither could an operator with a large database and a large disk. `backup.v3`
-         | carries no maximum, so raising this now actually works, and the refusal names it.
+         | Unlimited by default, which reverses what this comment used to argue. The previous
+         | reasoning was that a self-hosted installation should not silently acquire an unlimited
+         | ceiling just because manager-protocol 1.5.0 stopped enforcing one. That reasoning kept a
+         | 2 GiB default that nobody had chosen, and it was the wrong default in both editions: a
+         | hosted platform that owns, meters and bills for the storage refused a 3.2 GB database it
+         | was being paid to hold, and a self-hoster with a large disk hit a wall the protocol had
+         | already stopped imposing. A limit somebody set is a policy. A limit nobody set is an
+         | accident, and this is where it was coming from.
          |
-         | The default is unchanged, deliberately. A self-hosted installation writing to a disk its own
-         | operator owns should not silently acquire an unlimited ceiling because the protocol stopped
-         | enforcing one.
+         | Operators who want a wall set this to bytes and get one, named in the refusal. Everyone
+         | else is bounded by quota_bytes below, by their disk, and by whatever their web server
+         | will actually carry — see the "Upload path ceiling" diagnostic, which exists because the
+         | last one of those is invisible from in here.
+         |
+         | Not the value the platform advertises to a connector, and not the value anything checks
+         | against. Both go through {@see \App\Contracts\BackupSizeLimit}, because a hosted edition
+         | answers this differently and an environment variable on the console is not the place for
+         | that decision. This is the self-hosted answer's input.
          */
-        'max_bytes' => ((int) env('MANAGER_BACKUP_MAX_BYTES', Protocol::MAX_ARTIFACT_BYTES)) ?: Protocol::MAX_ARTIFACT_BYTES,
+        'max_bytes' => (static function (): ?int {
+            $bytes = (int) env('MANAGER_BACKUP_MAX_BYTES', 0);
+
+            return $bytes > 0 ? $bytes : null;
+        })(),
 
         /*
          | Bytes per part when an artifact is too large for a single request.

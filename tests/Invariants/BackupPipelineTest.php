@@ -359,6 +359,44 @@ it('refuses an upload larger than the configured ceiling', function (): void {
         ->assertStatus(413);
 });
 
+it('refuses nothing on size when no ceiling is configured', function (): void {
+    /*
+     | The other half of the test above, and the default.
+     |
+     | This middleware runs before anything that knows what an artifact is, so an unconditional
+     | comparison here is the one that produces a 413 with no explanation attached. A blank
+     | environment line made the ceiling zero and every upload was refused this way on a live
+     | console — 2.1 MB included, for four nights. There is no longer a configuration that does it.
+    */
+    config(['manager.backups.max_bytes' => null]);
+
+    $artifact = ($this->makeArtifact)();
+    $id = ($this->declare)($artifact['declaration'])->json('artifact');
+
+    putSignedArtifact("/api/connector/v1/backups/{$id}/content", $artifact['bytes'], $this->site, $this->keypair['secret'])
+        ->assertOk();
+
+    expect(BackupArtifact::query()->sole()->state)->toBe(BackupArtifact::STATE_STORED);
+});
+
+it('still requires a declared length when there is no ceiling', function (): void {
+    /*
+     | Skipping the comparison must not skip the requirement.
+     |
+     | Content-Length is what makes refusing-before-reading possible at all, and it stays mandatory
+     | whether or not there is a number to compare it against — an edition with no ceiling today may
+     | have a quota tomorrow, and a route that accepts an undeclared length has no way to grow one.
+    */
+    config(['manager.backups.max_bytes' => null]);
+
+    $artifact = ($this->makeArtifact)();
+    $id = ($this->declare)($artifact['declaration'])->json('artifact');
+
+    putSignedArtifact("/api/connector/v1/backups/{$id}/content", $artifact['bytes'], $this->site, $this->keypair['secret'], [
+        'content_length' => 0,
+    ])->assertStatus(411);
+});
+
 it('refuses an unsigned upload', function (): void {
     $artifact = ($this->makeArtifact)();
     $id = ($this->declare)($artifact['declaration'])->json('artifact');

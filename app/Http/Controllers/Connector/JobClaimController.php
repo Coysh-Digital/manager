@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Connector;
 
+use App\Contracts\BackupSizeLimit;
 use App\Domain\Backup\BackupKeypair;
 use App\Domain\Backup\BackupService;
 use App\Domain\Backup\RecoveryKeyService;
@@ -36,6 +37,7 @@ final class JobClaimController
         PlatformKeypair $keypair,
         BackupKeypair $backups,
         RecoveryKeyService $recoveryKeys,
+        BackupSizeLimit $backupSize,
     ): JsonResponse {
         /** @var Site $site */
         $site = $request->attributes->get('manager.site');
@@ -106,8 +108,13 @@ final class JobClaimController
                      | and kept none of it.
                      |
                      | A size, never a destination. It can only ever cause a connector to do less.
+                     |
+                     | Zero is the wire's way of saying there is no ceiling, and the connector reads
+                     | it as one — it skips the check on zero exactly as it does on an absent field.
+                     | The field is still sent rather than omitted, because omitting it is how an
+                     | older platform says "I have no opinion", and this platform has one.
                      */
-                    'max_artifact_bytes' => (int) config('manager.backups.max_bytes'),
+                    'max_artifact_bytes' => $backupSize->ceilingBytes() ?? 0,
 
                     // Empty when the organisation has none active. The connector then refuses before
                     // taking a dump, so no plaintext database is written for a backup that could not

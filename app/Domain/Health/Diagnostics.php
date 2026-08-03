@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Health;
 
+use App\Contracts\BackupSizeLimit;
 use App\Contracts\DirectUploadGrants;
 use App\Contracts\MailAdministration;
 use App\Domain\Backup\BackupKeypair;
@@ -36,6 +37,7 @@ final class Diagnostics
         private readonly BackupKeypair $backupKeypair,
         private readonly BackupService $backups,
         private readonly OutboundUrlGuard $outboundUrls,
+        private readonly BackupSizeLimit $backupSize,
     ) {}
 
     /**
@@ -50,6 +52,7 @@ final class Diagnostics
             ...$this->infrastructure(),
             ...$this->backupDestination(),
             $this->backupSizeCeiling(),
+            $this->uploadPathCeiling(),
             ...$this->security(),
         ];
     }
@@ -63,13 +66,32 @@ final class Diagnostics
      * console and every upload was refused with "payload too large", including a 2.1 MB one, for
      * four nights.
      *
-     * The blank case cannot recur — config falls back with ?: and an invariant asserts it — but a
-     * deliberately small value can, and looks identical from the outside. So the number is stated
-     * rather than left to be discovered.
+     * The blank case cannot recur — every degenerate value now means "no ceiling" rather than a
+     * ceiling of zero, and an invariant asserts it — but a deliberately small value can, and looks
+     * identical from the outside. So the number is stated rather than left to be discovered.
+     *
+     * Read through {@see BackupSizeLimit} rather than from config, because a hosted edition answers
+     * it without consulting config at all and a diagnostic that reported the operator's unused
+     * environment variable would be describing a limit nothing enforces.
      */
     private function backupSizeCeiling(): Check
     {
-        $bytes = (int) config('manager.backups.max_bytes');
+        $bytes = $this->backupSize->ceilingBytes();
+
+        /*
+         | No ceiling is the default, and it is a pass rather than a warning.
+         |
+         | The size is still bounded — by the organisation's quota, by the disk, and by whatever the
+         | web server will carry. Only the last of those is invisible from in here, and it has its
+         | own check below rather than a hedge in this one.
+         */
+        if ($bytes === null) {
+            return Check::pass(
+                'Backup size ceiling',
+                'No ceiling. Artifacts are bounded by storage quota and disk.',
+            );
+        }
+
         $readable = round($bytes / 1024 / 1024).' MB';
 
         // Anything under a megabyte will refuse essentially every real database.
@@ -77,7 +99,7 @@ final class Diagnostics
             return Check::fail(
                 'Backup size ceiling',
                 "{$bytes} bytes.",
-                'MANAGER_BACKUP_MAX_BYTES is set low enough to refuse every backup. Unset it to use the protocol default.',
+                'MANAGER_BACKUP_MAX_BYTES is set low enough to refuse every backup. Unset it for no ceiling.',
             );
         }
 
@@ -105,6 +127,111 @@ final class Diagnostics
         }
 
         return Check::pass('Backup size ceiling', "Artifacts up to {$readable}.");
+    }
+
+    /**
+     * Whether the request path can actually carry what the check above says it will accept.
+     *
+     * The ceiling is a policy. This is the plumbing, and when the two disagree the plumbing wins
+     * silently — which is the whole reason this exists.
+     *
+     * PHP refuses a request whose Content-Length exceeds `post_max_size` before any application
+     * code runs, and Laravel's ValidatePostSize applies it to a PUT exactly as to a POST. So an
+     * installation can advertise unlimited backups on the job claim, accept the declaration, and
+     * then refuse the bytes — with a 413 the operator never configured and cannot find in this
+     * application's own settings. The shipped Docker image did precisely this: nginx carved the
+     * upload route out of its body limit while php.ini left `post_max_size` at 2M.
+     *
+     * **This cannot see nginx**, or Cloudflare, or any other proxy, and that is not a gap this
+     * check can close from inside PHP — the request never arrives. A body limit there answers with
+     * its own error page, so the connector reports "Correlation ID: unknown" and this platform logs
+     * nothing at all. That failure is diagnosed by sending a large request and reading the response,
+     * not from here. It cost four nights on a live console at `client_max_body_size 2m`.
+     *
+     * So read a pass here as "PHP is not the limit", never as "uploads work". The check says what
+     * it can see, and says so rather than implying it can see everything.
+     */
+    private function uploadPathCeiling(): Check
+    {
+        $postMax = $this->iniBytes('post_max_size');
+        $ceiling = $this->backupSize->ceilingBytes();
+
+        if ($postMax === null) {
+            return Check::pass('Upload path ceiling', 'PHP accepts a request body of any size.');
+        }
+
+        $readable = round($postMax / 1024 / 1024).' MB';
+
+        /*
+         | A ceiling this platform has already promised, and plumbing that cannot keep it.
+         |
+         | Stated as a contradiction rather than as a small number, because that is what makes it a
+         | failure: the claim response has told every site it will accept up to the ceiling, and
+         | those sites will dump, encrypt and offer an artifact before finding out otherwise.
+         */
+        if ($ceiling !== null && $postMax < $ceiling) {
+            return Check::fail(
+                'Upload path ceiling',
+                "PHP post_max_size is {$readable}, below this platform's backup ceiling of "
+                .round($ceiling / 1024 / 1024).' MB.',
+                'Sites are told they may upload to the ceiling and PHP will refuse them before this '
+                .'application runs. Raise post_max_size to at least the ceiling, or lower '
+                .'MANAGER_BACKUP_MAX_BYTES to match.',
+            );
+        }
+
+        // The same floor, and the same reasoning, as the ceiling check above: under a megabyte
+        // refuses essentially every real database.
+        if ($postMax < 1024 * 1024) {
+            return Check::fail(
+                'Upload path ceiling',
+                "PHP post_max_size is {$readable}.",
+                'PHP will refuse essentially every backup before this application sees it, with a '
+                .'413 that is not configured here and does not appear in this log. Raise '
+                .'post_max_size, or set it to 0 for no limit.',
+            );
+        }
+
+        /*
+         | Otherwise a pass that states the number, which is the whole job.
+         |
+         | Not a warning, however small the number is above the floor. Something has to be the
+         | binding limit and PHP is a perfectly reasonable candidate; a check that warned on every
+         | default installation would be a permanent yellow nobody reads, which is how the last
+         | long-running amber here stopped being read.
+         */
+        return Check::pass(
+            'Upload path ceiling',
+            $ceiling === null
+                ? "PHP accepts request bodies up to {$readable}, which is the effective backup ceiling."
+                : "PHP accepts request bodies up to {$readable}.",
+        );
+    }
+
+    /**
+     * A php.ini shorthand size as bytes, or null when it means "no limit".
+     *
+     * `post_max_size` accepts 0 and the empty string for unlimited, and otherwise a number with an
+     * optional K, M or G suffix. Parsed here rather than compared as a string, because "2M" and
+     * "2048" and "0" all have to end up as the same kind of thing before any of this can be
+     * reasoned about.
+     */
+    private function iniBytes(string $directive): ?int
+    {
+        $raw = trim((string) ini_get($directive));
+
+        if ($raw === '' || $raw === '0' || str_starts_with($raw, '-')) {
+            return null;
+        }
+
+        $value = (int) $raw;
+
+        return match (strtoupper(substr($raw, -1))) {
+            'G' => $value * 1024 * 1024 * 1024,
+            'M' => $value * 1024 * 1024,
+            'K' => $value * 1024,
+            default => $value,
+        };
     }
 
     /**
