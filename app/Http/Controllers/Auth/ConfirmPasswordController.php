@@ -23,7 +23,22 @@ final class ConfirmPasswordController
 {
     public function show(): View
     {
-        return view('auth.confirm-password');
+        /*
+         | Hold on to whatever the gate captured for one more request.
+         |
+         | Flash data lives for exactly one request, and this screen is the one it lands on — so
+         | without this it is gone by the time the password is submitted, and every restored form
+         | this application claims to give back was in fact being dropped. The tests missed it by
+         | going straight from the refused POST to the confirming POST, which is a sequence no
+         | browser performs.
+        */
+        ResumableInput::keep();
+
+        return view('auth.confirm-password', [
+            // What was interrupted, so the screen can say it. Read without consuming: the screen
+            // that needs this next is the one after.
+            'interrupted' => ResumableInput::pending()['label'] ?? null,
+        ]);
     }
 
     public function store(Request $request): RedirectResponse
@@ -79,6 +94,11 @@ final class ConfirmPasswordController
         return redirect()
             ->to($resumed['url'])
             ->withInput($resumed['input'])
-            ->with('manager.resumed_form', $resumed['route']);
+            ->with('manager.resumed_form', $resumed['route'])
+
+            // Said out loud on arrival. A form that quietly refilled itself still leaves somebody
+            // wondering whether the thing they pressed happened, and the answer — it did not, press
+            // it again — is the one fact this flow owes them.
+            ->with('status', 'Confirmed. What you had typed is still here, and nothing was done yet — press the button again to '.$resumed['label'].'.');
     }
 }

@@ -4,9 +4,20 @@
 
 @section('content')
     <h1 class="mb-1 text-[17px] font-semibold tracking-[-0.01em]">Confirm your password</h1>
+    {{-- Naming the thing, where it is known. "You are about to do something" is true of every
+         interruption and helps with none of them, and the sentence people actually want is the
+         reassurance that what they typed is not gone. --}}
+    @if (! empty($interrupted))
+        <p class="mb-3 text-[13px] text-text-2">
+            You were about to <span class="font-medium text-text">{{ $interrupted }}</span>. Nothing
+            has been done yet, and what you had typed is kept — confirm below and you will be taken
+            back to it.
+        </p>
+    @endif
+
     <p class="mb-5 text-[13px] text-text-2">
-        You are about to do something that changes what Manager may do, or how your account is
-        protected. Confirm it is still you at the keyboard.
+        This changes what Manager may do, or how your account is protected, so it asks that you are
+        still the person at the keyboard.
     </p>
 
     @if ($errors->any())

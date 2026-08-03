@@ -249,10 +249,7 @@ it('lets an administrator set a schedule, and records the change', function (): 
 
     $this->actingAs($admin)
         ->withSession(['auth.password_confirmed_at' => now()->timestamp])
-        ->post("/sites/{$site->external_id}/settings", [
-            'name' => $site->name,
-            'expected_domain' => $site->expected_domain,
-            'environment' => $site->environment,
+        ->post("/sites/{$site->external_id}/backups/schedule", [
             'backup_schedule' => 'weekly',
             'backup_schedule_hour' => 2,
             'backup_schedule_day' => 6,
@@ -265,15 +262,19 @@ it('lets an administrator set a schedule, and records the change', function (): 
         ->and($site->backup_schedule_day)->toBe(6);
 
     // Changing when a site is backed up is a change to the site, and the audit trail shows what it
-    // was before — the same treatment the expected domain gets.
-    $event = AuditEvent::query()->where('action', 'site.updated')->latest('id')->first();
+    // was before — the same treatment the expected domain gets. Its own action now that it has its
+    // own form: "site.updated" covering both meant an audit reader could not filter for the one
+    // that decides a production database is dumped.
+    $event = AuditEvent::query()->where('action', 'site.backup_schedule.updated')->latest('id')->first();
 
     expect($event->before['backup_schedule'])->toBe('off')
         ->and($event->after['backup_schedule'])->toBe('weekly');
 });
 
-it('does not read a missing schedule field as turning backups off', function (): void {
-    // A caller that only means to rename a site should not silently disable its backups.
+it('leaves the schedule alone when the site settings form is saved', function (): void {
+    // The settings form no longer carries these fields at all, which is a stronger version of the
+    // guarantee this replaced: renaming a site cannot disable its backups, because the form that
+    // renames it has nothing to say about them.
     $site = ($this->makeSite)(['backup_schedule' => 'daily']);
 
     $admin = User::factory()->create(['email_verified_at' => now()]);
@@ -285,6 +286,8 @@ it('does not read a missing schedule field as turning backups off', function ():
             'name' => 'Renamed',
             'expected_domain' => $site->expected_domain,
             'environment' => $site->environment,
+            // Sent, and ignored: the controller does not validate or read them.
+            'backup_schedule' => 'off',
         ])->assertRedirect();
 
     expect($site->fresh()->backup_schedule)->toBe('daily');
@@ -308,12 +311,10 @@ it('will not let a schedule be set before there is a key to encrypt to', functio
 
     $this->actingAs($admin)
         ->withSession(['auth.password_confirmed_at' => now()->timestamp])
-        ->post("/sites/{$site->external_id}/settings", [
-            'name' => $site->name,
-            'expected_domain' => $site->expected_domain,
-            'environment' => $site->environment,
+        ->post("/sites/{$site->external_id}/backups/schedule", [
             'backup_schedule' => 'daily',
             'backup_schedule_hour' => 2,
+            'backup_schedule_day' => 1,
         ])
         ->assertRedirect()
         ->assertSessionHasErrors('backup_schedule');
@@ -333,11 +334,10 @@ it('always lets a schedule be turned off', function (): void {
 
     $this->actingAs($admin)
         ->withSession(['auth.password_confirmed_at' => now()->timestamp])
-        ->post("/sites/{$site->external_id}/settings", [
-            'name' => $site->name,
-            'expected_domain' => $site->expected_domain,
-            'environment' => $site->environment,
+        ->post("/sites/{$site->external_id}/backups/schedule", [
             'backup_schedule' => 'off',
+            'backup_schedule_hour' => 3,
+            'backup_schedule_day' => 1,
         ])
         ->assertRedirect()
         ->assertSessionHasNoErrors();
@@ -356,4 +356,83 @@ it('refuses to queue a backup for an organisation with no key, whoever asks', fu
         ->toThrow(JobRejectedException::class);
 
     expect(RemoteJob::query()->where('type', Jobs::BACKUP_CREATE)->count())->toBe(0);
+});
+
+it('sets the schedule on the screen that shows what it produced', function (): void {
+    /*
+     | Reported from use: the schedule was on the site's Settings form, sharing a Save button with
+     | the site's name and its expected domain — so the answer to "why has this site not been backed
+     | up" lived on a different screen from the evidence that it had not.
+     */
+    $site = ($this->makeSite)(['backup_schedule' => 'off']);
+
+    $admin = User::factory()->create(['email_verified_at' => now()]);
+    Membership::factory()->for($admin)->for($this->organisation)->admin()->create();
+
+    $this->actingAs($admin)->get("/sites/{$site->external_id}/backups")
+        ->assertOk()
+        // On or off, said plainly, because "no backups yet" and "no backups ever" look identical in
+        // an empty list.
+        ->assertSee('Only when asked')
+        ->assertSee('No schedule')
+        ->assertSee(route('sites.backups.schedule', $site));
+
+    // And gone from where it was.
+    $this->actingAs($admin)->get("/sites/{$site->external_id}/settings")
+        ->assertOk()
+        ->assertDontSee('name="backup_schedule"', false);
+});
+
+it('names the zone the schedule is in, which is the organisation\'s and not the reader\'s', function (): void {
+    // An hour with no zone beside it is a number somebody guesses at, and the guess is their own
+    // zone rather than the organisation's — which is the one ScheduleBackupsCommand reads.
+    $this->organisation->forceFill(['timezone' => 'Europe/London'])->save();
+
+    $site = ($this->makeSite)(['backup_schedule' => 'daily', 'backup_schedule_hour' => 3]);
+
+    expect($site->fresh()->backupScheduleSentence())->toBe('Every day at 03:00 (Europe/London).');
+
+    $site->forceFill(['backup_schedule' => 'weekly', 'backup_schedule_day' => 3])->save();
+
+    expect($site->fresh()->backupScheduleSentence())->toBe('Every Wednesday at 03:00 (Europe/London).');
+
+    $site->forceFill(['backup_schedule' => 'off'])->save();
+
+    expect($site->fresh()->hasBackupSchedule())->toBeFalse()
+        ->and($site->fresh()->backupScheduleSentence())->toContain('only when somebody asks');
+});
+
+it('refuses a schedule change from somebody who is not an administrator', function (): void {
+    $site = ($this->makeSite)(['backup_schedule' => 'off']);
+
+    $member = User::factory()->create(['email_verified_at' => now()]);
+    Membership::factory()->for($member)->for($this->organisation)->create();
+
+    $this->actingAs($member)
+        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
+        ->post("/sites/{$site->external_id}/backups/schedule", [
+            'backup_schedule' => 'daily',
+            'backup_schedule_hour' => 3,
+            'backup_schedule_day' => 1,
+        ])->assertForbidden();
+
+    expect($site->fresh()->backup_schedule)->toBe('off');
+});
+
+it('keeps the recent-authentication gate the schedule had before it moved', function (): void {
+    // Moving a control must not quietly drop a gate it was behind. This decides that a production
+    // database is dumped on a repeating schedule, which is the same act "Back up now" performs.
+    $site = ($this->makeSite)(['backup_schedule' => 'off']);
+
+    $admin = User::factory()->create(['email_verified_at' => now()]);
+    Membership::factory()->for($admin)->for($this->organisation)->admin()->create();
+
+    $this->actingAs($admin)
+        ->post("/sites/{$site->external_id}/backups/schedule", [
+            'backup_schedule' => 'daily',
+            'backup_schedule_hour' => 3,
+            'backup_schedule_day' => 1,
+        ])->assertRedirect(route('password.confirm'));
+
+    expect($site->fresh()->backup_schedule)->toBe('off');
 });

@@ -218,6 +218,45 @@ class Site extends Model
     }
 
     /**
+     * Whether this site is backed up without anybody asking.
+     *
+     * Asked as a question rather than compared against a string at each call site, because "off" is
+     * one of three values and the other two both mean on — which is the sort of thing that reads
+     * correctly in two places and backwards in the third.
+     */
+    public function hasBackupSchedule(): bool
+    {
+        return in_array($this->backup_schedule, ['daily', 'weekly'], true);
+    }
+
+    /**
+     * The schedule as a sentence, including the zone it is in.
+     *
+     * The hour is meaningless without the zone, and it is the *organisation's* zone rather than the
+     * reader's — that is what ScheduleBackupsCommand reads, so a sentence that quietly converted it
+     * to the reader's own would describe a run that never happens. Stated rather than assumed for
+     * the same reason a bare "03:00" was never enough.
+     */
+    public function backupScheduleSentence(): string
+    {
+        if (! $this->hasBackupSchedule()) {
+            return 'No schedule. This site is backed up only when somebody asks for one.';
+        }
+
+        $zone = $this->organisation->timezone;
+        $at = sprintf('%02d:00', $this->backup_schedule_hour);
+
+        if ($this->backup_schedule === 'daily') {
+            return "Every day at {$at} ({$zone}).";
+        }
+
+        $days = [1 => 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        $day = $days[$this->backup_schedule_day] ?? 'Monday';
+
+        return "Every {$day} at {$at} ({$zone}).";
+    }
+
+    /**
      * @param  Builder<Site>  $query
      * @return Builder<Site>
      */

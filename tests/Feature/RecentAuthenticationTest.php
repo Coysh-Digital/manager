@@ -6,6 +6,7 @@ use App\Models\Membership;
 use App\Models\Organisation;
 use App\Models\Site;
 use App\Models\User;
+use App\Support\ResumableInput;
 use Illuminate\Support\Facades\Hash;
 
 /**
@@ -27,8 +28,20 @@ beforeEach(function (): void {
     ]);
     Membership::factory()->for($this->owner)->for($this->organisation)->owner()->create();
 
-    $this->confirm = fn () => $this->actingAs($this->owner)
-        ->post(route('password.confirm.store'), ['password' => 'correct-horse-battery-staple']);
+    /*
+     | What a browser actually does: land on the confirm screen, then submit it.
+     |
+     | This used to skip the GET, and skipping it is what let a broken feature pass. Flash data lives
+     | one request, so the payload the gate stashed was read and discarded by the screen nobody was
+     | asking it to survive — and by the POST below there was nothing left to restore. Three
+     | requests, not two.
+    */
+    $this->confirm = function () {
+        $this->actingAs($this->owner)->get(route('password.confirm'))->assertOk();
+
+        return $this->actingAs($this->owner)
+            ->post(route('password.confirm.store'), ['password' => 'correct-horse-battery-staple']);
+    };
 });
 
 it('gives the add-site form back after a password confirmation', function (): void {
@@ -122,4 +135,94 @@ it('answers a JSON caller with 423 rather than a redirect', function (): void {
         ->assertStatus(423);
 
     expect(session()->has('manager.resumable_input'))->toBeFalse();
+});
+
+it('says what was interrupted, rather than that something was', function (): void {
+    // "You are about to do something that changes what Manager may do" is true of every
+    // interruption and helps with none of them. Reported as frustrating, and the frustration is not
+    // the gate — it is not knowing whether what you typed still exists.
+    $this->actingAs($this->owner)
+        ->post('/sites', ['name' => 'Example Client', 'expected_domain' => 'example.org', 'environment' => 'production'])
+        ->assertRedirect(route('password.confirm'));
+
+    $this->actingAs($this->owner)->get(route('password.confirm'))
+        ->assertOk()
+        ->assertSee('You were about to')
+        ->assertSee('add a site')
+        ->assertSee('what you had typed is kept');
+});
+
+it('says on arrival that nothing was done, and what to press', function (): void {
+    $this->actingAs($this->owner)
+        ->post('/sites', ['name' => 'Example Client', 'expected_domain' => 'example.org', 'environment' => 'production'])
+        ->assertRedirect(route('password.confirm'));
+
+    ($this->confirm)();
+
+    $this->actingAs($this->owner)->get('/sites')
+        ->assertOk()
+        ->assertSee('nothing was done yet')
+        ->assertSee('press the button again to add a site');
+});
+
+it('gives back the environment as well, which it used to drop in silence', function (): void {
+    /*
+     | The worst shape this bug takes. `environment` was missing from the allowlist, and the field
+     | falls back to old('environment', $site->environment) — so a change to it came back looking
+     | exactly like the value already saved. Somebody set staging, proved their password, and was
+     | shown production with nothing to suggest anything had been lost.
+    */
+    $site = Site::factory()->for($this->organisation)->connected()->create([
+        'name' => 'Example Site',
+        'environment' => 'production',
+    ]);
+
+    $this->actingAs($this->owner)
+        ->post(route('sites.settings.update', $site), [
+            'name' => 'Example Site',
+            'expected_domain' => $site->expected_domain,
+            'environment' => 'staging',
+        ])
+        ->assertRedirect(route('password.confirm'));
+
+    ($this->confirm)()->assertRedirect(route('sites.settings', $site));
+
+    $this->actingAs($this->owner)->get(route('sites.settings', $site))
+        ->assertOk()
+        ->assertSee('value="staging" selected', false);
+
+    expect($site->fresh()->environment)->toBe('production');
+});
+
+it('gives back a backup schedule it interrupted', function (): void {
+    // The schedule moved to the Backups screen and kept its gate, so it had to be given a way back
+    // as well — a control that loses what you set it to is one people stop trusting.
+    $site = Site::factory()->for($this->organisation)->connected()->create(['backup_schedule' => 'off']);
+
+    $this->actingAs($this->owner)
+        ->post(route('sites.backups.schedule', $site), [
+            'backup_schedule' => 'weekly',
+            'backup_schedule_hour' => 4,
+            'backup_schedule_day' => 3,
+        ])
+        ->assertRedirect(route('password.confirm'));
+
+    ($this->confirm)()->assertRedirect(route('sites.backups', $site));
+
+    expect(session('_old_input.backup_schedule'))->toBe('weekly')
+        ->and((int) session('_old_input.backup_schedule_hour'))->toBe(4)
+        ->and((int) session('_old_input.backup_schedule_day'))->toBe(3)
+        // The gate still refused the act itself. Restoring is not replaying.
+        ->and($site->fresh()->backup_schedule)->toBe('off');
+});
+
+it('still refuses to carry a typed confirmation across the gate', function (): void {
+    // The one thing that must not become easier. sites.destroy asks for the domain precisely so that
+    // somebody types it at the moment they do it; handing it back would remove the only thing it is
+    // for. Same for the password field on this screen.
+    expect(ResumableInput::resumableRoutes())
+        ->not->toContain('sites.destroy')
+        ->not->toContain('capabilities.grant-confirmed')
+        ->not->toContain('settings.connectors.rotate')
+        ->not->toContain('recovery-keys.prove');
 });

@@ -69,19 +69,32 @@ final class ResumableInput
      *    credential: whoever holds it can post into that channel. It is a typed field somebody
      *    would be glad to have back, which is exactly why it needed deciding rather than assuming.
      *
-     * @var array<string, array{return: string, fields: list<string>}>
+     * @var array<string, array{return: string, label: string, fields: list<string>}>
      */
     private const RESUMABLE = [
         'sites.store' => [
             'return' => 'sites.index',
+            'label' => 'add a site',
             'fields' => ['name', 'expected_domain', 'environment', 'capabilities'],
         ],
         'sites.settings.update' => [
             'return' => 'sites.settings',
-            'fields' => ['name', 'expected_domain'],
+            'label' => "change a site's details",
+
+            // `environment` was missing, and its absence was invisible: the field falls back to
+            // `old('environment', $site->environment)`, so a change to it came back looking like the
+            // value that was already saved. Somebody set staging, confirmed their password, and was
+            // shown production with no indication anything had been dropped.
+            'fields' => ['name', 'expected_domain', 'environment'],
+        ],
+        'sites.backups.schedule' => [
+            'return' => 'sites.backups',
+            'label' => 'change when a site is backed up',
+            'fields' => ['backup_schedule', 'backup_schedule_hour', 'backup_schedule_day'],
         ],
         'team.invite' => [
             'return' => 'settings.show',
+            'label' => 'invite somebody',
             'fields' => ['name', 'email', 'role'],
         ],
     ];
@@ -123,7 +136,16 @@ final class ResumableInput
         // Referrer-Policy is entitled to strip.
         $url = route($rule['return'], $request->route()?->parameters() ?? []);
 
-        $payload = ['route' => $name, 'url' => $url, 'input' => $input];
+        $payload = [
+            'route' => $name,
+            'url' => $url,
+
+            // What the person was doing, in their words rather than a route name. The confirm screen
+            // used to say only "you are about to do something", which is true of every interruption
+            // and helps with none of them.
+            'label' => $rule['label'],
+            'input' => $input,
+        ];
 
         if (strlen((string) json_encode($payload)) > self::MAX_BYTES) {
             return;
@@ -133,9 +155,41 @@ final class ResumableInput
     }
 
     /**
+     * Keep it for one more request.
+     *
+     * Called while rendering the confirm-password screen, and without it none of this works in a
+     * browser — which is how it shipped.
+     *
+     * Flash data lives for exactly one request. The gate flashes on the POST it refuses, so the
+     * payload is readable on the GET of the confirm screen and gone by the POST that proves the
+     * password. Three requests, not two. Every test covering this went straight from the refused
+     * POST to the confirming POST, which is a sequence no browser performs, so the suite agreed
+     * with a feature that never once fired for a person.
+     */
+    public static function keep(): void
+    {
+        session()->keep([self::SESSION_KEY]);
+    }
+
+    /**
+     * What is waiting, without consuming it.
+     *
+     * For the confirm-password screen, which says what was interrupted. Reading it there must not
+     * spend it — the screen that needs it next is the one after.
+     *
+     * @return array{route: string, url: string, label: string, input: array<string, mixed>}|null
+     */
+    public static function pending(): ?array
+    {
+        $payload = session(self::SESSION_KEY);
+
+        return is_array($payload) ? $payload : null;
+    }
+
+    /**
      * Take it back out, once.
      *
-     * @return array{route: string, url: string, input: array<string, mixed>}|null
+     * @return array{route: string, url: string, label: string, input: array<string, mixed>}|null
      */
     public static function resume(): ?array
     {
@@ -168,7 +222,7 @@ final class ResumableInput
     /**
      * The allowlist itself. For the invariants test.
      *
-     * @return array<string, array{return: string, fields: list<string>}>
+     * @return array<string, array{return: string, label: string, fields: list<string>}>
      */
     public static function rules(): array
     {
