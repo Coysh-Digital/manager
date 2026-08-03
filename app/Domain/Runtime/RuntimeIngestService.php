@@ -20,7 +20,23 @@ use Illuminate\Support\Facades\DB;
  */
 final class RuntimeIngestService
 {
+    /**
+     * The oldest version this platform still accepts, and the one it assumes when a payload does
+     * not say. Kept as the default because a connector that has never been told otherwise sends it.
+     */
     public const SCHEMA = 'system.v1';
+
+    /**
+     * Every version this platform accepts, newest first.
+     *
+     * Advertised to the connector in the response, which is how a site learns it may start sending
+     * the newer one. That direction matters: the platform is upgraded by whoever runs it and the
+     * plugins are upgraded per site, so neither can assume the other moved first. A connector sends
+     * v1 until it is told v2 is understood, and this list is the telling.
+     *
+     * @var list<string>
+     */
+    public const SCHEMAS = ['system.v2', 'system.v1'];
 
     public function __construct(private readonly CorrelationId $correlationId) {}
 
@@ -30,7 +46,28 @@ final class RuntimeIngestService
      */
     public function validate(array $payload): array
     {
-        return SchemaValidator::forSchema(self::SCHEMA)->validate($payload);
+        $declared = $payload['schema_version'] ?? self::SCHEMA;
+
+        /*
+         | Validated against what the payload says it is, not against a fixed version.
+         |
+         | This used to pin `system.v1`, which made accepting a second version impossible without a
+         | flag day: every site's plugin would have had to upgrade in step with the platform, and a
+         | site that upgraded first would have had its runtime reports silently refused — the report
+         | is fire-and-forget, so the only symptom is a Health screen that quietly stops moving.
+         |
+         | Unknown versions are refused by name rather than falling back to v1. Falling back would
+         | validate a v3 payload against v1's allowlist, reject it for containing v3's fields, and
+         | report that as a schema violation — which is true and completely misleading.
+        */
+        if (! is_string($declared) || ! in_array($declared, self::SCHEMAS, true)) {
+            return [sprintf(
+                'schema_version: this platform accepts %s.',
+                implode(' and ', self::SCHEMAS),
+            )];
+        }
+
+        return SchemaValidator::forSchema($declared)->validate($payload);
     }
 
     /**
