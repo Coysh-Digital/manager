@@ -393,6 +393,13 @@
                         towards neither the total nor the free space above it — those describe the
                         machine Craft runs on.
                     @endif
+                    @if (! $runtimeReport->reportsVolumeLocation() && $runtimeReport->hasUnmeasuredVolumes())
+                        {{-- The three real reasons live in the per-row slot above; this is for the
+                             case none of them fired because the connector is too old to say any of
+                             them. --}}
+                        This site's connector plugin doesn't yet report why a volume wasn't measured
+                        — upgrade it to see whether each one is local or remote.
+                    @endif
                 </p>
             </div>
         @endif
