@@ -12,6 +12,7 @@ use App\Contracts\MailAdministration;
 use App\Contracts\ObjectStore;
 use App\Contracts\ProductLabel;
 use App\Contracts\Provisioner;
+use App\Contracts\ServerAccess;
 use App\Contracts\StorageQuota;
 use App\Models\Finding;
 use App\Models\Organisation;
@@ -23,6 +24,7 @@ use App\Support\SelfHosted\DerivedKeyService;
 use App\Support\SelfHosted\DiskObjectStore;
 use App\Support\SelfHosted\NoDirectUploads;
 use App\Support\SelfHosted\NullProvisioner;
+use App\Support\SelfHosted\OwnServerAccess;
 use App\Support\SelfHosted\SelfHostedBilling;
 use App\Support\SelfHosted\SelfHostedLabel;
 use App\Support\SelfHosted\SelfHostedMail;
@@ -63,6 +65,12 @@ class AppServiceProvider extends ServiceProvider
         // the test-send button is worth having; on a hosted edition the relay belongs to somebody
         // else and the button tests infrastructure the reader cannot change.
         $this->app->singletonIf(MailAdministration::class, SelfHostedMail::class);
+
+        // Whether the reader can run a command on the machine serving the page. Self-hosted they
+        // can, and a command is often the honest answer — it streams an artifact without a request
+        // timing out underneath it. Hosted, "run this on the server" is an instruction for a
+        // machine they have no account on.
+        $this->app->singletonIf(ServerAccess::class, OwnServerAccess::class);
 
         // Where to send somebody to manage what they pay. Nobody bills a self-hosted installation,
         // so this answers null and every part of the interface that would link to billing stays

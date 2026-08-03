@@ -23,9 +23,14 @@
 
         <p class="mb-3 max-w-[80ch] text-[12.5px] leading-relaxed text-text-2">
             Append-only. Entries cannot be edited or deleted, and each one commits to the entry before
-            it, so any alteration is detectable. Verify the chain with
-            <code class="font-mono text-[12px]">php artisan manager:audit:verify</code>. Removing this
-            site would not remove these rows.
+            it, so any alteration is detectable.
+
+            @if (app(App\Contracts\ServerAccess::class)->reachable())
+                Verify the chain with
+                <code class="font-mono text-[12px]">php artisan manager:audit:verify</code>.
+            @endif
+
+            Removing this site would not remove these rows.
         </p>
 
         <div class="overflow-hidden rounded-[10px] border border-border bg-surface">

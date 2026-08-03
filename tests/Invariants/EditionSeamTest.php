@@ -10,6 +10,7 @@ use App\Contracts\MailAdministration;
 use App\Contracts\ObjectStore;
 use App\Contracts\ProductLabel;
 use App\Contracts\Provisioner;
+use App\Contracts\ServerAccess;
 use App\Contracts\StorageQuota;
 use App\Domain\Health\Diagnostics;
 use App\Models\Membership;
@@ -21,6 +22,7 @@ use App\Support\SelfHosted\DerivedKeyService;
 use App\Support\SelfHosted\DiskObjectStore;
 use App\Support\SelfHosted\NoDirectUploads;
 use App\Support\SelfHosted\NullProvisioner;
+use App\Support\SelfHosted\OwnServerAccess;
 use App\Support\SelfHosted\SelfHostedBilling;
 use App\Support\SelfHosted\SelfHostedLabel;
 use App\Support\SelfHosted\SelfHostedMail;
@@ -53,6 +55,7 @@ it('resolves every seam to the self-hosted implementation with no overlay instal
     [MailAdministration::class, SelfHostedMail::class],
     [BillingAdministration::class, SelfHostedBilling::class],
     [BackupSizeLimit::class, SiteDecidesBackupSize::class],
+    [ServerAccess::class, OwnServerAccess::class],
 ]);
 
 it('says what it is under the wordmark without being told', function (): void {
@@ -113,6 +116,43 @@ it('offers no billing of its own', function (): void {
         '  '.implode("\n  ", $offenders),
         'Use the URL from App\Contracts\BillingAdministration, which is null when nobody bills this',
         'installation, so the link disappears rather than pointing at a page that does not exist.',
+    ]));
+});
+
+it('never tells a reader to run a command without asking whether they can', function (): void {
+    /*
+     | The same shape as the billing sweep above, for the same reason.
+     |
+     | This one is written from a bug rather than from a worry. The backups screen told every reader
+     | to run `php artisan manager:backups:fetch` on the server, and on a hosted edition that is a
+     | machine they have no account on — so it read as the answer to "how do I get my backup" while
+     | being impossible to follow. Two more screens did it with `manager:audit:verify`, and Settings
+     | with `manager:doctor`. MailAdministration exists because the identical thing happened with a
+     | `.env` file.
+     |
+     | Coarse on purpose: it asks only that a view naming an artisan command also names the seam, not
+     | that the gate is correctly placed. A finer check would have to parse Blade. This one catches
+     | the regression that actually happens — a new instruction written without the question being
+     | asked at all.
+     |
+     | `manager-restore` is deliberately not covered. It runs on the reader's own machine, and on a
+     | hosted edition it is the whole recovery story rather than something to hide.
+     */
+    $offenders = [];
+
+    foreach (File::allFiles(resource_path('views')) as $file) {
+        $contents = (string) file_get_contents($file->getPathname());
+
+        if (str_contains($contents, 'php artisan') && ! str_contains($contents, 'ServerAccess')) {
+            $offenders[] = $file->getRelativePathname();
+        }
+    }
+
+    expect($offenders)->toBe([], implode("\n", [
+        'These views print an artisan command without asking whether the reader can run one:',
+        '  '.implode("\n  ", $offenders),
+        'Gate it on App\Contracts\ServerAccess, which is false on a hosted edition, where the shell',
+        'belongs to whoever runs the service and the instruction cannot be followed.',
     ]));
 });
 

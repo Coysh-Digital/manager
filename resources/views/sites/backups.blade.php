@@ -258,11 +258,20 @@
                         worker against a timeout and could leave a half-written file that looks complete.
                     </p>
                     <pre class="overflow-x-auto rounded-lg bg-surface-2 p-3"><code class="font-mono text-[12px]">manager-restore decrypt --key=your-key.secret --out=backup.sql {{ $latest?->external_id ?? '<identifier>' }}.artifact</code></pre>
-                    <p class="mt-2.5 mb-1.5 max-w-[80ch] text-[12.5px] text-text-2">
-                        A backup taken before any recovery key was enrolled is encrypted to a key this
-                        platform can unwrap instead. For one of those, run this on the server:
-                    </p>
-                    <pre class="overflow-x-auto rounded-lg bg-surface-2 p-3"><code class="font-mono text-[12px]">php artisan manager:backups:fetch {{ $latest?->external_id ?? '<identifier>' }} ./backup.sql</code></pre>
+                    @if (app(App\Contracts\ServerAccess::class)->reachable())
+                        <p class="mt-2.5 mb-1.5 max-w-[80ch] text-[12.5px] text-text-2">
+                            A backup taken before any recovery key was enrolled is encrypted to a key this
+                            platform can unwrap instead. For one of those, run this on the server:
+                        </p>
+                        <pre class="overflow-x-auto rounded-lg bg-surface-2 p-3"><code class="font-mono text-[12px]">php artisan manager:backups:fetch {{ $latest?->external_id ?? '<identifier>' }} ./backup.sql</code></pre>
+                    @else
+                        <p class="mt-2.5 mb-1.5 max-w-[80ch] text-[12.5px] text-text-2">
+                            A backup taken before any recovery key was enrolled is encrypted to a key this
+                            platform can unwrap instead, and there is no key of yours that opens one — ask
+                            us and we will produce it. Every backup taken since is sealed to your keys
+                            alone, which is why it is the last thing we can do this for.
+                        </p>
+                    @endif
                     <p class="mt-2.5 text-[12px] text-text-3">
                         Restoring is not automated. It needs a confirmation flow and a tested recovery
                         path of its own, and until those exist a restore button would be a way of
