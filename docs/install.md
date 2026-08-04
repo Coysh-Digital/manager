@@ -29,7 +29,7 @@ that, and this documentation is written for them.
 
 ### Or let us run it
 
-**[Manager Cloud](https://coysh.digital/manager)** is the same core, hosted, maintained, patched and
+**[Manager Cloud](https://managerforcraft.com)** is the same core, hosted, maintained, patched and
 backed up by Coysh Digital. Same connector, same protocol, same security boundaries - the difference
 is that the server, the keys, the storage and the on-call rota are ours.
 

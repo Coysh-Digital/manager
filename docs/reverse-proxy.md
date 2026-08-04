@@ -199,6 +199,6 @@ browser is almost always an incomplete chain.
 ## If you would rather not do any of this
 
 TLS, certificate renewal, body limits, proxy headers and trusted ranges are all part of running a
-security-sensitive service yourself. [Manager Cloud](https://coysh.digital/manager) is the same core
+security-sensitive service yourself. [Manager Cloud](https://managerforcraft.com) is the same core
 with that already done. Same connector, same protocol - the difference is whose problem the
 certificate renewal is.

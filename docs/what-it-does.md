@@ -120,5 +120,5 @@ Cloud adds no monitoring capability that is missing here.
 
 What Cloud adds is that somebody else runs the server, holds the keys, watches the storage and takes
 the call when Postgres fills its disk. If that appeals more than doing it yourself, see [Manager
-Cloud](https://coysh.digital/manager). The connector is identical, so moving between them means
+Cloud](https://managerforcraft.com). The connector is identical, so moving between them means
 re-pairing sites rather than rebuilding anything.
