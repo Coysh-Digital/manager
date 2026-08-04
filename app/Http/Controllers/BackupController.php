@@ -73,6 +73,9 @@ final class BackupController
             ->get();
 
         $permitted = Site::query()
+            // Readiness needs each site's organisation to count its recovery keys. Every row here
+            // belongs to the same one, so loading it once beats a query per row.
+            ->with('organisation')
             ->where('organisation_id', $organisation->id)
             ->active()
             ->whereHas('capabilityGrants', fn ($query) => $query
