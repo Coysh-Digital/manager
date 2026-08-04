@@ -241,8 +241,8 @@ Then take one, from the site's **Backups** tab. What happens next:
 Manager for Craft now holds a file it cannot open, and knows how big it is, when it was taken and
 what it should hash to.
 
-Set a schedule from the site's **Settings** tab - daily or weekly, at an hour you choose, in your
-organisation's time zone so "03:00" means the quiet hour where the site is rather than where your
+Set a schedule from the site's **Backups** tab - daily or weekly, at an hour you choose, in that
+site's own time zone so "03:00" means the quiet hour where the site is rather than where your
 server is.
 
 ## 7. Prove you can actually restore
