@@ -184,6 +184,8 @@ final class VerifyConnectorSignature
             return $this->reject('nonce already used');
         }
 
+        $this->recordVersion($connector, $version);
+
         // Handed to the route so it never has to re-derive who is calling.
         $request->attributes->set('manager.site', $site);
         $request->attributes->set('manager.connector', $connector);
@@ -196,6 +198,36 @@ final class VerifyConnectorSignature
         }
 
         return $next($request);
+    }
+
+    /**
+     * Keep the stored connector version in step with the one that just signed.
+     *
+     * This is called only after the signature verified and the nonce was claimed, so the value is
+     * authenticated rather than merely asserted: `connectorVersion` is one of the eight fields in
+     * the canonical string, and a site cannot sign for a version it is not sending.
+     *
+     * It was previously written at pairing and never again, which meant it recorded the version a
+     * site paired on rather than the version it runs. Upgrading the plugin changed nothing here, so
+     * the fleet screens and every activity line the job service labels kept naming a release the
+     * site had left behind — and because `Site::$connector_version` *is* refreshed on each
+     * inventory report, the two columns holding the same fact disagreed, with the stale one being
+     * the one on screen.
+     *
+     * Written only when it changes. An unchanged fleet costs one comparison per request and no
+     * writes, which is what makes this affordable in a path every signed request passes through.
+     *
+     * The length guard mirrors the `max:32` the pairing endpoint validates. A connector that could
+     * not have paired cannot widen this column, and a malformed header is worth ignoring rather
+     * than turning into a database error on an otherwise valid request.
+     */
+    private function recordVersion(Connector $connector, string $version): void
+    {
+        if ($connector->connector_version === $version || strlen($version) > 32) {
+            return;
+        }
+
+        $connector->forceFill(['connector_version' => $version])->save();
     }
 
     /**
