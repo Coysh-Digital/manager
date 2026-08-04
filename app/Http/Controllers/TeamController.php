@@ -8,8 +8,10 @@ use App\Domain\Team\TeamService;
 use App\Models\Membership;
 use App\Models\Organisation;
 use App\Models\User;
+use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 /**
@@ -18,11 +20,43 @@ use Illuminate\Validation\Rule;
  * Owners only. An administrator manages sites; deciding who else can reach a control plane at all is
  * a different kind of decision and sits one level up.
  *
- * There is no screen of its own — this is the People section of Settings, and these are its actions.
+ * The People tab of Settings, and its actions. The reads sit beside the writes they describe rather
+ * than in a settings controller of their own, so neither drifts from the other.
  */
 final class TeamController
 {
     public function __construct(private readonly TeamService $team) {}
+
+    /*
+     | Readable by any member, writable only by an owner — which is what this was when it was a
+     | section of the one settings screen, and moving it to a route of its own is not a reason to
+     | change it. "Who else can reach this installation" is a question an administrator should be
+     | able to answer without asking somebody; acting on the answer is the owner's call, and each
+     | control inside is gated on that individually.
+     */
+    public function show(Organisation $organisation): View
+    {
+        return view('settings.people', [
+            'organisation' => $organisation,
+            'membership' => app(Membership::class),
+
+            // Revoked memberships are shown too, greyed: "who used to have access" is a question an
+            // access screen should answer without anybody opening the audit log.
+            'members' => Membership::query()
+                ->where('organisation_id', $organisation->id)
+                ->with('user')
+                ->orderByRaw("case role when 'owner' then 0 when 'admin' then 1 else 2 end")
+                ->orderBy('id')
+                ->get(),
+            'assignableRoles' => TeamService::assignableRoles(),
+
+            // Addresses with an unused password link outstanding. The broker deletes the row when a
+            // link is used, so its presence means somebody has a live invitation — or asked for a
+            // reset and has not finished it. The screen says the former, because it cannot tell them
+            // apart and offering to resend is the right answer to both.
+            'awaitingPassword' => DB::table('password_reset_tokens')->pluck('email')->all(),
+        ]);
+    }
 
     public function invite(Request $request, Organisation $organisation): RedirectResponse
     {

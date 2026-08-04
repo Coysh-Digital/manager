@@ -128,7 +128,7 @@
                             <p class="text-text-2">
                                 A backup is encrypted to keys you hold and to nothing else, so until this
                                 organisation has one active recovery key there is nothing to encrypt it to.
-                                <a href="{{ route('settings.show') }}#recovery-keys" class="text-primary hover:text-primary-hover">
+                                <a href="{{ route('settings.recovery-keys') }}" class="text-primary hover:text-primary-hover">
                                     Add one in Settings
                                 </a>.
                             </p>

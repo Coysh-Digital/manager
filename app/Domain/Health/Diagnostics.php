@@ -11,6 +11,7 @@ use App\Contracts\ServerAccess;
 use App\Domain\Backup\BackupKeypair;
 use App\Domain\Backup\BackupService;
 use App\Domain\Connector\PlatformKeypair;
+use App\Domain\Mail\MailConfiguration;
 use App\Domain\Notifications\OutboundUrlGuard;
 use App\Models\CapabilityGrant;
 use App\Models\User;
@@ -358,20 +359,31 @@ final class Diagnostics
      * Not in {@see readiness()}, deliberately, for the reason given there: an orchestrator must not
      * pull a working instance out of rotation because nobody set up a mail relay.
      *
-     * Reports a status and no values. Everything this reads comes from the environment, and an
-     * operator who can see this screen may not be the operator who holds the credentials — so the
-     * host, the port, the username and the from-address are all things this check knows and never
-     * says. What matters is the answer to "will a password reset arrive", and that is a yes or a no.
+     * Reports a status and no values. This check appears on the General settings screen, whose
+     * reader is not necessarily an owner and therefore not necessarily somebody the Mail screen is
+     * offered to — so the host, the port, the username and the from-address are all things this
+     * check knows and never says. What matters is the answer to "will a password reset arrive", and
+     * that is a yes or a no.
      */
     private function mail(): Check
     {
+        // The stored configuration is pushed into the config repository at send time rather than at
+        // boot — see App\Domain\Mail\MailConfiguration. Asking for it here is what stops this check
+        // reporting on the environment while something else does the sending. Memoised, so this is
+        // free after the first call in a process.
+        app(MailConfiguration::class)->apply();
+
         $mailer = (string) config('mail.default');
 
         /*
-         | Every remedy below names an environment variable, which is the right instruction for the
-         | person who holds the environment and useless to anybody else. On a hosted edition the
-         | relay belongs to whoever runs the service, so the check still reports whether mail works
-         | — that is worth knowing either way — and stops telling the reader to go and fix it.
+         | Every remedy below names a place to go and fix it, which is the right instruction for the
+         | person who can and useless to anybody else. On a hosted edition the relay belongs to
+         | whoever runs the service, so the check still reports whether mail works — that is worth
+         | knowing either way — and stops telling the reader to go and fix it.
+         |
+         | Both routes are named, because both are real: the environment is what an installation
+         | starts with and what a container sets, and Settings → Mail is what an owner can reach
+         | without a shell.
         */
         $operatorManaged = app(MailAdministration::class)->operatorManaged();
 
@@ -380,8 +392,9 @@ final class Diagnostics
                 'Mail',
                 'No mail transport is configured, so nothing is delivered.',
                 $operatorManaged
-                    ? 'Set MAIL_MAILER and the matching MAIL_* variables. Password resets, invitations and '
-                        .'notification emails cannot reach anybody until you do. See docs/env.md.'
+                    ? 'Set MAIL_MAILER and the matching MAIL_* variables, or configure a relay under '
+                        .'Settings → Mail. Password resets, invitations and notification emails cannot '
+                        .'reach anybody until you do. See docs/env.md.'
                     : null,
             );
         }
@@ -391,15 +404,16 @@ final class Diagnostics
                 'Mail',
                 'A transport is configured but no sender address is set.',
                 $operatorManaged
-                    ? 'Set MAIL_FROM_ADDRESS. Most relays reject a message with no envelope sender.'
+                    ? 'Set MAIL_FROM_ADDRESS, or a From address under Settings → Mail. Most relays '
+                        .'reject a message with no envelope sender.'
                     : null,
             );
         }
 
-        // The second sentence names a button that is not on every edition's screen. Pointing at a
-        // control the reader cannot see is worse than stopping at the fact.
+        // The second sentence names a screen that does not exist on every edition. Pointing at a
+        // control the reader cannot reach is worse than stopping at the fact.
         return Check::pass('Mail', $operatorManaged
-            ? 'A transport and a sender address are configured. Send a test from Settings to prove delivery.'
+            ? 'A transport and a sender address are configured. Send a test from Settings → Mail to prove delivery.'
             : 'A transport and a sender address are configured.');
     }
 

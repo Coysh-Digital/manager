@@ -56,9 +56,14 @@ final class PaletteController
                 ['name' => 'Findings', 'url' => route('findings.index')],
                 ['name' => 'Backups', 'url' => route('backups.index')],
                 ['name' => 'Activity log', 'url' => route('activity.index')],
+                // One entry per Settings tab rather than one entry plus a fragment. They are routes
+                // now, so the palette can land on the screen somebody asked for.
                 ['name' => 'Settings', 'url' => route('settings.show')],
-                ['name' => 'People', 'url' => route('settings.show').'#people'],
-                ['name' => 'Account and security', 'url' => route('account.show')],
+                ['name' => 'Account', 'url' => route('settings.account')],
+                ['name' => 'Security', 'url' => route('settings.security')],
+                ['name' => 'People', 'url' => route('settings.people')],
+                ['name' => 'Notifications', 'url' => route('settings.notifications')],
+                ['name' => 'Recovery keys', 'url' => route('settings.recovery-keys')],
             ],
         ]);
     }

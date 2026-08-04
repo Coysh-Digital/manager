@@ -14,6 +14,7 @@ use App\Http\Controllers\BackupDownloadController;
 use App\Http\Controllers\CapabilityController;
 use App\Http\Controllers\FindingController;
 use App\Http\Controllers\HealthController;
+use App\Http\Controllers\MailSettingsController;
 use App\Http\Controllers\NotificationDestinationController;
 use App\Http\Controllers\PaletteController;
 use App\Http\Controllers\PasskeyController;
@@ -187,9 +188,37 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
 
     Route::get('activity', [ActivityController::class, 'index'])->name('activity.index');
 
+    /*
+     | Settings, as several screens rather than one.
+     |
+     | Real routes rather than panels switched by script, and rather than the `#people` anchors this
+     | replaced, for the same reason a site has seven of them: a tab somebody can link to, bookmark
+     | and reach with the back button is worth more than one that saves a request. Each also loads
+     | only what it shows, where the single screen ran every query on every visit.
+     |
+     | The GETs sit outside the recent-authentication group below, as the one settings screen always
+     | has. None of them renders a secret — including Mail, whose stored password is write-only.
+     |
+     | The write routes keep the names they have always had: team.*, recovery-keys.*, notifications.*
+     | and account.* are the audit log's own vocabulary, and renaming them would be churn for no
+     | gain. <x-settings-tabs> matches on them explicitly instead.
+     */
     Route::get('settings', [SettingsController::class, 'show'])->name('settings.show');
+    Route::get('settings/account', [AccountController::class, 'show'])->name('settings.account');
+    Route::get('settings/security', [AccountController::class, 'security'])->name('settings.security');
+    Route::get('settings/people', [TeamController::class, 'show'])->name('settings.people');
+    Route::get('settings/notifications', [NotificationDestinationController::class, 'show'])
+        ->name('settings.notifications');
+    Route::get('settings/recovery-keys', [RecoveryKeyController::class, 'show'])
+        ->name('settings.recovery-keys');
 
-    Route::get('account', [AccountController::class, 'show'])->name('account.show');
+    // Self-hosted only, and owner-only. The controller refuses on both counts rather than relying on
+    // the tab being absent — see MailSettingsController::authorise().
+    Route::get('settings/mail', [MailSettingsController::class, 'show'])->name('settings.mail');
+
+    // GET /account is gone rather than redirected. It was one of two settings destinations, and the
+    // whole point of the change is that there is now one; a redirect would keep the second URL alive
+    // and, with it, the idea that the account is somewhere else.
 
     // Which clock this account reads dated times in. Outside the recent-authentication group below,
     // with the notes and for the same reason: it is a display preference, it grants nothing, and
@@ -291,10 +320,19 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
          |
          | Bound on external_id like everything else, so a sequential identifier is never in a URL.
          */
-        // Sends to the signed-in owner's own address and nowhere else. A destination field here
-        // would be an open relay on an authenticated page.
-        Route::post('settings/mail/test', [SettingsController::class, 'testMail'])
-            ->name('settings.mail.test');
+        /*
+         | Mail.
+         |
+         | Changing where this installation's mail leaves from is a change to how a password reset
+         | reaches somebody, so it sits behind recent authentication with everything else that
+         | matters. The test send has always been here; the two writes joined it.
+         |
+         | The test sends to the signed-in owner's own address and nowhere else. A destination field
+         | would be an open relay on an authenticated page.
+         */
+        Route::post('settings/mail', [MailSettingsController::class, 'update'])->name('settings.mail.update');
+        Route::delete('settings/mail', [MailSettingsController::class, 'forget'])->name('settings.mail.forget');
+        Route::post('settings/mail/test', [MailSettingsController::class, 'test'])->name('settings.mail.test');
 
         Route::post('settings/recovery-keys', [RecoveryKeyController::class, 'store'])
             ->name('recovery-keys.store');

@@ -12,6 +12,7 @@ use App\Domain\Notifications\UnsafeDestinationException;
 use App\Models\Membership;
 use App\Models\NotificationDestination;
 use App\Models\Organisation;
+use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -31,6 +32,27 @@ final class NotificationDestinationController
         private readonly AuditRecorder $audit,
         private readonly Notifier $notifier,
     ) {}
+
+    /**
+     * The Notifications tab of Settings.
+     *
+     * Readable by any member and writable only by an owner, which is what it was as a section of the
+     * one settings screen. Each control inside is gated individually.
+     */
+    public function show(Organisation $organisation): View
+    {
+        return view('settings.notifications', [
+            'organisation' => $organisation,
+            'membership' => app(Membership::class),
+
+            'destinations' => NotificationDestination::query()
+                ->where('organisation_id', $organisation->id)
+                ->with(['deliveries' => fn ($query) => $query->latest('created_at')->limit(3)])
+                ->orderBy('label')
+                ->get(),
+            'eventCatalogue' => NotificationEvent::catalogue(),
+        ]);
+    }
 
     public function store(Request $request, Organisation $organisation): RedirectResponse
     {

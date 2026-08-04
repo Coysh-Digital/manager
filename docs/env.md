@@ -86,14 +86,33 @@ one-time setup flow.
 
 ## Mail
 
-Standard Laravel `MAIL_*` variables, configured here and nowhere else - there is no mail settings
-screen, and nothing about this configuration is displayed in the interface. Whoever can reach the
-Settings page is not necessarily whoever holds the relay's credentials.
+Standard Laravel `MAIL_*` variables. These are the fallback and the floor: what a fresh installation
+starts with, what a container sets, and what stands unless somebody overrides them.
 
 **Set this up.** Password resets and invitations are how anybody other than the first account gets
 in, and the default writes them to the log instead of sending them. The failure mode is silence:
 somebody invites a colleague, nothing arrives, and nothing reports a problem. `manager:doctor` warns
 while this is unconfigured, and `manager:user:password` exists as the way in when it is.
+
+### Overriding them from the interface
+
+An **owner** of a self-hosted installation can configure a relay under **Settings → Mail** without a
+shell. It is owner-only, and it does not exist on Manager Cloud, where the relay belongs to us rather
+than to the reader.
+
+- The override lives in the `mail_settings` table, one row, with the credential encrypted under
+  `APP_KEY` - the same way a TOTP secret and a webhook signing secret are held. It is write-only:
+  never rendered back into the form, and never displayed again once saved.
+- It is applied at **send time**, into the running config, rather than at boot. `config:cache` is
+  therefore irrelevant to it, and nothing writes to `.env`.
+- **"Use the environment configuration" on that screen discards it completely**, and these variables
+  take effect again immediately. That is the way out if a change stops mail working - which matters
+  here more than anywhere else, because the usual way you would be told is email.
+- Rotating `APP_KEY` without re-entering the credential breaks the stored relay login, exactly as it
+  breaks TOTP secrets and webhook signing secrets.
+- `postmark` and `resend` need a package that is not required by default (`symfony/postmark-mailer`
+  and `resend/resend-php`). The screen says so and refuses to select one that is missing; setting
+  `MAIL_MAILER` to either without installing it fails at send time instead.
 
 | Variable | Default | Notes |
 |---|---|---|
@@ -119,11 +138,11 @@ and:
 
 No host or port; each takes one key, set in `config/services.php`'s block for it.
 
-| Transport | Set |
-|---|---|
-| `postmark` | `MAIL_MAILER=postmark`, `POSTMARK_TOKEN` |
-| `resend` | `MAIL_MAILER=resend`, `RESEND_API_KEY` |
-| `ses` | `MAIL_MAILER=ses`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION` |
+| Transport | Set | Also needs |
+|---|---|---|
+| `postmark` | `MAIL_MAILER=postmark`, `POSTMARK_API_KEY` | `composer require symfony/postmark-mailer` |
+| `resend` | `MAIL_MAILER=resend`, `RESEND_API_KEY` | `composer require resend/resend-php` |
+| `ses` | `MAIL_MAILER=ses`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION` | nothing - `aws/aws-sdk-php` is already required |
 
 ### Proving it works
 
@@ -136,11 +155,15 @@ accepted, which is the one thing already known - and prints the transport's erro
 fails. That is usually the useful part: `535 authentication failed` and `certificate verify failed`
 want different fixes.
 
-An owner can do the same from the Settings screen, which sends to their own address. That path
-reports only the exception's class name, because it renders into a web page and a mail exception can
-carry the credentials it was using. Run the command when you need the detail.
+An owner can do the same from **Settings → Mail**, which sends to their own address and nowhere else.
+That path reports only the exception's class name, because it renders into a web page and a mail
+exception can carry the credentials it was using. Run the command when you need the detail. The
+command reads whatever is actually in force, so it exercises a relay configured on that screen rather
+than the variables above.
 
-Either way, "sent without error" means the relay accepted the message, not that it arrived.
+Either way, "sent without error" means the relay accepted the message, not that it arrived. Getting a
+message *into an inbox* is a DNS problem as much as a relay one - Settings → Mail carries a
+deliverability checklist covering SPF, DKIM, DMARC, reverse DNS and From-address alignment.
 
 ## Site backups
 

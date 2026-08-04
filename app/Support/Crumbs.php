@@ -45,6 +45,20 @@ final class Crumbs
     }
 
     /**
+     * Settings → this tab.
+     *
+     * The tab is a second segment rather than the whole label, the way a site's screens are, so the
+     * trail names where somebody is within a screen they can still get back to in one move.
+     */
+    public static function settings(string $page): string
+    {
+        return self::encode([
+            ['label' => 'Settings', 'href' => route('settings.show')],
+            ['label' => $page],
+        ]);
+    }
+
+    /**
      * A top-level screen, with no parent above it.
      */
     public static function top(string $label): string

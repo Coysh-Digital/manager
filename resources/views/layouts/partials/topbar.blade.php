@@ -124,7 +124,7 @@
 
         <div class="hidden h-[22px] w-px bg-border sm:block"></div>
 
-        <a href="{{ route('account.show') }}" class="flex items-center gap-2 no-underline">
+        <a href="{{ route('settings.account') }}" class="flex items-center gap-2 no-underline">
             <div class="flex h-6 w-6 flex-none items-center justify-center rounded-full border border-pale-line bg-pale text-[10.5px] font-semibold text-primary">
                 {{ Str::of(auth()->user()->name)->explode(' ')->take(2)->map(fn ($part) => Str::substr($part, 0, 1))->implode('') }}
             </div>

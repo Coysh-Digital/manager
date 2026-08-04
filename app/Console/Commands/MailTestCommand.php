@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Domain\Mail\MailConfiguration;
 use App\Domain\Notifications\EmailTransport;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Mail;
@@ -29,6 +30,11 @@ use Throwable;
  *
  * Nothing is queued. A queued test would report success as soon as the job was accepted, which is the
  * one thing already known.
+ *
+ * The transport this exercises may come from the database rather than from the environment: an owner
+ * can configure a relay under Settings → Mail, and that overrides MAIL_* at send time. So this asks
+ * for the effective configuration before reading it, or it would warn about a MAIL_MAILER that
+ * nothing is going to use. See App\Domain\Mail\MailConfiguration.
  */
 final class MailTestCommand extends Command
 {
@@ -46,12 +52,15 @@ final class MailTestCommand extends Command
             return self::FAILURE;
         }
 
+        // See the note above: what is about to be used is not necessarily what .env says.
+        app(MailConfiguration::class)->apply();
+
         $mailer = (string) config('mail.default');
 
         if ($mailer === '' || in_array($mailer, ['log', 'array'], true)) {
             // Not an error. Writing mail to the log is a legitimate way to run this, and somebody who
             // has done it on purpose should be told where to look rather than corrected.
-            $this->warn("MAIL_MAILER is '{$mailer}', so this will be written to the log rather than delivered.");
+            $this->warn("The transport is '{$mailer}', so this will be written to the log rather than delivered.");
         }
 
         $this->line("Sending to {$recipient}…");
@@ -65,7 +74,13 @@ final class MailTestCommand extends Command
             $this->newLine();
             $this->line($e->getMessage());
             $this->newLine();
-            $this->line('Check the MAIL_* variables in .env. Nothing above is stored anywhere.');
+            // Both places, because either could be the one in force. Somebody editing .env while a
+            // stored relay overrides it would change nothing and have no way to tell.
+            $this->line(app(MailConfiguration::class)->stored() !== null
+                ? 'A relay configured under Settings → Mail is in force, so the MAIL_* variables in '
+                    .'.env are not being used. Fix it there, or discard it from that screen to go '
+                    .'back to the environment. Nothing above is stored anywhere.'
+                : 'Check the MAIL_* variables in .env. Nothing above is stored anywhere.');
 
             return self::FAILURE;
         }

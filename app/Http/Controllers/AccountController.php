@@ -21,7 +21,8 @@ use Illuminate\Validation\Rules\Password as PasswordRule;
 use Illuminate\Validation\ValidationException;
 
 /**
- * The account's own security: second factor, recovery codes, and live sessions.
+ * The account itself, across two of the Settings tabs: its details and time zone, and its own
+ * security — second factor, recovery codes, passkeys and live sessions.
  *
  * Everything that changes state here sits behind a recent-authentication check, so a session left
  * open on an unlocked machine cannot be used to disable a second factor or read out fresh recovery
@@ -35,11 +36,18 @@ final class AccountController
         private readonly AuditRecorder $audit,
     ) {}
 
+    /**
+     * Who this account is: name, address, and the clock it reads times in.
+     *
+     * Split from {@see self::security()} rather than one screen carrying both, so listing every
+     * time zone identifier and rendering an enrolment QR code stop happening for each other's
+     * benefit. The writes are untouched and still named account.*.
+     */
     public function show(Request $request): View
     {
         $user = $request->user();
 
-        return view('account.show', [
+        return view('settings.account', [
             'user' => $user,
             'organisation' => app(Organisation::class),
 
@@ -47,6 +55,19 @@ final class AccountController
             // useful default when the reader can see what it resolves to.
             'defaultTimezone' => (string) config('app.timezone', 'UTC'),
             'timezones' => timezone_identifiers_list(),
+        ]);
+    }
+
+    /**
+     * How this account gets in, and from where.
+     */
+    public function security(Request $request): View
+    {
+        $user = $request->user();
+
+        return view('settings.security', [
+            'user' => $user,
+            'organisation' => app(Organisation::class),
 
             'recoveryCodesRemaining' => $user->unusedRecoveryCodeCount(),
             'sessions' => $this->sessions($request),

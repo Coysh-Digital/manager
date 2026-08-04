@@ -6,6 +6,7 @@ use App\Domain\Backup\RecoveryKeyService;
 use App\Models\Membership;
 use App\Models\Organisation;
 use App\Models\RecoveryKey;
+use App\Models\Site;
 use App\Models\User;
 use coyshdigital\managerprotocol\RecoveryProof;
 use coyshdigital\managerprotocol\Sealing;
@@ -24,7 +25,7 @@ beforeEach(function (): void {
 });
 
 it('tells an organisation with no key why it cannot back anything up', function (): void {
-    $this->actingAs($this->owner)->get('/settings')
+    $this->actingAs($this->owner)->get('/settings/recovery-keys')
         ->assertOk()
         ->assertSee('No backups can be taken yet')
         // The explanation rather than the bare state. Somebody seeing this for the first time should
@@ -36,7 +37,7 @@ it('shows the commands that make a key, and where to read more', function (): vo
     // "Generate the key with manager-restore keygen" assumed the reader knew how to get
     // manager-restore. Until it was published on Packagist that was not a small assumption, and it
     // is the only way to produce the thing every backup now requires.
-    $html = $this->actingAs($this->owner)->get('/settings')->assertOk()->getContent();
+    $html = $this->actingAs($this->owner)->get('/settings/recovery-keys')->assertOk()->getContent();
 
     expect($html)->toContain('composer global require coysh-digital/manager-restore')
         ->and($html)->toContain('manager-restore keygen')
@@ -45,18 +46,34 @@ it('shows the commands that make a key, and where to read more', function (): vo
         ->and($html)->toContain('recovery.secret');
 });
 
-it('gives the recovery keys section an anchor the links can reach', function (): void {
-    // Several screens link to settings#recovery-keys. There was no such id, so every one of them
-    // landed at the top of a long page and left the reader to find it.
-    $html = $this->actingAs($this->owner)->get('/settings')->assertOk()->getContent();
+it('sends every "add one in Settings" link to the screen that adds one', function (): void {
+    /*
+     | This used to assert an `id="recovery-keys"` anchor, because several screens linked to
+     | settings#recovery-keys and for a long time there was no such id — so every one of them landed
+     | at the top of a long page and left the reader to find it.
+     |
+     | Recovery keys are a screen now, so the fragment is gone and the anchor with it. The claim the
+     | old test was making is still worth holding, so it is made against the links themselves: no
+     | screen may go on pointing at a fragment that no longer exists.
+     */
+    $site = Site::factory()->for($this->organisation)->connected()->create();
 
-    expect($html)->toContain('id="recovery-keys"');
+    foreach (['/backups', route('sites.backups', $site)] as $url) {
+        $html = (string) $this->actingAs($this->owner)->get($url)->assertOk()->getContent();
+
+        expect($html)->not->toContain('#recovery-keys');
+    }
+
+    $this->actingAs($this->owner)
+        ->get(route('settings.recovery-keys'))
+        ->assertOk()
+        ->assertSee('Recovery keys');
 });
 
 it('warns about a single point of failure while there is one key', function (): void {
     RecoveryKey::factory()->for($this->organisation)->create();
 
-    $this->actingAs($this->owner)->get('/settings')
+    $this->actingAs($this->owner)->get('/settings/recovery-keys')
         ->assertOk()
         ->assertSee('One recovery key')
         ->assertSee('permanently unreadable')
@@ -68,13 +85,13 @@ it('warns about a single point of failure while there is one key', function (): 
 it('does not warn once there are two', function (): void {
     RecoveryKey::factory()->count(2)->for($this->organisation)->create();
 
-    $this->actingAs($this->owner)->get('/settings')
+    $this->actingAs($this->owner)->get('/settings/recovery-keys')
         ->assertOk()
         ->assertDontSee('One recovery key');
 });
 
 it('never offers to generate a key', function (): void {
-    $html = (string) $this->actingAs($this->owner)->get('/settings')->assertOk()->getContent();
+    $html = (string) $this->actingAs($this->owner)->get('/settings/recovery-keys')->assertOk()->getContent();
 
     // A private key produced on this server would exist in a response body. The screen must send
     // people to the offline tool instead, and there must be nothing here that looks like a shortcut.
@@ -84,7 +101,7 @@ it('never offers to generate a key', function (): void {
 });
 
 it('tells the operator to pin the fingerprint on their own server', function (): void {
-    $this->actingAs($this->owner)->get('/settings')
+    $this->actingAs($this->owner)->get('/settings/recovery-keys')
         ->assertOk()
         // The control that matters most, and the one that is easiest to skip. It belongs beside the
         // field rather than in a document.
@@ -95,7 +112,7 @@ it('tells the operator to pin the fingerprint on their own server', function ():
 it('shows a revoked key rather than hiding it', function (): void {
     $revoked = RecoveryKey::factory()->for($this->organisation)->revoked('Laptop replaced')->create();
 
-    $this->actingAs($this->owner)->get('/settings')
+    $this->actingAs($this->owner)->get('/settings/recovery-keys')
         ->assertOk()
         ->assertSee($revoked->fingerprint)
         // Because a fingerprint in an old artifact's manifest has to stay explicable, and because
@@ -156,7 +173,7 @@ it('will not let one organisation see another\'s keys', function (): void {
     $other = Organisation::factory()->create();
     $theirs = RecoveryKey::factory()->for($other)->create(['label' => 'Their laptop']);
 
-    $this->actingAs($this->owner)->get('/settings')
+    $this->actingAs($this->owner)->get('/settings/recovery-keys')
         ->assertOk()
         ->assertDontSee($theirs->fingerprint)
         ->assertDontSee('Their laptop');
@@ -221,7 +238,7 @@ it('walks an operator from a pasted key to an active one', function (): void {
 
     $this->actingAs($this->owner)->withSession($this->recentAuth)
         ->post('/settings/recovery-keys', ['public_key' => $armoured, 'label' => 'Ops laptop'])
-        ->assertRedirect(route('settings.show'));
+        ->assertRedirect(route('settings.recovery-keys'));
 
     $key = RecoveryKey::query()->firstOrFail();
 
@@ -229,7 +246,7 @@ it('walks an operator from a pasted key to an active one', function (): void {
         ->and($key->isAwaitingProof())->toBeTrue();
 
     // The screen shows the command, with the real challenge in it.
-    $this->actingAs($this->owner)->get('/settings')
+    $this->actingAs($this->owner)->get('/settings/recovery-keys')
         ->assertOk()
         ->assertSee('manager-restore prove')
         ->assertSee((string) $key->challenge, false);
@@ -240,7 +257,7 @@ it('walks an operator from a pasted key to an active one', function (): void {
 
     $this->actingAs($this->owner)->withSession($this->recentAuth)
         ->post('/settings/recovery-keys/'.$key->external_id.'/prove', ['proof' => $answer])
-        ->assertRedirect(route('settings.show'));
+        ->assertRedirect(route('settings.recovery-keys'));
 
     expect($key->fresh()->isActive())->toBeTrue()
         ->and($this->organisation->fresh()->backup_format_floor)->toBe('v2');
@@ -269,7 +286,7 @@ it('demands an explicit confirmation before stopping every backup', function ():
             'reason' => 'Winding down',
             'accept_last_key' => 'STOP BACKUPS',
         ])
-        ->assertRedirect(route('settings.show'));
+        ->assertRedirect(route('settings.recovery-keys'));
 
     expect($only->fresh()->isRevoked())->toBeTrue();
 });
@@ -286,7 +303,7 @@ it('never renders anything that could open a backup', function (): void {
 
     app(RecoveryKeyService::class)->issueChallenge($key);
 
-    $html = (string) $this->actingAs($this->owner)->get('/settings')->assertOk()->getContent();
+    $html = (string) $this->actingAs($this->owner)->get('/settings/recovery-keys')->assertOk()->getContent();
 
     // The challenge itself is on the screen, and has to be — it is what the operator pastes into the
     // tool. Everything else must not be: the secret half was never ours, and the expected answer would
@@ -301,7 +318,7 @@ it('is honest that revoking does not close old backups', function (): void {
 
     // A screen that said "revoked" and nothing else would leave somebody believing a revocation had
     // made historical artifacts unreadable. It has not, and it cannot.
-    $this->actingAs($this->owner)->get('/settings')
+    $this->actingAs($this->owner)->get('/settings/recovery-keys')
         ->assertOk()
         ->assertSee('backups taken before then still open with it', false);
 });

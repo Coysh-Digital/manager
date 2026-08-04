@@ -215,7 +215,7 @@ it('requires recent authentication to register a passkey', function (): void {
 it('lists and removes a passkey', function (): void {
     $credential = givePasskey($this->user, 'Work laptop');
 
-    $this->actingAs($this->user)->get('/account')->assertOk()->assertSee('Work laptop');
+    $this->actingAs($this->user)->get('/settings/security')->assertOk()->assertSee('Work laptop');
 
     $this->actingAs($this->user)
         ->withSession(['auth.password_confirmed_at' => now()->timestamp])
@@ -278,7 +278,7 @@ it('redirects an unenrolled member to enrol rather than locking them out', funct
 
     $this->actingAs($this->user)
         ->get('/sites')
-        ->assertRedirect(route('account.show'));
+        ->assertRedirect(route('settings.security'));
 
     // Locking somebody out of a control plane to improve its security is a trade made once and
     // regretted at 2am — and turning the requirement on could otherwise strand everybody at once,
@@ -290,7 +290,7 @@ it('leaves the enrolment path itself reachable', function (string $route): void 
     $this->organisation->forceFill(['mfa_required' => true])->save();
 
     $this->actingAs($this->user)->get(route($route))->assertOk();
-})->with(['account.show']);
+})->with(['settings.security']);
 
 it('lets an unenrolled member sign out', function (): void {
     $this->organisation->forceFill(['mfa_required' => true])->save();
@@ -305,7 +305,7 @@ it('stops redirecting once a second factor is enrolled', function (): void {
     $this->organisation->forceFill(['mfa_required' => true])->save();
     Site::factory()->for($this->organisation)->create();
 
-    $this->actingAs($this->user)->get('/sites')->assertRedirect(route('account.show'));
+    $this->actingAs($this->user)->get('/sites')->assertRedirect(route('settings.security'));
 
     givePasskey($this->user);
 

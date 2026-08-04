@@ -127,23 +127,30 @@
             </a>
         @endif
 
+        {{--
+            Every settings-domain route, not only the ones named settings.*.
+
+            The writes on those screens are named for the thing they act on — team.invite,
+            recovery-keys.revoke, notifications.store — so none of them ever lit this entry. They are
+            all POSTs that redirect, so it rarely showed; where it did was the confirm-password
+            interstitial, which is exactly the moment somebody wants to know where they still are.
+        --}}
+        @php($inSettings = request()->routeIs(
+            'settings.*', 'account.*', 'team.*', 'recovery-keys.*', 'notifications.*', 'passkeys.*',
+        ))
+
         <a href="{{ route('settings.show') }}"
            @class([
                'flex items-center rounded-md px-2.5 py-[7px] text-[13.5px] font-medium no-underline',
-               'bg-pale text-primary' => request()->routeIs('settings.*'),
-               'text-text-2 hover:bg-row-hover hover:text-text' => ! request()->routeIs('settings.*'),
+               'bg-pale text-primary' => $inSettings,
+               'text-text-2 hover:bg-row-hover hover:text-text' => ! $inSettings,
            ])>
             Settings
         </a>
 
-        <a href="{{ route('account.show') }}"
-           @class([
-               'flex items-center rounded-md px-2.5 py-[7px] text-[13.5px] font-medium no-underline',
-               'bg-pale text-primary' => request()->routeIs('account.*'),
-               'text-text-2 hover:bg-row-hover hover:text-text' => ! request()->routeIs('account.*'),
-           ])>
-            Account and security
-        </a>
+        {{-- "Account and security" was a second entry here, and a second destination. Both are now
+             tabs of Settings: one place to go for anything that is a setting, whether it belongs to
+             the installation or to the person reading. --}}
 
         <form method="POST" action="{{ route('logout') }}">
             @csrf
@@ -152,5 +159,27 @@
                 Sign out
             </button>
         </form>
+
+        {{--
+            Which version this is, wherever somebody happens to be standing.
+
+            It was on Settings and nowhere else, so answering "which version are you running?" — the
+            question a support conversation opens with — needed a navigation first. It stays on
+            Settings too; this is an addition rather than a move.
+
+            Resolved here rather than passed in by the view composer, for the same reason the billing
+            URL above is: this partial renders on every authenticated page, and a composer key would
+            have to be supplied on all of them or default to hiding it.
+
+            Unset is the normal state for a clone or a tarball — `git archive` leaves no .git behind,
+            so an installation genuinely cannot know. Saying so beats printing a number somebody would
+            later quote at us. See config/manager.php.
+        --}}
+        <div class="mt-1 border-t border-border px-2.5 pt-2.5">
+            <x-changelog-link :href="\App\Domain\Updates\ChangelogLink::manager()"
+                              :label="config('manager.version') ?? 'unreleased build'"
+                              :title="config('manager.version') ? null : 'Set MANAGER_VERSION to record which release this is'"
+                              mono />
+        </div>
     </div>
 </nav>

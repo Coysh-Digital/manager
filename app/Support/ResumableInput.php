@@ -98,9 +98,18 @@ final class ResumableInput
             'fields' => ['backup_retention_days', 'backup_retention_weeks', 'backup_retention_months'],
         ],
         'team.invite' => [
-            'return' => 'settings.show',
+            'return' => 'settings.people',
             'label' => 'invite somebody',
             'fields' => ['name', 'email', 'role'],
+        ],
+        'settings.mail.update' => [
+            'return' => 'settings.mail',
+            'label' => 'change how mail is sent',
+            // No credential here, and layer two would strip it anyway — FORBIDDEN_KEY matches /pass/.
+            // That is the right answer rather than an omission: the field is write-only and a blank
+            // one means "keep what is stored", so coming back with it empty restores the form to
+            // exactly the state it should be in.
+            'fields' => ['transport', 'host', 'port', 'encryption', 'username', 'region', 'from_address', 'from_name'],
         ],
     ];
 

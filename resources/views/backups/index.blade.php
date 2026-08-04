@@ -43,7 +43,7 @@
                     has one active recovery key there is nothing to encrypt one to. You generate it on your
                     own machine — it never exists on this server.</p>
                 <p class="mt-1.5">
-                    <a href="{{ route('settings.show') }}#recovery-keys" class="text-primary hover:text-primary-hover">Add a recovery key in Settings</a>,
+                    <a href="{{ route('settings.recovery-keys') }}" class="text-primary hover:text-primary-hover">Add a recovery key in Settings</a>,
                     or read
                     <a href="https://managerforcraft.com/docs/recovery-keys" target="_blank" rel="noopener noreferrer" class="text-primary hover:text-primary-hover">how recovery keys work ↗</a>.
                 </p>

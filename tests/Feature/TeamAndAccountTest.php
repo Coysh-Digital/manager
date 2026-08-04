@@ -288,7 +288,7 @@ it('will not change an email address', function (): void {
 
     // And the screen says why rather than leaving somebody hunting for the field.
     $this->actingAs($this->owner)
-        ->get(route('account.show'))
+        ->get(route('settings.account'))
         ->assertOk()
         ->assertSee('cannot be changed here');
 });

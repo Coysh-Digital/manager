@@ -340,8 +340,9 @@ it('hides the irreversible actions from a non-owner', function (): void {
  | Mail
  |-------------------------------------------------------------------------------------------------
  |
- | Configured in the environment and displayed nowhere. "A transport is configured" and "mail leaves
- | this server" are different claims, and only one of them can be tested from a button.
+ | Mail has a screen of its own now, and the tests that belong to it live in MailSettingsTest. What
+ | stays here is what this screen still has to be true about: that the General tab is not that place,
+ | and that the health check reports mail without configuring it.
  */
 
 it('sends a test message to the owner and nobody else', function (): void {
@@ -372,7 +373,18 @@ it('sends a test message to the owner and nobody else', function (): void {
         ->toBe(AuditEvent::OUTCOME_SUCCESS);
 });
 
-it('never puts mail configuration on the settings screen', function (): void {
+it('keeps mail configuration off the general settings screen', function (): void {
+    /*
+     | This used to assert that mail configuration appeared nowhere in the interface at all, on the
+     | reasoning that whoever can reach Settings is not necessarily whoever holds the relay's
+     | credentials. That reasoning was right; the conclusion was not, because the alternative it left
+     | was a shell on the server — and the one thing that cannot be used to tell somebody their mail
+     | is broken is email.
+     |
+     | So the rule became a permission rather than an absence: there is a Mail screen, it is
+     | owner-only and self-hosted-only, and the credential is write-only. What survives unchanged is
+     | that *this* screen is not that place. Its reader is any member.
+     */
     config()->set('mail.default', 'smtp');
     config()->set('mail.mailers.smtp.host', 'smtp.internal.example');
     config()->set('mail.mailers.smtp.username', 'postmaster@example.org');
@@ -381,13 +393,14 @@ it('never puts mail configuration on the settings screen', function (): void {
 
     $html = $this->actingAs($this->owner)->get(route('settings.show'))->assertOk()->getContent();
 
-    // Whoever can reach this screen is not necessarily whoever holds the relay's credentials, and the
-    // health check answers the only question the screen needs to: will a password reset arrive.
     expect($html)->not->toContain('smtp.internal.example')
         ->and($html)->not->toContain('postmaster@example.org')
         ->and($html)->not->toContain('hunter2')
         ->and($html)->not->toContain('manager@example.org')
-        ->and($html)->toContain('Send a test email');
+        ->and($html)->not->toContain('Send a test email')
+        // The health check still answers the question this screen exists to answer: will a password
+        // reset arrive. It just no longer carries the controls.
+        ->and($html)->toContain('Mail');
 });
 
 it('warns rather than failing when no mail transport is configured', function (): void {
@@ -423,6 +436,17 @@ it('reports a failing transport without repeating what it was configured with', 
         ->toBe(AuditEvent::OUTCOME_FAILURE);
 });
 
+function hostedRelay(): void
+{
+    app()->bind(MailAdministration::class, fn (): MailAdministration => new class implements MailAdministration
+    {
+        public function operatorManaged(): bool
+        {
+            return false;
+        }
+    });
+}
+
 it('keeps the test send to owners', function (): void {
     $member = User::factory()->create(['email_verified_at' => now()]);
     Membership::factory()->for($member)->for($this->organisation)->create();
@@ -432,48 +456,47 @@ it('keeps the test send to owners', function (): void {
         ->assertForbidden();
 });
 
-it('offers no test send on an edition that does not administer its own mail', function (): void {
+it('offers no Mail tab on an edition that does not administer its own mail', function (): void {
     /*
-     | The button proves that mail leaves *this* server, which is a useful thing for whoever owns the
+     | The screen configures *this* server's relay, which is a useful thing for whoever owns the
      | server and a meaningless one for everybody else. On a hosted edition the relay belongs to
-     | whoever runs the service; an administrator cannot change it, and the paragraph beside the
-     | button is worse than the button — it tells them to edit a .env file they cannot reach.
+     | whoever runs the service; an administrator cannot change it, and a form that looked as though
+     | they could would be worse than no form.
      |
      | Bound rather than configured, like every other seam: see App\Contracts\MailAdministration.
     */
-    app()->bind(MailAdministration::class, fn (): MailAdministration => new class implements MailAdministration
-    {
-        public function operatorManaged(): bool
-        {
-            return false;
-        }
-    });
+    hostedRelay();
 
     $html = $this->actingAs($this->owner)->get(route('settings.show'))->assertOk()->getContent();
 
-    expect($html)->not->toContain('Send a test email')
-        // The instruction to edit .env goes with it.
-        ->and($html)->not->toContain('MAIL_*')
-        // The health check still reports whether mail works; it just stops naming a missing button.
+    expect($html)->not->toContain('settings/mail')
+        // The health check still reports whether mail works; it just stops naming a screen that is
+        // not there.
         ->and($html)->toContain('Mail')
         ->and($html)->not->toContain('Send a test from Settings');
 });
 
-it('refuses the test-send route as well as hiding the button', function (): void {
-    // Hiding a control is not removing it. A route that still works when its button has gone is how
+it('refuses every mail route as well as hiding the tab', function (): void {
+    // Hiding a control is not removing it. A route that still works when its control has gone is how
     // a removed feature comes back by URL.
-    app()->bind(MailAdministration::class, fn (): MailAdministration => new class implements MailAdministration
-    {
-        public function operatorManaged(): bool
-        {
-            return false;
-        }
-    });
+    hostedRelay();
 
-    $this->actingAs($this->owner)
-        ->withSession($this->recentAuth)
-        ->post(route('settings.mail.test'))
-        ->assertNotFound();
+    $this->actingAs($this->owner)->get(route('settings.mail'))->assertNotFound();
+
+    $this->actingAs($this->owner)->withSession($this->recentAuth)
+        ->post(route('settings.mail.test'))->assertNotFound();
+
+    $this->actingAs($this->owner)->withSession($this->recentAuth)
+        ->post(route('settings.mail.update'), [
+            'transport' => 'smtp',
+            'host' => 'smtp.relay.example',
+            'port' => 587,
+            'from_address' => 'manager@example.org',
+            'from_name' => 'Manager',
+        ])->assertNotFound();
+
+    $this->actingAs($this->owner)->withSession($this->recentAuth)
+        ->delete(route('settings.mail.forget'))->assertNotFound();
 });
 
 /*

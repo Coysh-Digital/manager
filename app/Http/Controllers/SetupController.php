@@ -91,7 +91,7 @@ final class SetupController
         $request->session()->put('auth.password_confirmed_at', now()->timestamp);
 
         return redirect()
-            ->route('account.show')
+            ->route('settings.security')
             ->with('status', 'Welcome. Set up two-factor authentication before you add any sites.');
     }
 }

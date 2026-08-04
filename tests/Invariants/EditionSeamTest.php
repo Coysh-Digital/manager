@@ -197,7 +197,7 @@ it('provisions exactly once when the first organisation is created', function ()
         'email' => 'owner@example.org',
         'password' => 'correct-horse-battery-staple-42',
         'password_confirmation' => 'correct-horse-battery-staple-42',
-    ])->assertRedirect(route('account.show'));
+    ])->assertRedirect(route('settings.security'));
 
     expect($calls)->toBe(1);
 });
