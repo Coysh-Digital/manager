@@ -48,33 +48,33 @@ and a green row is how a gap stops being noticed.
 
 Invariants 9 and 10 were in this list until the job registry landed. They are now covered by
 `RemoteJobRegistryTest`, which is worth reading for how the four words in invariant 10 —
-authenticated, authorised, validated, audited — are tested separately. A job that were authenticated
+authenticated, authorised, validated, audited - are tested separately. A job that were authenticated
 and audited but not re-authorised at claim time would satisfy a careless reading and still let a
 revoked capability run work.
 
-Where the absence of a feature is itself testable, it is tested — `NoRemoteExecutionTest` fails the
+Where the absence of a feature is itself testable, it is tested - `NoRemoteExecutionTest` fails the
 moment somebody adds a route that could run something on a managed site without going through a job
 registry.
 
 ## Also worth reading
 
-- `AccountSecurityTest` — the platform account is the other way in. A stolen password must not be
+- `AccountSecurityTest` - the platform account is the other way in. A stolen password must not be
   enough, and a password reset must not bypass the second factor.
-- `SelfHostedHardeningTest` — that the diagnostics actually notice a misconfiguration, rather than
+- `SelfHostedHardeningTest` - that the diagnostics actually notice a misconfiguration, rather than
   merely existing.
-- `RemoteJobRegistryTest` — the job registry, including that no job type or parameter name can name a
+- `RemoteJobRegistryTest` - the job registry, including that no job type or parameter name can name a
   command, a path, a query or a URL.
-- `OutboundDestinationTest` — server-side request forgery through notification destinations, including
+- `OutboundDestinationTest` - server-side request forgery through notification destinations, including
   that a hostname is re-checked on every send and the connection pinned to the address that was
   checked, so DNS cannot change between the two.
-- `BackupPermissionTest` — why "explicit permission" needs four separate assertions rather than one.
+- `BackupPermissionTest` - why "explicit permission" needs four separate assertions rather than one.
   A checkbox among the read-only switches would satisfy a careless reading of invariant 7 and miss
   that granting it authorises a copy of every user record on a production site.
-- `BackupPipelineTest` — the artifact pipeline with real libsodium rather than doubles, because a
+- `BackupPipelineTest` - the artifact pipeline with real libsodium rather than doubles, because a
   broken artifact format is only discovered when somebody needs a backup. Worth reading for how the
   upload is authenticated before any of the body is read, and for the division of labour between the
   signature (who sent this) and the checksum (did it survive the journey).
-- `ReleaseArtifactTest` — runs the real build and verify scripts rather than asserting they exist,
+- `ReleaseArtifactTest` - runs the real build and verify scripts rather than asserting they exist,
   including that the archive builds to identical bytes twice and that verification exits non-zero on a
   tampered download. Reproducibility is what lets somebody who is not us confirm a published artifact
   came from the published source; without it a checksum only proves the download was not corrupted.

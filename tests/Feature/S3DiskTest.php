@@ -70,7 +70,7 @@ it('gives no temporary URL for a local volume, rather than pretending', function
      | is the reason the contract allows null at all.
      |
      | This assertion is load-bearing rather than decorative. Laravel's local driver *does* answer
-     | providesTemporaryUrls(), signing a URL to a route it serves itself — so the obvious
+     | providesTemporaryUrls(), signing a URL to a route it serves itself - so the obvious
      | implementation hands out a link that ignores the filename we asked for and serves a customer's
      | artifact from outside this application's authorisation and audit. This test failed on exactly
      | that before the driver check went in.

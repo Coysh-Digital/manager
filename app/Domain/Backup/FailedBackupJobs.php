@@ -62,8 +62,8 @@ final class FailedBackupJobs
      * number of rows affected, which is zero when the identifier is unknown or already dismissed.
      *
      * Through `toBase()` so Eloquent does not helpfully touch `updated_at` on the way past. That
-     * column is when the job failed — {@see FailedBackupJob::$failedAt} reads it, and so does the
-     * seven-day window above — and dismissing a notice must not rewrite when the thing happened.
+     * column is when the job failed - {@see FailedBackupJob::$failedAt} reads it, and so does the
+     * seven-day window above - and dismissing a notice must not rewrite when the thing happened.
      */
     public function dismiss(int $organisationId, string $jobExternalId): int
     {
@@ -78,8 +78,8 @@ final class FailedBackupJobs
      * Stop showing every notice currently on the screen, optionally for one site.
      *
      * Deliberately the same set the screen draws, and not "every failed job there has ever been". A
-     * button that also silenced a failure from six months ago — one nobody was being shown, and may
-     * never have seen — would be doing more than it says.
+     * button that also silenced a failure from six months ago - one nobody was being shown, and may
+     * never have seen - would be doing more than it says.
      */
     public function dismissAll(int $organisationId, ?Site $site = null): int
     {
@@ -118,7 +118,7 @@ final class FailedBackupJobs
             ->where('type', Jobs::BACKUP_CREATE)
 
             // Expired and cancelled sit here with failed on purpose. To somebody waiting for a
-            // backup they are the same event — it did not happen — and only the sentence differs.
+            // backup they are the same event - it did not happen - and only the sentence differs.
             ->whereIn('state', [Jobs::STATE_FAILED, Jobs::STATE_EXPIRED, Jobs::STATE_CANCELLED])
             ->where('updated_at', '>=', Carbon::now()->subDays(self::DAYS))
 
@@ -129,7 +129,7 @@ final class FailedBackupJobs
             // Read, understood, and either fixed or accepted. The seven-day window above is right
             // for a failure nobody has looked at and wrong for one somebody has already dealt with:
             // a panel people have learned to scroll past reports nothing. Dismissing hides the
-            // notice and nothing else — the job, its reason and its audit row all stay.
+            // notice and nothing else - the job, its reason and its audit row all stay.
             ->whereNull('notice_dismissed_at');
     }
 

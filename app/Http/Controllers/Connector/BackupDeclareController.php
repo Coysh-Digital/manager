@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\Log;
  * the bytes and their claimed hash would have to be read before it could be judged; declaring first
  * means the claim is authenticated, recorded, and then compared against a stream that arrives after it.
  *
- * The response carries the artifact identifier the connector needs for step two. Nothing else — in
+ * The response carries the artifact identifier the connector needs for step two. Nothing else - in
  * particular no URL, no token and no storage location, because the connector already knows where to
  * send it and being told would mean it could be told somewhere else.
  */
@@ -46,7 +46,7 @@ final class BackupDeclareController
 
         // The job has to belong to this site, be a backup job, and be one this connector actually
         // claimed. A declaration against somebody else's job, or against a job that was never issued,
-        // is refused — an artifact is only ever accepted as the result of work the platform asked for.
+        // is refused - an artifact is only ever accepted as the result of work the platform asked for.
         $job = RemoteJob::query()
             ->where('external_id', $jobId)
             ->where('site_id', $site->id)
@@ -80,7 +80,7 @@ final class BackupDeclareController
          | Permission to write the bytes straight to storage, when this edition issues it.
          |
          | Issued here rather than when the job was handed out, because only now is the whole-file
-         | checksum known — so the grant is bound to it and the storage service itself refuses a body
+         | checksum known - so the grant is bound to it and the storage service itself refuses a body
          | that does not match. A grant minted at claim time could only say "write something here".
          |
          | It carries a path, a query string and headers. **No host and no scheme**, which is the
@@ -90,7 +90,7 @@ final class BackupDeclareController
          | that, and one of the connector's build checks looks for exactly that.
          |
          | The query string is a bearer credential for the life of the grant. It goes in this response
-         | and nowhere else — never an audit row, never a log line, never a job payload.
+         | and nowhere else - never an audit row, never a log line, never a job payload.
          */
         $grant = $backups->issueGrant($artifact);
 
@@ -110,7 +110,7 @@ final class BackupDeclareController
          | Written down, because the identifier below is offered as something to look up.
          |
          | This returned a correlation id and logged nothing. A site was refused, reported the id it
-         | had been handed, and a search of the platform's own logs found no record of it — the one
+         | had been handed, and a search of the platform's own logs found no record of it - the one
          | thing a person had to go on named something that had never been written. The reason was
          | composed here and existed only in a response body already on its way out.
          |

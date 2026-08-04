@@ -18,7 +18,7 @@ use RuntimeException;
  * Step two: the bytes. Requires `backups:create`.
  *
  * By the time this runs the request has been authenticated by signature, and the signature covered a
- * hash of the body declared in a header — so the body has not been read yet, and does not need to be
+ * hash of the body declared in a header - so the body has not been read yet, and does not need to be
  * trusted. It is streamed straight past, hashed on the way, and only committed if the hash matches both
  * the header the signature covered and the checksum recorded at the declare step.
  *
@@ -38,7 +38,7 @@ final class BackupUploadController
          | No time limit on this request, and only on this request.
          |
          | Everything else here should finish in a second and a runaway one should be cut off, so the
-         | ceiling stays where it is globally — the shipped image sets sixty seconds. This route is
+         | ceiling stays where it is globally - the shipped image sets sixty seconds. This route is
          | different in kind: it is bounded by how fast a customer's uplink can move a file whose size
          | the operator has already agreed to accept, and there is no number that is both large enough
          | for a slow twenty-gigabyte upload and small enough to be a useful guard.
@@ -68,7 +68,7 @@ final class BackupUploadController
         // Which hash that is depends on the format, and it is asked of the artifact rather than named
         // here. A v1 artifact uploads a bare encrypted stream; a v2 artifact uploads an envelope
         // wrapped around one, so its ciphertext hash covers only part of the file. Comparing against
-        // the wrong one either rejects every valid upload or — worse — accepts a file whose manifest
+        // the wrong one either rejects every valid upload or - worse - accepts a file whose manifest
         // had been replaced wholesale.
         $signedHash = (string) $request->attributes->get('manager.content_sha256', '');
 

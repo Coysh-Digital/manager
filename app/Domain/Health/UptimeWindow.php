@@ -36,7 +36,7 @@ final class UptimeWindow
      *
      * Not a fault, and not a counting error either, which is why it needs saying rather than fixing.
      * `expected` models one producer beating on a fixed interval; `received` counts the reports that
-     * arrived, and a connector has two independent ways of sending them — the cron task, and the web
+     * arrived, and a connector has two independent ways of sending them - the cron task, and the web
      * trigger that fires off ordinary traffic. They throttle separately and neither knows about the
      * other, so a busy site with both enabled lands somewhere above the estimate and stays there.
      *
@@ -69,7 +69,7 @@ final class UptimeWindow
     public function isCurrentlySilent(): bool
     {
         // Indexed rather than end(), which moves an internal pointer and so takes its argument by
-        // reference — which a readonly property cannot be.
+        // reference - which a readonly property cannot be.
         return $this->outages !== [] && $this->outages[array_key_last($this->outages)]->isOngoing;
     }
 

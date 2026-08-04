@@ -45,7 +45,7 @@ final class SiteSettingsController
      * Change what this site is called, where it is expected to pair from, and which environment it is.
      *
      * None of these was editable before, which meant a renamed client or a moved domain was fixed by
-     * removing the site and pairing it again — losing its findings, its history and its audit trail
+     * removing the site and pairing it again - losing its findings, its history and its audit trail
      * to a typo.
      *
      * Behind recent authentication and restricted to administrators, and the previous values go into
@@ -102,7 +102,7 @@ final class SiteSettingsController
         );
 
         return back()->with('status', $before['environment'] !== $after['environment']
-            ? 'Saved. Changing the environment changes which findings apply — several rules only fire in production.'
+            ? 'Saved. Changing the environment changes which findings apply - several rules only fire in production.'
             : 'Saved.');
     }
 }

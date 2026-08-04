@@ -45,7 +45,7 @@
 </div>
 
 {{-- Shown once, on the request that issued it. Only the hash is stored, so there is no route
-     that will show it again — which is exactly why it is safe to show here. --}}
+     that will show it again - which is exactly why it is safe to show here. --}}
 @if (session('enrolmentCode'))
     @php
         // Null on a self-hosted installation, where the operator chose the address and this
@@ -60,10 +60,10 @@
     @endphp
 
     <div class="mb-5 rounded-[10px] border border-primary bg-pale p-4">
-        <p class="mb-1.5 text-[13.5px] font-medium">Enrolment code — shown once</p>
+        <p class="mb-1.5 text-[13.5px] font-medium">Enrolment code - shown once</p>
         <p class="mb-3 text-[12.5px] text-text-2">
             Single-use, expires in {{ (int) (config('manager.enrolment.ttl') / 60) }} minutes,
-            and stored only as a hash — if you lose it, issue another.
+            and stored only as a hash - if you lose it, issue another.
         </p>
 
         {{-- The code itself is the thing somebody came here for, so it is the largest thing on

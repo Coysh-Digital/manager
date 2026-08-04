@@ -8,7 +8,7 @@
 #
 # Postgres and Redis are included so a small installation works out of the box. Both are ordinary
 # services with ordinary connection strings, so pointing at managed equivalents is a matter of
-# changing DB_HOST and REDIS_HOST and removing the service — there is nothing here that assumes
+# changing DB_HOST and REDIS_HOST and removing the service - there is nothing here that assumes
 # they are local.
 #
 # Object storage lives in a separate overlay, off by default, because it is only needed from Phase 3
@@ -54,7 +54,7 @@ services:
     <<: *app
     command: ["web"]
     ports:
-      # Bound to localhost. Put a reverse proxy in front and terminate TLS there — see
+      # Bound to localhost. Put a reverse proxy in front and terminate TLS there - see
       # docs/reverse-proxy.md. Exposing this directly would serve the control plane over plain HTTP.
       #
       # The host port is configurable because 8080 is popular and a port clash is a poor first
@@ -97,7 +97,7 @@ services:
     image: redis:8-alpine
     restart: unless-stopped
     # Persistence on, unlike the local development setup. Losing the nonce store mid-flight would
-    # not be a security failure — replay protection fails closed — but it would stop every connector
+    # not be a security failure - replay protection fails closed - but it would stop every connector
     # reporting until it came back.
     command: ["redis-server", "--appendonly", "yes", "--save", "60", "1000"]
     volumes:

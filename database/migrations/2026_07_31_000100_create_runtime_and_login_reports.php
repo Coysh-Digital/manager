@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\Schema;
  *
  * Note what neither table can hold. `runtime_reports` has byte counts and numeric limits, and
  * nowhere to put a path or a file name. `login_reports` has four integers and a timestamp, and
- * nowhere to put a username, an email address or a source address — a log of who tried to sign in to
+ * nowhere to put a username, an email address or a source address - a log of who tried to sign in to
  * somebody else's website is not a thing this platform collects, and the schema is where that is
  * enforced rather than the intention.
  */

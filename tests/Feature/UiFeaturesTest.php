@@ -58,7 +58,7 @@ it('keeps the palette behind authentication', function (): void {
 });
 
 it('puts a visible trigger on the page as well as the shortcut', function (): void {
-    // A keyboard shortcut nobody is told about is a feature for the person who wrote it — and on a
+    // A keyboard shortcut nobody is told about is a feature for the person who wrote it - and on a
     // phone there is no shortcut at all.
     $this->actingAs($this->user)
         ->get(route('sites.index'))
@@ -91,7 +91,7 @@ it('sorts the fleet by disk without dissolving the groups', function (): void {
         ->getContent();
 
     // A fleet sorted by disk that buried a silent site under a healthy one would have forgotten what
-    // the screen is for, so the grouping survives the sort — these three are all steady, and the
+    // the screen is for, so the grouping survives the sort - these three are all steady, and the
     // heading is still there.
     expect($html)->toContain('Steady')
         ->and(strpos($html, 'Full'))->toBeLessThan(strpos($html, 'Roomy'));

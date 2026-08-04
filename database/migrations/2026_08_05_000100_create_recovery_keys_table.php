@@ -28,7 +28,7 @@ use Illuminate\Support\Facades\Schema;
  * and it would leave historical artifacts naming a fingerprint nothing explains.
  *
  * **A key is not usable until it has been proven.** Almost nothing can be checked about a submitted
- * X25519 public key — any 32 bytes is a valid one — so the only meaningful test is whether the
+ * X25519 public key - any 32 bytes is a valid one - so the only meaningful test is whether the
  * submitter can decrypt something sealed to it. The challenge columns exist for that ceremony, and only
  * the hash of the expected answer is stored, so the row itself never contains anything that would let
  * somebody else complete it.
@@ -44,9 +44,9 @@ return new class extends Migration
             $table->foreignId('organisation_id')->constrained()->cascadeOnDelete();
 
             /*
-             | pending_proof — submitted, not yet demonstrated to be usable. Never a recipient.
-             | active        — proven. Every new backup is sealed to it.
-             | revoked       — excluded from new backups. Terminal, and historical artifacts keep theirs.
+             | pending_proof - submitted, not yet demonstrated to be usable. Never a recipient.
+             | active        - proven. Every new backup is sealed to it.
+             | revoked       - excluded from new backups. Terminal, and historical artifacts keep theirs.
              */
             $table->string('state', 24)->default('pending_proof');
 
@@ -55,7 +55,7 @@ return new class extends Migration
             $table->string('public_key', 64);
 
             // Derived from the key, stored so it can be indexed and compared without decoding on every
-            // read. Recomputed and checked before the key is ever served to a site — a fingerprint in a
+            // read. Recomputed and checked before the key is ever served to a site - a fingerprint in a
             // row is a value somebody could have edited, and this is the one field a site pins against.
             $table->string('fingerprint', 40);
 
@@ -103,7 +103,7 @@ return new class extends Migration
              | going back to backups this platform can read, and that should not be one click away
              | from somebody who does not realise what it means.
              |
-             | It is not the control that stops a downgrade — a compromised platform is the same party
+             | It is not the control that stops a downgrade - a compromised platform is the same party
              | that would be enforcing it. The control that works lives on the Craft server, where a
              | connector refuses to seal to anything but its pinned fingerprints. This defends against
              | the likelier failure: an operator rolling a connector fleet back a version.

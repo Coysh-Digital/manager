@@ -11,10 +11,10 @@ use Symfony\Component\HtmlSanitizer\HtmlSanitizerConfig;
  * The allowlist that decides what a release note may put on the page.
  *
  * Plugin release notes arrive as **HTML**. Craft's update API hands them over already rendered —
- * its own updates screen does `.html(notes.replace(/(<\/?h)(3|4|5)\b/g, …))` — and the connector
+ * its own updates screen does `.html(notes.replace(/(<\/?h)(3|4|5)\b/g, …))` - and the connector
  * forwards what Craft downloaded, verbatim. The platform was rendering them through commonmark with
  * `html_input => 'strip'`, which returns an empty string for an HTML block, so every note body
- * vanished and the only thing left on screen was the `## 5.7.1 — 2026-07-22` heading the platform
+ * vanished and the only thing left on screen was the `## 5.7.1 - 2026-07-22` heading the platform
  * had generated itself. That is the reported symptom: version headings, and nothing underneath.
  *
  * So the HTML has to survive, which means it has to be constrained. This is third-party text
@@ -24,9 +24,9 @@ use Symfony\Component\HtmlSanitizer\HtmlSanitizerConfig;
  * **No media, and that is the interesting decision.** An `<img src="https://…">` inside a release
  * note is an outbound request from an authenticated page in this control plane to a third party,
  * telling whoever serves it that this installation is reading this plugin's notes at this moment.
- * That association is exactly what PluginChangelog and ChangelogFetcher are built to avoid — the
+ * That association is exactly what PluginChangelog and ChangelogFetcher are built to avoid - the
  * notes are stored against a plugin and a version with no site column, and the whole feature makes
- * no outbound request — and an image would have reintroduced it through a channel nobody was
+ * no outbound request - and an image would have reintroduced it through a channel nobody was
  * watching. Dropped rather than blocked, so the contents go with the tag.
  *
  * Links keep `href` and nothing else, `http` and `https` only. `javascript:`, `data:` and

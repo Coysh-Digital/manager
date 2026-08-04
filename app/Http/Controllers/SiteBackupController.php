@@ -26,7 +26,7 @@ use Illuminate\Http\Request;
  * One site's backups.
  *
  * The fleet screen answers "what are we holding, and what is it costing"; this answers "is this site
- * protected, and how far back does that go" — which is the question asked while looking at a
+ * protected, and how far back does that go" - which is the question asked while looking at a
  * particular site, and previously meant leaving it for a list of every artifact in the organisation.
  *
  * No download button and no restore button, for the reasons the fleet screen gives: decrypting a
@@ -52,7 +52,7 @@ final class SiteBackupController
      * Moved here from the site's Settings screen, where it shared a form with the site's name, its
      * expected domain and its environment. Nothing about those is a backup decision, and the
      * schedule was the only control on that form whose effect is visible on a different screen
-     * entirely — so somebody looking at a list of backups wondering why there were none had to know
+     * entirely - so somebody looking at a list of backups wondering why there were none had to know
      * to go and look somewhere else to find out.
      *
      * Administrators, and behind recent authentication, exactly as it was: this decides that a
@@ -89,7 +89,7 @@ final class SiteBackupController
          | and nowhere else. Somebody could believe a site had been backed up nightly for months.
          |
          | Refused rather than saved-and-warned, because a schedule that is set and never runs is
-         | precisely the state that misleads. Turning one *off* is always allowed — needing a key to
+         | precisely the state that misleads. Turning one *off* is always allowed - needing a key to
          | stop asking for backups would be absurd.
         */
         if ($validated['backup_schedule'] !== 'off'
@@ -152,7 +152,7 @@ final class SiteBackupController
      *
      * Two things are deliberately not here. It cannot lengthen an existing artifact's life: expiry
      * is computed when a backup is stored, from the policy in force then, so this governs future
-     * backups only. And it cannot set "keep the most recent N" — that is the rule this replaced,
+     * backups only. And it cannot set "keep the most recent N" - that is the rule this replaced,
      * because a site producing bad backups on a schedule pushes out the last known-good copy while
      * the count never drops below N and nothing looks wrong.
      */
@@ -253,7 +253,7 @@ final class SiteBackupController
 
             'inFlight' => $this->inFlight->forSite($site),
 
-            // Asked for, did not happen, left no artifact — invisible everywhere else on this page.
+            // Asked for, did not happen, left no artifact - invisible everywhere else on this page.
             'failedJobs' => $this->failed->forSite($site),
             'checkInWindow' => $this->inFlight->checkInWindow(),
 

@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Schema;
  * Two columns an artifact larger than five gigabytes needs.
  *
  * Both nullable, and both stay null for every artifact that already exists. That is not a
- * transitional state to be tidied later — a v2 artifact never declared a CRC, and an artifact small
+ * transitional state to be tidied later - a v2 artifact never declared a CRC, and an artifact small
  * enough to upload in one request never has an upload to reference.
  */
 return new class extends Migration
@@ -23,7 +23,7 @@ return new class extends Migration
              |
              | Declared only under backup.v3. An object store can confirm a whole-object checksum
              | across a multipart assembly when the algorithm linearises, which CRC-32C does and
-             | SHA-256 does not — so this is what the store is given to check when an artifact arrives
+             | SHA-256 does not - so this is what the store is given to check when an artifact arrives
              | in parts. It never replaces artifact_sha256, which is the signed one and the one a
              | customer verifies offline.
              */

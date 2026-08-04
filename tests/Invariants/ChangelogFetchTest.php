@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Cache;
  * The one outbound request this application makes that is not a notification.
  *
  * Reading Craft's changelog is safe for a narrow and checkable reason, and this file is the check.
- * The danger was never the fetch — it is that a request made *because a particular site is behind*
+ * The danger was never the fetch - it is that a request made *because a particular site is behind*
  * carries that fact to whoever answers it, and enough of those describe a fleet. So:
  *
  *  - the destination is a constant, not something assembled from a report;

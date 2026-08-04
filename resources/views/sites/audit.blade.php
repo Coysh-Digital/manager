@@ -94,7 +94,7 @@
         {{--
             What this log is not.
 
-            It records what Manager did — who granted a capability, who asked for a refresh, who
+            It records what Manager did - who granted a capability, who asked for a refresh, who
             removed a site. It does not record what happened *inside* Craft: somebody signing in to
             the control panel, an entry being edited, a failed password. Nothing reports that yet, and
             an audit screen that quietly implies otherwise would be worse than one that says so.
@@ -102,7 +102,7 @@
         <p class="mt-3 rounded-[9px] border border-border bg-surface-2 px-4 py-3 text-[12px] leading-relaxed text-text-2">
             This is Manager's own record: what was done to this site <em>from here</em>, and by whom.
             It is hash-chained and append-only. The sign-in figures above are a different kind of
-            thing — reported telemetry from the site, neither chained nor tamper-evident — and Craft's
+            thing - reported telemetry from the site, neither chained nor tamper-evident - and Craft's
             own log of content changes stays on the site, where it belongs.
         </p>
     </div>

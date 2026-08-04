@@ -35,7 +35,7 @@ echo "Checking integrity..."
 if ! $CHECK SHA256SUMS; then
     echo "" >&2
     echo "verify-release: FAILED. What you have is not what was published." >&2
-    echo "Do not install it. Re-download, and if it fails again say so at hello@coysh.digital." >&2
+    echo "Do not install it. Re-download, and if it fails again say so at support@managerforcraft.com." >&2
     exit 1
 fi
 

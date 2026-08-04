@@ -11,7 +11,7 @@
  * Two decisions worth stating:
  *
  *  - **The whole list is fetched once**, on first open, not per keystroke. A fleet is tens or
- *    hundreds of sites — a few kilobytes — so filtering happens in the browser. That makes it
+ *    hundreds of sites - a few kilobytes - so filtering happens in the browser. That makes it
  *    instant, works on a bad connection, and keeps what somebody typed out of the access log.
  *  - **It never acts, it only navigates.** No "revoke this connector" from a text box. Everything
  *    destructive in this product asks for a typed confirmation on the screen that owns it, and a
@@ -82,7 +82,7 @@ async function load() {
 }
 
 /**
- * Subsequence matching, so "acmeh" finds "Acme — Health".
+ * Subsequence matching, so "acmeh" finds "Acme - Health".
  *
  * Deliberately not fuzzy scoring with a library. The useful behaviours are: typing part of a name,
  * typing part of a domain, and typing a name then a tab. Ranking is by where the match starts,
@@ -121,7 +121,7 @@ function match(data, query) {
         ];
     }
 
-    // "acme health" — the last word may name a tab. Only treated as one if something is left over to
+    // "acme health" - the last word may name a tab. Only treated as one if something is left over to
     // match the site with, so typing "health" alone still finds a site called Health Ltd.
     const words = needle.split(/\s+/);
     const last = words[words.length - 1];

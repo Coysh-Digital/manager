@@ -14,7 +14,7 @@ use coyshdigital\managerprotocol\Jobs;
  * to edit this file and decide all nine properties a definition requires.
  *
  * Read the definitions below and note the shape of what is here. Every job names an operation the
- * connector already implements. None of them takes a command, a path, a query or a URL — a job that
+ * connector already implements. None of them takes a command, a path, a query or a URL - a job that
  * accepted any of those would be a channel for arbitrary execution wearing a job's clothes, which is
  * exactly what invariant 8 forbids.
  */
@@ -158,7 +158,7 @@ final class JobRegistry
          | Take a database backup, encrypt it on the site and upload it here.
          |
          | Takes no parameters, and that is the interesting part of this definition. The obvious design
-         | hands the connector somewhere to upload to — but a parameter naming a destination would let
+         | hands the connector somewhere to upload to - but a parameter naming a destination would let
          | a compromised platform tell a site to send its entire database somewhere else. So there is
          | nothing in the payload for a forged instruction to occupy: the connector uploads to the
          | platform it is already paired with, at an address it holds locally and no payload can reach.
@@ -177,7 +177,7 @@ final class JobRegistry
              |
              | `max_megabytes` is sent only by an edition that owns and bills for the storage, and
              | zero means no limit. Self-hosted never sends it, so a site's own maxBackupMegabytes
-             | stands — which is the setting's whole purpose there: it bounds a dump on a disk the
+             | stands - which is the setting's whole purpose there: it bounds a dump on a disk the
              | same operator owns.
              |
              | Hosted, it is the wrong control in the wrong place. The customer's plugin config is on
@@ -199,7 +199,7 @@ final class JobRegistry
              |
              | Seven hours: the default `manager.backups.upload_window` of six, plus an hour for the
              | dump and the encryption that happen before the upload starts. The previous value was
-             | one hour, sized for a world where the wire contract capped an artifact at 2 GB — it
+             | one hour, sized for a world where the wire contract capped an artifact at 2 GB - it
              | would now expire a job while its artifact was still arriving, and fail a site that had
              | done every part of the work correctly.
              |
@@ -224,7 +224,7 @@ final class JobRegistry
              | screen keeps saying it is coming, a second one cannot be requested because the
              | idempotency key is still outstanding, and whatever eventually arrives is stored and
              | billed. Cancelling ends the waiting and makes the declaration that follows be
-             | refused — the declare endpoint already requires a claimed job, so that half needs no
+             | refused - the declare endpoint already requires a claimed job, so that half needs no
              | new rule, only a reason to trust it.
              |
              | The interface says exactly this much and no more: it stops us accepting the backup,

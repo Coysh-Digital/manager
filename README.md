@@ -1,19 +1,15 @@
 # Manager for Craft
 
-One screen for every Craft CMS site you look after: versions, updates, findings and encrypted
-backups. Answers "what version is it, is it patched, did the backup run" without logging into ten
-control panels.
+One control panel for every Craft CMS site you look after: versions, updates, findings and encrypted
+backups. Answers the question we asked ourselves a lot - "what version is it, is it patched, did the backup run" without logging into ten control panels.
 
 ### 📖 **[Documentation → managerforcraft.com/docs](https://managerforcraft.com/docs/)**
 
-Installation, configuration, pairing, backups and the security model all live there. This file covers
-what Manager for Craft is and how to work on it; everything about *running* it is in the docs.
+Installation, configuration, pairing, backups and the security model all live in the docs.
 
-Free software under the **AGPL-3.0-or-later**. Two editions from one core: **Manager Cloud**, hosted
-by Coysh Digital, and **Manager Self-Hosted**, which runs on your own infrastructure. This repository
-is the core, and it is what Self-Hosted ships. Nothing is held back for the paid edition.
+Free software under the **AGPL-3.0-or-later**. If you want to check it out on a hosted site check out [managerforcraft.com](https://managerforcraft.com/)
 
-Requires PHP 8.3+, PostgreSQL 15+ and Redis 7+.
+Requires PHP 8.1+, PostgreSQL 15+ and Redis 7+.
 
 ## What it holds, and what it does not
 
@@ -26,7 +22,7 @@ the public half, so a stolen copy of this database confers nothing.
 
 **No ability to read your backups.** A site encrypts its database to recovery keys you generated on
 your own machine, and uploads ciphertext. The platform is not a recipient, so what an attacker gets
-from the server — or what we could be compelled to hand over — is a file nobody here can open. A
+from the server - or what we could be compelled to hand over - is a file nobody here can open. A
 recovery key is required before any backup is taken, so there is no configuration in which this is
 quietly not true. See [Recovery keys](https://managerforcraft.com/docs/recovery-keys.html).
 
@@ -46,12 +42,10 @@ your own and your clients' sites.
 
 Running it means running a security-sensitive service: a patched server, Postgres and Redis, TLS, a
 signing keypair backed up separately from the database, and a backup store holding a copy of every
-managed site's database — as ciphertext, but still. The
-[installation guide](https://managerforcraft.com/docs/install.html) is honest about that before it tells
-you how.
+managed site's database - as ciphertext, but still. The
+[installation guide](https://managerforcraft.com/docs/install.html) gives a good overview
 
-If you would rather not, **[Manager Cloud](https://managerforcraft.com)** is the same core hosted by
-Coysh Digital: same connector, same protocol, same security boundaries, with the server, the storage
+If you would rather not self-host, **[Manager for Craft](https://managerforcraft.com)** is the same core hosted by us: same connector, same protocol, same security boundaries, with the server, the storage
 and the on-call rota ours rather than yours. The connector is identical, so moving between the two
 means re-pairing sites rather than rebuilding anything.
 
@@ -99,7 +93,7 @@ ddev exec vendor/bin/phpstan analyse
 ```
 
 Tests run against Postgres rather than SQLite, and against a real Redis. The audit log depends on a
-trigger and on revoked table privileges, and replay protection depends on an atomic store — testing
+trigger and on revoked table privileges, and replay protection depends on an atomic store - testing
 either against a substitute would be testing something other than what ships.
 
 `tests/Invariants/` holds one file per numbered requirement in the specification, so a reviewer can
@@ -119,11 +113,7 @@ read.
 | `manager:user:password` | Set a password from the server, for when nobody can log in. |
 | `manager:mail-test` | Send a test email, to prove delivery rather than configuration. |
 
-Two more exist for backups taken **before** recovery keys, which were sealed to a platform-held key
-rather than to yours: `manager:backups:keygen` mints that keypair and `manager:backups:fetch`
-decrypts an artifact sealed to it. Neither is part of a current installation's routine — every backup
-taken now is opened with [`manager-restore`](https://github.com/Coysh-Digital/manager-restore) on
-your own machine, because the platform holds no key that would open it. See
+Every backup taken is opened with [`manager-restore`](https://github.com/Coysh-Digital/manager-restore) on your own machine, because the platform holds no key that would open it. See
 [Restoring a backup](https://managerforcraft.com/docs/restoring.html).
 
 ## Related repositories
@@ -133,16 +123,11 @@ your own machine, because the platform holds no key that would open it. See
 | [`craft-manager-connector`](https://github.com/Coysh-Digital/craft-manager-connector) | The Craft 4.4+/5 plugin installed on managed sites. Public, MIT. |
 | [`manager-protocol`](https://github.com/Coysh-Digital/manager-protocol) | The wire contract shared by both. Public, MIT. |
 | [`manager-restore`](https://github.com/Coysh-Digital/manager-restore) | The offline CLI that generates recovery keys and decrypts backups. Public, MIT. It opens no sockets, and there is a test. |
-| `manager-cloud` | Private. The marketing site at managerforcraft.com. |
-| `manager-private` | Private. A deployment mirror of this repository, plus the Cloud hosting layer: billing, provisioning and per-organisation storage. Nothing in it is required to run Manager for Craft. |
 
-`manager-restore` is deliberately a separate, permissively licensed package with no dependency on
-this one. If Coysh Digital stops existing, that tool plus the protocol specification is what stands
-between a customer and a permanently unreadable archive.
 
 ## Security
 
-See [SECURITY.md](SECURITY.md). Report vulnerabilities to hello@coysh.digital, privately.
+See [SECURITY.md](SECURITY.md). Report vulnerabilities to support@managerforcraft.com, privately.
 
 Nothing here depends on the source being secret. Rejections are deliberately uniform so an endpoint
 cannot be used to discover which site identifiers exist; the unknown-site path verifies against a
@@ -158,14 +143,7 @@ including what an attacker gets from each component they compromise.
 [LICENSE.md](LICENSE.md) for what it means in practice.
 
 Run it for your own sites, run it for your clients' sites, run it commercially, fork it. None of that
-asks anything of you. The one obligation is section 13: modify Manager for Craft and let other people
-use your modified version over a network, and you owe those users the source of your version. Running
-an unmodified copy triggers nothing, and neither does modifying it for yourself.
-
-That is deliberate rather than a default. This is a control plane holding the keys to other people's
-backups, and the case for publishing it is that its security properties can be verified rather than
-asserted. A fork carrying the trust of this one while hiding what it actually does would undo the only
-reason for publishing in the first place.
+asks anything of you. The
 
 The connector, the protocol package and the restore tool are MIT, because they run inside somebody
 else's codebase or on somebody else's machine.
@@ -177,7 +155,5 @@ features that are missing here; it adds the fact that somebody else runs it.
 
 Bug reports and patches are welcome. Two things to know first:
 
-- **Security issues go to hello@coysh.digital, never to a public issue.**
-- `tests/Invariants/` encodes the security properties this software promises. A change that makes one
-  of those tests fail is a change to the promise, so it needs an explanation of why the promise should
-  change — not a fix to the test.
+- **Security issues go to us at support@managerforcraft.com, never to a public issue please!**
+

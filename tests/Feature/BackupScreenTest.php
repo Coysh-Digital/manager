@@ -33,7 +33,7 @@ beforeEach(function (): void {
 
     // A backup needs a recovery key to encrypt to, whatever the format floor, so an organisation
     // that can take one has a key. This used to be absent here, and the tests below passed because
-    // the rule only applied at the v2 floor — which no organisation reaches until it adds its first
+    // the rule only applied at the v2 floor - which no organisation reaches until it adds its first
     // key, so the rule applied to nobody who had not already complied with it.
     $this->key = RecoveryKey::factory()->for($this->organisation)->create();
 
@@ -98,7 +98,7 @@ it('offers the ciphertext for download and a command for decrypting it', functio
      | This assertion used to be that there was no download button at all, and the reason given was
      | that a download which works until a database is big enough to matter is worse than a command
      | that always works. That reason is about *decrypting* inside a web request, and it is still
-     | enforced — by the two assertions at the bottom, which are the part worth keeping.
+     | enforced - by the two assertions at the bottom, which are the part worth keeping.
      |
      | What it also did, unintentionally, was forbid handing over the bytes as they are already
      | stored. A v2 artifact is sealed to the organisation's own recovery keys, so the console cannot
@@ -162,7 +162,7 @@ it('queues a backup when an administrator asks for one', function (): void {
 
 it('attributes a requested backup and says so rather than queueing a second one behind it', function (): void {
     // Neither an actor nor an idempotency key was passed, so the audit row for a job that reads an
-    // entire production database recorded only that "the system" asked — and a second press queued a
+    // entire production database recorded only that "the system" asked - and a second press queued a
     // second full dump of the same database.
     CapabilityGrant::factory()->for($this->site)->capability('backups:create')->create();
 
@@ -171,7 +171,7 @@ it('attributes a requested backup and says so rather than queueing a second one 
         ->assertRedirect();
 
     // The second press is now refused with a reason instead of being absorbed by the idempotency
-    // key. Same outcome for the database — one job — but somebody who presses twice because nothing
+    // key. Same outcome for the database - one job - but somebody who presses twice because nothing
     // appeared to happen is told that something did.
     $this->actingAs($this->owner)->withSession($this->recentAuth)
         ->post("/backups/sites/{$this->site->external_id}")
@@ -192,7 +192,7 @@ it('will not queue a manual backup on top of a scheduled one', function (): void
      | The gap the idempotency key never covered.
      |
      | Manual presses are keyed 'backup:manual' and scheduled runs are keyed per site and hour, so
-     | they never collided — pressing the button while a nightly backup sat queued produced a second
+     | they never collided - pressing the button while a nightly backup sat queued produced a second
      | job and, when the site next checked in, two concurrent dumps of the same database. That is the
      | outage this whole area is written to avoid, and it was reachable from a button.
     */
@@ -222,7 +222,7 @@ it('refuses a backup with a reason when the organisation has no recovery key to 
     CapabilityGrant::factory()->for($this->site)->capability('backups:create')->create();
 
     // No floor is set. That is the point: the rule used to apply only at v2, which an organisation
-    // reaches on its first key activation — so the only organisations exempt from "you need a key"
+    // reaches on its first key activation - so the only organisations exempt from "you need a key"
     // were the ones that had never had one.
     $this->key->forceFill(['state' => RecoveryKey::STATE_REVOKED, 'revoked_at' => now()])->save();
 
@@ -242,7 +242,7 @@ it('refuses a backup with a reason when the organisation has no recovery key to 
 });
 
 it('does not offer a backup from a site whose connector has gone away', function (): void {
-    // Enqueue throws SITE_NOT_CONNECTED here, and nothing caught it — so a routine race between the
+    // Enqueue throws SITE_NOT_CONNECTED here, and nothing caught it - so a routine race between the
     // screen rendering and the button being pressed was a 500.
     CapabilityGrant::factory()->for($this->site)->capability('backups:create')->create();
     $this->site->connectors()->delete();
@@ -477,7 +477,7 @@ it('stops waiting for a backup a site has already collected', function (): void 
 
 it('says what cancelling does not do', function (): void {
     // The distinction the whole feature rests on. The platform never calls out, so a site part-way
-    // through a dump cannot be reached — a button that implied otherwise would be worse than none.
+    // through a dump cannot be reached - a button that implied otherwise would be worse than none.
     $job = RemoteJob::factory()->for($this->site)->create([
         'type' => Jobs::BACKUP_CREATE,
         'state' => Jobs::STATE_CLAIMED,
@@ -550,7 +550,7 @@ it('refuses the declaration that arrives after a cancellation', function (): voi
 it('lets a fresh backup be requested once one is cancelled', function (): void {
     /*
      | The reason this matters more than tidiness. `backup:manual` is an at-most-once idempotency
-     | key, so while the abandoned job sits claimed the button refuses — somebody who cancelled
+     | key, so while the abandoned job sits claimed the button refuses - somebody who cancelled
      | because they wanted to take one *now* could not.
      */
     CapabilityGrant::factory()->for($this->site)->capability('backups:create')->create();

@@ -16,7 +16,7 @@ use App\Models\User;
  |
  | The whole design is in one distinction: this route hands over the bytes exactly as they are stored
  | and never decrypts anything. That is what lets a download button exist at all, after years of a
- | reasoned argument against one — the argument was about decrypting inside a web request, and it is
+ | reasoned argument against one - the argument was about decrypting inside a web request, and it is
  | still enforced everywhere.
  |
  | It exists because without it the zero-knowledge format was unusable on Cloud. The console correctly
@@ -108,7 +108,7 @@ it('redirects to the store when the store can sign a URL', function (): void {
 
 it('streams the ciphertext when the store has no URL to give', function (): void {
     // The self-hosted path on a local volume. Correct, and it holds a worker for the length of the
-    // transfer — which is why the store is asked first rather than this being the only path.
+    // transfer - which is why the store is asked first rather than this being the only path.
     storeAnswering(null, 'encrypted-bytes');
 
     $response = $this->actingAs($this->owner)->withSession($this->recentAuth)
@@ -126,7 +126,7 @@ it('streams the ciphertext when the store has no URL to give', function (): void
 it('hands over ciphertext and never plaintext', function (): void {
     /*
      | The assertion this whole route rests on. If anything ever makes this decrypt on the way out,
-     | the timeout argument that kept a download button away for years applies again — and worse, a
+     | the timeout argument that kept a download button away for years applies again - and worse, a
      | v2 artifact would have to be openable here, which would mean the platform holding a key it is
      | the entire point of the format for it not to hold.
     */

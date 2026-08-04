@@ -186,7 +186,7 @@ it('survives deletion of the user and site it refers to, untouched', function ()
     $event->refresh();
 
     // Nothing rewrites the row. actor_id and site_id are plain columns rather than foreign keys
-    // precisely so that removing a user or a site cannot require an UPDATE here — an UPDATE the
+    // precisely so that removing a user or a site cannot require an UPDATE here - an UPDATE the
     // append-only trigger would refuse anyway.
     expect($event->actor_id)->toBe($user->id)
         ->and($event->site_id)->toBe($site->id)

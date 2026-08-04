@@ -14,7 +14,7 @@ use Illuminate\Support\Carbon;
  * A TLS certificate that is about to stop working, or has.
  *
  * Like {@see SiteNotReporting}, this needs no capability, because it comes from the platform's own
- * observation rather than from anything the site said — and unlike every other rule here, the
+ * observation rather than from anything the site said - and unlike every other rule here, the
  * observation is one the platform went and made itself. The connector cannot see this: TLS terminates
  * at the edge, so PHP on the origin sees whatever a proxy put in `$_SERVER`, which on a CDN-fronted
  * site is not the certificate a visitor validates.
@@ -68,7 +68,7 @@ final class CertificateExpiring implements Rule
                 title: 'This site\'s TLS certificate has expired',
                 detail: sprintf(
                     'It expired %s. Visitors are seeing a browser warning, and anything calling this '
-                    .'site over HTTPS — including its own connector — may already be failing.',
+                    .'site over HTTPS - including its own connector - may already be failing.',
                     $site->certificate_expires_at->diffForHumans(),
                 ),
                 evidence: $this->evidence($site->certificate_expires_at, $site->certificate_issuer, $days),
@@ -95,7 +95,7 @@ final class CertificateExpiring implements Rule
     private function evidence(Carbon $expiresAt, ?string $issuer, int $days): array
     {
         // An expiry, an issuer and a count. Nothing about the site's traffic, its visitors or its
-        // configuration — a finding is a conclusion, and the evidence for it should be the smallest
+        // configuration - a finding is a conclusion, and the evidence for it should be the smallest
         // thing that supports the conclusion.
         return array_filter([
             'expires_at' => $expiresAt->toIso8601String(),

@@ -15,8 +15,8 @@ use RuntimeException;
  * Artifact storage on a Laravel filesystem disk.
  *
  * One implementation covers both self-hosted arrangements, because Flysystem already abstracts them:
- * a local volume for a single-server installation, or an S3-compatible bucket — MinIO, Backblaze, S3
- * itself — configured through the same disk. That is the whole reason to go through a disk rather than
+ * a local volume for a single-server installation, or an S3-compatible bucket - MinIO, Backblaze, S3
+ * itself - configured through the same disk. That is the whole reason to go through a disk rather than
  * an SDK.
  *
  * The disk is named in configuration and never derived from a request. A key is always built by
@@ -73,7 +73,7 @@ final class DiskObjectStore implements ObjectStore
      *
      * The two arrangements this one class covers genuinely differ here, which is the reason the
      * contract allows null. A local volume has no URL to give and never will, so downloads stream
-     * through the application — correct, but a worker held for the length of the transfer. A disk
+     * through the application - correct, but a worker held for the length of the transfer. A disk
      * pointed at MinIO, Backblaze or S3 itself can sign one, and then the browser fetches the bytes
      * directly and the application is not involved past the redirect. That is not a Cloud-only
      * capability and it would be wrong to make an operator pay for their own object store twice.
@@ -84,7 +84,7 @@ final class DiskObjectStore implements ObjectStore
      * under whatever the path implies instead of the name `manager-restore` expects to be handed, and
      * it serves the bytes from outside this application's authorisation and audit with the signature
      * as the only guard. Streaming through the download route is slower and correct. This was found
-     * by a test asserting a local disk gives no URL — which, before this check, it did.
+     * by a test asserting a local disk gives no URL - which, before this check, it did.
      */
     public function temporaryUrl(string $key, int $seconds): ?string
     {

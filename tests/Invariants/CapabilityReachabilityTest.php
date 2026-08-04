@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Route;
  *
  * The capability system has two halves that are edited in different files at different times: a
  * route says what it requires, and {@see CapabilityService} says what an administrator may hand out.
- * Nothing has ever checked that the second covers the first, and the gap is not theoretical — it
+ * Nothing has ever checked that the second covers the first, and the gap is not theoretical - it
  * shipped.
  *
  * `runtime:read` and `logins:read` were built end to end. The endpoints existed and enforced them,
@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\Route;
  * machine: a growing list of failed queue jobs in the control panel of a site we monitor.
  *
  * This is the check that would have caught it, and it is deliberately one-directional. A capability
- * with no route is fine — `security:read` and `licences:read` are reported inside another payload
+ * with no route is fine - `security:read` and `licences:read` are reported inside another payload
  * rather than through an endpoint of their own. A route with no way to grant what it demands is not.
  */
 it('offers a way to grant every capability an endpoint requires', function (): void {
@@ -33,7 +33,7 @@ it('offers a way to grant every capability an endpoint requires', function (): v
                 continue;
             }
 
-            // 'capability:runtime:read' — the capability itself contains the colon this splits on,
+            // 'capability:runtime:read' - the capability itself contains the colon this splits on,
             // so take everything after the first one rather than the second field.
             $enforced[substr($middleware, strlen('capability:'))] = $route->uri();
         }
@@ -60,7 +60,7 @@ it('offers a way to grant every capability an endpoint requires', function (): v
         '  '.implode("\n  ", $unreachable),
         'A connector asking for one gets a refusal it can do nothing about, and on Craft that is a',
         'failed queue job on the customer\'s site. Add it to CapabilityService::grantableFromInterface()',
-        'if it is read-only and finished, or to confirmable() if it reads content — or remove the',
+        'if it is read-only and finished, or to confirmable() if it reads content - or remove the',
         'endpoint if it is not.',
     ]));
 });

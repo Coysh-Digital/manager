@@ -31,7 +31,7 @@ final class SlowResponseTimes implements Rule
     /**
      * 95th-percentile render time, in milliseconds, before this is worth saying.
      *
-     * Two seconds of PHP, before any network. Deliberately far above "could be quicker" — this is
+     * Two seconds of PHP, before any network. Deliberately far above "could be quicker" - this is
      * meant to catch a site that has a problem, not to grade sites against each other.
      */
     private const THRESHOLD_MS = 2000.0;
@@ -66,7 +66,7 @@ final class SlowResponseTimes implements Rule
             title: 'Pages are slow to build',
             detail: sprintf(
                 'One request in twenty took over %s seconds of PHP time, measured across %d requests '
-                .'the site was serving anyway (median %s ms). This is server render time only — it '
+                .'the site was serving anyway (median %s ms). This is server render time only - it '
                 .'excludes DNS, TLS, queueing and the network, so what a visitor actually waits is '
                 .'longer. Common causes are an uncached template, an N+1 query in an element loop, or '
                 .'image transforms being generated on demand.',

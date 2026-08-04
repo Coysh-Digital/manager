@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Schema;
  * The zero-knowledge artifact format, alongside the one it replaces.
  *
  * Nothing here changes an existing row. Artifacts taken under `backup.v1` had their key sealed to this
- * platform and re-wrapped for storage, and they stay exactly as they were — readable, retrievable, and
+ * platform and re-wrapped for storage, and they stay exactly as they were - readable, retrievable, and
  * honestly labelled as something we could open. `format_version` defaults to `v1` so no backfill is
  * needed and no artifact is silently reinterpreted as something it is not.
  *
@@ -25,7 +25,7 @@ use Illuminate\Support\Facades\Schema;
  * On the two new artifact states: `uploaded` is genuinely distinct rather than decoration. When bytes
  * are streamed through the platform they are hashed on the way past, so storage and verification happen
  * in the same instant and the state is skipped entirely. When they go straight to object storage the
- * connector can only report that it finished, and the platform confirms integrity separately — that gap
+ * connector can only report that it finished, and the platform confirms integrity separately - that gap
  * is a real state and pretending otherwise would mean calling an unverified artifact `stored`.
  */
 return new class extends Migration
@@ -34,8 +34,8 @@ return new class extends Migration
     {
         Schema::table('backup_artifacts', function (Blueprint $table): void {
             /*
-             | v1 — key sealed to this platform, re-wrapped into `wrapped_key`. We can read it.
-             | v2 — key sealed only to the organisation's recovery keys. We cannot.
+             | v1 - key sealed to this platform, re-wrapped into `wrapped_key`. We can read it.
+             | v2 - key sealed only to the organisation's recovery keys. We cannot.
              |
              | Defaulted to v1 so existing rows are correct without a backfill, and so that a row whose
              | format could not be determined is treated as the weaker claim rather than the stronger.
@@ -44,7 +44,7 @@ return new class extends Migration
 
             // The manifest as the connector serialised it, byte for byte. Stored rather than reassembled
             // because it is what the signature covers, and because it is what a customer will decrypt
-            // against — re-encoding it here would eventually produce a document that no longer verifies.
+            // against - re-encoding it here would eventually produce a document that no longer verifies.
             $table->text('manifest')->nullable();
             $table->char('manifest_sha256', 64)->nullable();
             $table->text('manifest_signature')->nullable();
@@ -69,7 +69,7 @@ return new class extends Migration
              | A claim, where `state` is a fact.
              |
              | Nothing decides anything on this column. It may be stale, it may skip values, and a
-             | dropped report leaves it behind — which is precisely why it must not be load-bearing.
+             | dropped report leaves it behind - which is precisely why it must not be load-bearing.
              | The distinction belongs in the schema rather than in a convention somebody has to know.
              */
             $table->string('stage', 16)->nullable();
@@ -91,7 +91,7 @@ return new class extends Migration
              |
              | Deliberately NOT given an `encrypted` cast, unlike `backup_artifacts.wrapped_key`.
              | Copying that pattern here would look prudent and be actively harmful: this platform
-             | cannot open a sealed box either way, so the cast adds no confidentiality at all — and it
+             | cannot open a sealed box either way, so the cast adds no confidentiality at all - and it
              | would make a customer's ability to restore depend on our APP_KEY surviving, quietly
              | recreating the exact dependency the whole format exists to remove.
              */
@@ -119,7 +119,7 @@ return new class extends Migration
          |
          | The audit log is hash-chained per organisation and every append takes a transaction-scoped
          | advisory lock on that organisation. A fleet taking two hundred nightly backups, at half a
-         | dozen observations each, would serialise twelve hundred writes behind one lock — against
+         | dozen observations each, would serialise twelve hundred writes behind one lock - against
          | every sign-in and capability change happening at the same time.
          |
          | Two further reasons, either of which would be enough on its own. audit_events is protected by
@@ -174,7 +174,7 @@ return new class extends Migration
              | The recipient fingerprints served with this job's claim response.
              |
              | Recorded so a declaration can be checked against it. The platform cannot verify a seal it
-             | cannot open — that is what zero-knowledge means, not a gap — but it can check that the
+             | cannot open - that is what zero-knowledge means, not a gap - but it can check that the
              | manifest names exactly the keys it served, which turns the careless case into a rejected
              | declaration rather than a backup nobody can read.
              |

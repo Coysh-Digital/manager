@@ -8,7 +8,7 @@ namespace App\Contracts;
  * Where somebody goes to manage what they pay, if anybody pays for this installation at all.
  *
  * Nobody bills a self-hosted install. You already have the source, you are running it on your own
- * infrastructure, and there is no subscription, no card and no invoice — so the honest answer here
+ * infrastructure, and there is no subscription, no card and no invoice - so the honest answer here
  * is null, and every part of the interface that would link to one stays absent rather than
  * appearing greyed out or leading somewhere that explains why it does not apply.
  *
@@ -18,8 +18,8 @@ namespace App\Contracts;
  * would be a core with an edition.
  *
  * One method rather than a `managedExternally(): bool` beside it, deliberately. Two answers can
- * disagree — "billing is managed elsewhere" with nowhere to send anybody is a section rendering a
- * dead link — and the pair would need a docblock contract to stop them. The presence of a URL is
+ * disagree - "billing is managed elsewhere" with nowhere to send anybody is a section rendering a
+ * dead link - and the pair would need a docblock contract to stop them. The presence of a URL is
  * the whole gate, and it cannot contradict itself.
  *
  * A seam rather than a config key, for the same reason as the others: an installation should behave

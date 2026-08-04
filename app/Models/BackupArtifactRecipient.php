@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * The `wrapped_key` column is **not** encrypted at the model boundary, and that is a decision rather
  * than an omission. `BackupArtifact::wrapped_key` is cast to `encrypted`, and copying the pattern here
  * would look like the careful thing to do. It would be worse than useless: this platform cannot open a
- * sealed box either way, so the cast adds no confidentiality — and it would make a customer's ability
+ * sealed box either way, so the cast adds no confidentiality - and it would make a customer's ability
  * to restore depend on our `APP_KEY` surviving, quietly recreating the exact dependency the format
  * exists to remove.
  *

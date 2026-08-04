@@ -36,7 +36,7 @@ it('offers no route that could execute anything on a managed site', function ():
         $uri = $route->uri();
 
         // Anything that reads like a command channel. Phase 2 introduces jobs through a registry
-        // with a required capability, a parameter schema and an audit description — not a route
+        // with a required capability, a parameter schema and an audit description - not a route
         // that takes a command.
         foreach (['exec', 'command', 'console', 'shell', 'eval', 'query', 'sql', 'run', 'invoke'] as $word) {
             if (str_contains($uri, $word)) {
@@ -78,7 +78,7 @@ it('exposes only reporting endpoints to connectors', function (): void {
     //   backups/*/content  the artifact bytes; authenticated before the body is read at all
     //
     // Note what is not here: nothing the platform can push, and nothing that takes a command. Every
-    // one of these is a connector posting something it decided to send — the two backup routes
+    // one of these is a connector posting something it decided to send - the two backup routes
     // included, since the platform never asks a site for an artifact, it queues a job and waits to be
     // sent one.
     expect($connectorRoutes)->toBe([

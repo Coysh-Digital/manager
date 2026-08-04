@@ -5,35 +5,31 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Contracts\BillingAdministration;
-use App\Contracts\MailAdministration;
 use App\Domain\Audit\AuditRecorder;
 use App\Domain\Capability\CapabilityService;
 use App\Domain\Health\Diagnostics;
-use App\Domain\Notifications\EmailTransport;
 use App\Domain\Notifications\NotificationEvent;
 use App\Domain\Notifications\Notifier;
-use App\Domain\Team\TeamService;
-use App\Models\AuditEvent;
 use App\Models\Connector;
 use App\Models\Membership;
-use App\Models\NotificationDestination;
 use App\Models\Organisation;
-use App\Models\RecoveryKey;
 use App\Models\Site;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Mail\Message;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
-use Throwable;
 
 /**
- * Platform settings.
+ * The General tab of Settings: what this installation is, how it is doing, and the two
+ * organisation-wide switches.
  *
  * The health panel is the same {@see Diagnostics} that `manager:doctor` runs, not a second set of
  * checks written for the screen. Two implementations would eventually disagree, and the one somebody
  * is looking at would be the wrong one.
+ *
+ * People, notification destinations and recovery keys used to be sections of this one screen, and
+ * their queries ran on every visit to it whichever section somebody came for. Each is now a tab with
+ * its reads on the controller that already owned its writes.
  *
  * Everything that changes state here needs recent authentication, and the irreversible actions need
  * the organisation name typed as well.
@@ -54,11 +50,7 @@ final class SettingsController
             'checks' => $this->diagnostics->forReader(),
             'membership' => app(Membership::class),
 
-            // Whether this reader is the one who holds the mail configuration. False on a hosted
-            // edition, where the test-send button would prove something about somebody else's relay.
-            'mailOperatorManaged' => app(MailAdministration::class)->operatorManaged(),
-
-            // Where to manage payment, or null when nobody bills this installation — which is the
+            // Where to manage payment, or null when nobody bills this installation - which is the
             // answer here, and the reason the section below it renders nothing self-hosted.
             'billingUrl' => app(BillingAdministration::class)->url(),
 
@@ -76,46 +68,6 @@ final class SettingsController
             // they pair one, rather than discovering it afterwards.
             'pairingDefaults' => CapabilityService::pairingDefaults(),
             'grantable' => CapabilityService::grantableFromInterface(),
-
-            /*
-             | Recovery keys, including revoked ones.
-             |
-             | Revoked keys are shown rather than hidden, for the same reason revoked memberships are:
-             | "which keys used to open our backups" is a question this screen should answer without
-             | anybody opening the audit log. It also keeps a fingerprint appearing in an artifact's
-             | manifest explicable a year after the key stopped being used.
-             */
-            // Rendered as a sentence beside the form, so somebody can check the policy against what
-            // they meant rather than reading three numbers back.
-
-            'recoveryKeys' => RecoveryKey::query()
-                ->where('organisation_id', $organisation->id)
-                ->orderByRaw("case state when 'active' then 0 when 'pending_proof' then 1 else 2 end")
-                ->orderBy('id')
-                ->get(),
-
-            // Revoked memberships are shown too, greyed: "who used to have access" is a question an
-            // access screen should answer without anybody opening the audit log.
-            'members' => Membership::query()
-                ->where('organisation_id', $organisation->id)
-                ->with('user')
-                ->orderByRaw("case role when 'owner' then 0 when 'admin' then 1 else 2 end")
-                ->orderBy('id')
-                ->get(),
-            'assignableRoles' => TeamService::assignableRoles(),
-
-            // Addresses with an unused password link outstanding. The broker deletes the row when a
-            // link is used, so its presence means somebody has a live invitation — or asked for a
-            // reset and has not finished it. The screen says the former, because it cannot tell them
-            // apart and offering to resend is the right answer to both.
-            'awaitingPassword' => DB::table('password_reset_tokens')->pluck('email')->all(),
-
-            'destinations' => NotificationDestination::query()
-                ->where('organisation_id', $organisation->id)
-                ->with(['deliveries' => fn ($query) => $query->latest('created_at')->limit(3)])
-                ->orderBy('label')
-                ->get(),
-            'eventCatalogue' => NotificationEvent::catalogue(),
         ]);
     }
 
@@ -246,69 +198,6 @@ final class SettingsController
                 ? 'There were no active connectors to revoke.'
                 : "Revoked {$revoked} ".($revoked === 1 ? 'connector' : 'connectors').
                   '. Each site needs a fresh enrolment code before it will report again.',
-        );
-    }
-
-    /**
-     * Send a test message to the signed-in owner's own address.
-     *
-     * Deliberately to *their* address and nowhere else. A field here would be a form on an
-     * authenticated page that sends arbitrary mail to an arbitrary address from this installation's
-     * relay, which is an open relay with extra steps and a reputation problem waiting to happen.
-     *
-     * Not queued. A queued send reports success the moment the job is accepted, which proves the
-     * queue works and says nothing about mail. The point is to fail here, now, where somebody is
-     * looking.
-     *
-     * The failure is reported as a class name rather than a message, matching
-     * {@see EmailTransport}: a mail exception can carry the transport
-     * configuration, credentials included, and this response is a web page. `manager:mail-test`
-     * prints the whole thing, because a shell on the server is a different audience.
-     */
-    public function testMail(Request $request): RedirectResponse
-    {
-        $this->authoriseOwner();
-
-        // Hiding the button is not the same as refusing the action. On a hosted edition this would
-        // send through a relay the caller does not administer, and a route that still works when its
-        // control has gone is how a removed feature comes back by URL.
-        abort_unless(app(MailAdministration::class)->operatorManaged(), 404);
-
-        $user = $request->user();
-
-        try {
-            Mail::raw(
-                "This is a test message from Manager.\n\n"
-                    .'If you are reading it, this installation can send email — which means password '
-                    .'resets, invitations and notification emails will reach people.',
-                static fn (Message $message) => $message->to($user->email)->subject('Manager test message'),
-            );
-        } catch (Throwable $e) {
-            $this->audit->record(
-                action: 'settings.mail.tested',
-                organisation: app(Organisation::class),
-                actor: $user,
-                outcome: AuditEvent::OUTCOME_FAILURE,
-                failureReason: $e::class,
-            );
-
-            return back()->with('warning', sprintf(
-                'The message was not sent (%s). Check the MAIL_* variables in .env, or run '
-                    .'`php artisan manager:mail-test %s` for the full error.',
-                class_basename($e),
-                $user->email,
-            ));
-        }
-
-        $this->audit->record(
-            action: 'settings.mail.tested',
-            organisation: app(Organisation::class),
-            actor: $user,
-        );
-
-        return back()->with(
-            'status',
-            "Sent to {$user->email}. The transport accepted it, which is not the same as it arriving — check your inbox.",
         );
     }
 

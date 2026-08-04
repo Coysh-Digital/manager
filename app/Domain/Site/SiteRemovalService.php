@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\DB;
  * Removing a site.
  *
  * Invariant 14: removing a site must immediately revoke its credentials. "Immediately" is doing the
- * work in that sentence — the revocation happens in the same transaction as the removal, so there
+ * work in that sentence - the revocation happens in the same transaction as the removal, so there
  * is no window, however brief, in which a site is gone from the interface but its connector can
  * still authenticate.
  *

@@ -10,7 +10,7 @@ use Illuminate\Http\Request;
  * What a form may carry across the recent-authentication gate.
  *
  * The gate redirects a POST to the confirm-password screen, and Laravel's `Redirector::guest()`
- * cannot preserve a POST: it records `previous()` — the Referer — as the intended URL and discards
+ * cannot preserve a POST: it records `previous()` - the Referer - as the intended URL and discards
  * the body. So somebody who filled in "Add a site", pressed the button and was asked for their
  * password arrived back at an empty, collapsed panel with no indication that anything had been
  * typed. Reported from live use, where the answer was to type it all again.
@@ -19,8 +19,8 @@ use Illuminate\Http\Request;
  * rejected, and not narrowly:
  *
  *  - The gate proves *identity*, not *intent*. Several routes behind it require a typed
- *    confirmation — `sites.destroy` wants the domain, `capabilities.grant-confirmed` wants the site
- *    name — precisely so that the person types the thing at the moment they do it. Replaying a
+ *    confirmation - `sites.destroy` wants the domain, `capabilities.grant-confirmed` wants the site
+ *    name - precisely so that the person types the thing at the moment they do it. Replaying a
  *    stashed confirmation hands that token back for free and removes the only thing it was for.
  *  - The audit log would stop being literally true. "The user pressed the button" should stay a
  *    fact rather than a reconstruction of one.
@@ -29,7 +29,7 @@ use Illuminate\Http\Request;
  *    destructive POST.
  *
  * So nothing is replayed. The input is given back, the panel is reopened, and the person presses
- * the button again — which is the whole of the reported pain, at a cost of one click.
+ * the button again - which is the whole of the reported pain, at a cost of one click.
  *
  * Two layers decide what may be kept, and both have to agree. That is deliberate: the failure mode
  * here is a secret sitting in a session, and a single list is one careless edit away from holding
@@ -53,19 +53,19 @@ final class ResumableInput
      *
      * Keyed by route name. `return` is where to send the person afterwards; `fields` is an explicit
      * allowlist, not a denylist, so a route that later grows a secret field does not start leaking
-     * it the day it is added — the new field is simply not restored until somebody puts it here.
+     * it the day it is added - the new field is simply not restored until somebody puts it here.
      *
      * Deliberately absent, each for its own reason:
      *
-     *  - `recovery-keys.prove` and `recovery-keys.challenge` — the body is a proof of possession of
+     *  - `recovery-keys.prove` and `recovery-keys.challenge` - the body is a proof of possession of
      *    a key that can read every backup this organisation holds. Parking it in the session is
      *    exactly where a stolen session would look, and the challenge is single-use, so restoring
      *    it would not even work.
-     *  - `sites.destroy`, `capabilities.grant-confirmed`, `settings.connectors.rotate` — typed
+     *  - `sites.destroy`, `capabilities.grant-confirmed`, `settings.connectors.rotate` - typed
      *    confirmations. See the class docblock. Never resumable.
      *  - `settings.mail.test`, `updates.refresh`, `sites.refresh-all`, `findings.*` and the rest —
      *    bare buttons. There is nothing typed to give back.
-     *  - `notifications.store` — its `target` is a webhook URL, and a webhook URL is a bearer
+     *  - `notifications.store` - its `target` is a webhook URL, and a webhook URL is a bearer
      *    credential: whoever holds it can post into that channel. It is a typed field somebody
      *    would be glad to have back, which is exactly why it needed deciding rather than assuming.
      *
@@ -98,9 +98,18 @@ final class ResumableInput
             'fields' => ['backup_retention_days', 'backup_retention_weeks', 'backup_retention_months'],
         ],
         'team.invite' => [
-            'return' => 'settings.show',
+            'return' => 'settings.people',
             'label' => 'invite somebody',
             'fields' => ['name', 'email', 'role'],
+        ],
+        'settings.mail.update' => [
+            'return' => 'settings.mail',
+            'label' => 'change how mail is sent',
+            // No credential here, and layer two would strip it anyway - FORBIDDEN_KEY matches /pass/.
+            // That is the right answer rather than an omission: the field is write-only and a blank
+            // one means "keep what is stored", so coming back with it empty restores the form to
+            // exactly the state it should be in.
+            'fields' => ['transport', 'host', 'port', 'encryption', 'username', 'region', 'from_address', 'from_name'],
         ],
     ];
 
@@ -163,7 +172,7 @@ final class ResumableInput
      * Keep it for one more request.
      *
      * Called while rendering the confirm-password screen, and without it none of this works in a
-     * browser — which is how it shipped.
+     * browser - which is how it shipped.
      *
      * Flash data lives for exactly one request. The gate flashes on the POST it refuses, so the
      * payload is readable on the GET of the confirm screen and gone by the POST that proves the
@@ -180,7 +189,7 @@ final class ResumableInput
      * What is waiting, without consuming it.
      *
      * For the confirm-password screen, which says what was interrupted. Reading it there must not
-     * spend it — the screen that needs it next is the one after.
+     * spend it - the screen that needs it next is the one after.
      *
      * @return array{route: string, url: string, label: string, input: array<string, mixed>}|null
      */
@@ -238,7 +247,7 @@ final class ResumableInput
      * Layer two.
      *
      * Drops anything whose name suggests a secret, and anything that is not a scalar or a flat list
-     * of scalars — a nested array is not something a form on this side of the application produces,
+     * of scalars - a nested array is not something a form on this side of the application produces,
      * and unpacking one into a session is how a stash becomes an object graph.
      *
      * @param  array<string, mixed>  $input

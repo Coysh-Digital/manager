@@ -16,7 +16,7 @@ return [
     |
     | Null unless something sets it, and deliberately so. The release tarball is produced by
     | `git archive`, so it carries no `.git` and an installation cannot work its own version out by
-    | asking git — and the Docker image already has `MANAGER_VERSION` as a build argument that
+    | asking git - and the Docker image already has `MANAGER_VERSION` as a build argument that
     | nothing has ever read. This is what reads it. An installation running from a clone leaves it
     | unset and the screen says as much, which is the honest answer: guessing a number that people
     | then quote at support is worse than an em-dash.
@@ -60,7 +60,7 @@ return [
          | `?:` rather than leaning on env()'s default argument.
          |
          | env('KEY', $fallback) returns the fallback only when the key is *absent*. A key that is
-         | present and blank returns an empty string, which `(int)` turns into 0 — and a size cap of
+         | present and blank returns an empty string, which `(int)` turns into 0 - and a size cap of
          | zero rejects everything. .env.example ships several of these lines blank, so copying it
          | and filling in only what you need is enough to set one.
          */
@@ -101,11 +101,11 @@ return [
     | keypair for both signing and encryption is a well-known way to weaken both, so there are two.
     |
     | A connector seals each artifact's key to the public half, which it holds from pairing. Only the
-    | secret half opens it — which means, stated plainly, that whoever holds this key can read every
+    | secret half opens it - which means, stated plainly, that whoever holds this key can read every
     | backup. That is not end-to-end encryption and the documentation does not claim it is.
     |
     | The size ceiling is a policy statement, not a buffer size. Nothing is ever held in memory: an
-    | artifact larger than this is a site whose backup strategy needs a conversation — and since
+    | artifact larger than this is a site whose backup strategy needs a conversation - and since
     | manager-protocol 1.5.0 it is a conversation an operator can have, because the wire contract no
     | longer decides it for them.
     |
@@ -122,10 +122,10 @@ return [
          |
          | Null rather than a number is the change, and it closes a trap rather than loosening one.
          | env() falls back only for an *absent* key, so a blank MANAGER_BACKUP_MAX_BYTES line came
-         | through as '' and (int) '' is 0 — a ceiling of zero, which refused every upload with
+         | through as '' and (int) '' is 0 - a ceiling of zero, which refused every upload with
          | HTTP 413 before a byte of the body was read. A 2.1 MB backup failed that way on a live
          | console for four nights. The `?:` that used to sit here caught that one shape and only
-         | that one; now every degenerate value — absent, blank, zero, negative — maps to "no
+         | that one; now every degenerate value - absent, blank, zero, negative - maps to "no
          | ceiling", so **there is no value of this variable that refuses everything.**
          |
          | Unlimited by default, which reverses what this comment used to argue. The previous
@@ -139,7 +139,7 @@ return [
          |
          | Operators who want a wall set this to bytes and get one, named in the refusal. Everyone
          | else is bounded by quota_bytes below, by their disk, and by whatever their web server
-         | will actually carry — see the "Upload path ceiling" diagnostic, which exists because the
+         | will actually carry - see the "Upload path ceiling" diagnostic, which exists because the
          | last one of those is invisible from in here.
          |
          | Not the value the platform advertises to a connector, and not the value anything checks
@@ -187,7 +187,7 @@ return [
          | gigabytes on a 20 Mbit uplink is around two and a half hours before anything goes wrong; the
          | previous hour was sized for a world with a 2 GB ceiling in the wire contract, and it would
          | have written off a large backup as "declared but never uploaded" while it was still
-         | uploading — then failed it, on a site that had done every part of the work correctly.
+         | uploading - then failed it, on a site that had done every part of the work correctly.
          |
          | This is also the number a presigned grant's lifetime is derived from, so the two cannot
          | drift apart into a window that outlives the credential it depends on.
@@ -205,12 +205,12 @@ return [
     | reports a permanent shortfall against a cadence nobody is keeping.
     |
     | The grace multiplier is what separates "a queue was busy" from "this site has stopped". Three
-    | missed beats — fifteen minutes at the default — before a gap is called an outage.
+    | missed beats - fifteen minutes at the default - before a gap is called an outage.
     |
     | Retention is not optional. Uptime is derived from the heartbeats table rather than stored, so it
     | grows at roughly 8,600 rows per site per month, and the runtime and sign-in reports add another
-    | 1,600 between them. Only the latest of each report is ever displayed — the history is kept so
-    | somebody investigating an incident can look back, not because a screen needs it — so ninety days
+    | 1,600 between them. Only the latest of each report is ever displayed - the history is kept so
+    | somebody investigating an incident can look back, not because a screen needs it - so ninety days
     | is already generous. Nothing else would ever remove any of it.
     |
     */
@@ -237,7 +237,7 @@ return [
     | the updates screen instead of in another tab.
     |
     | One request, for one public file, cached for the whole installation. It carries nothing about
-    | which sites exist or which are behind — that association is the thing worth protecting, and it
+    | which sites exist or which are behind - that association is the thing worth protecting, and it
     | never leaves. Off is still a supported way to run this: an installation with no outbound
     | access is a deliberate configuration, not a fault, and the screen falls back to the link it
     | has always had.
@@ -277,7 +277,7 @@ return [
     |---------------------------------------------------------------------------------------------
     |
     | The first-run flow that creates the owner account. It disables itself permanently once an
-    | owner exists — the route stops resolving rather than merely being hidden.
+    | owner exists - the route stops resolving rather than merely being hidden.
     |
     */
 

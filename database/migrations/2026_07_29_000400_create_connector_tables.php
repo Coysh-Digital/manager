@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Schema;
  *
  * Only public keys are stored. A connector generates its keypair locally and the private half
  * never leaves the Craft installation, so a full compromise of this database yields no ability to
- * impersonate any site — which is what makes invariant 11 hold.
+ * impersonate any site - which is what makes invariant 11 hold.
  */
 return new class extends Migration
 {

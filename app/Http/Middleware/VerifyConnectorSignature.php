@@ -25,7 +25,7 @@ use Throwable;
  *
  * Order is deliberate, cheapest and most protective first:
  *
- *   1. Rate limit by source network — before anything expensive happens.
+ *   1. Rate limit by source network - before anything expensive happens.
  *   2. Payload size cap, before parsing.
  *   3. Required headers present and well formed.
  *   4. Timestamp within tolerance.
@@ -120,7 +120,7 @@ final class VerifyConnectorSignature
             if ($ceiling !== null && (int) $length > $ceiling) {
                 // The ceiling, not just the verdict. "Payload too large" alone sent somebody looking
                 // at a 2.1 MB artifact for the fault, when the limit had been configured to zero by
-                // a blank environment line — and the refusal happens here, before anything with more
+                // a blank environment line - and the refusal happens here, before anything with more
                 // context about the artifact has run.
                 return $this->reject("payload too large, limit is {$ceiling} bytes (MANAGER_BACKUP_MAX_BYTES)", 413);
             }
@@ -155,7 +155,7 @@ final class VerifyConnectorSignature
             body: $body,
 
             // Null in the ordinary case, so the hash is computed from the body as it always was. One
-            // signing format either way — only where the hash came from differs.
+            // signing format either way - only where the hash came from differs.
             declaredBodyHash: $declaredHash,
         );
 

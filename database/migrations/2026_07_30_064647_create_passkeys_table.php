@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Schema;
  * One row per credential, not per account: somebody with a laptop and a phone has two, and removing
  * one must not disarm the other.
  *
- * `credential` holds the serialised WebAuthn credential record — public key, transports, and the
+ * `credential` holds the serialised WebAuthn credential record - public key, transports, and the
  * signature counter that is rewritten on every use to detect a cloned authenticator. There is no
  * secret in here: the private half never leaves the device, which is the whole point of a passkey and
  * the reason this table is far less dangerous to hold than a table of TOTP seeds.

@@ -177,7 +177,7 @@ function uptime(payload) {
 /**
  * Backup size over time.
  *
- * A line rather than bars: the useful signal is the shape — a database growing steadily, or one that
+ * A line rather than bars: the useful signal is the shape - a database growing steadily, or one that
  * halved overnight because a table was dropped.
  *
  * Drawn in the info tone rather than the brand primary. The primary here is a rust red, which is
@@ -225,7 +225,7 @@ function backupSize(payload) {
  * Outstanding findings, week by week.
  *
  * A count on its own is a snapshot, and a snapshot cannot tell "four findings, down from eleven"
- * apart from "four findings, up from none" — which are opposite situations reading identically.
+ * apart from "four findings, up from none" - which are opposite situations reading identically.
  *
  * Coloured by direction rather than by value: the useful signal is the slope. A site sitting
  * steadily on two low-severity findings nobody intends to fix is not the thing to draw in red.
@@ -304,7 +304,7 @@ document.addEventListener('DOMContentLoaded', drawAll);
  * Redraw when the theme changes.
  *
  * Chart.js resolves colours once, at construction, so a chart built in the light theme stays light
- * after the toggle is pressed — a dark page with a chart still drawn in ink meant for paper. The
+ * after the toggle is pressed - a dark page with a chart still drawn in ink meant for paper. The
  * theme toggle sets data-theme on the root element, so watching that attribute is enough and needs
  * no coupling to the code that sets it.
  */

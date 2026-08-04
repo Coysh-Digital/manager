@@ -181,7 +181,7 @@ it('claims nothing from a single check-in', function (): void {
 
 it('does not count the time before a site existed as uptime', function (): void {
     // A site added an hour ago must not read "99.9% over 30 days". The numerator would only count
-    // gaps since it was added while the denominator covered the whole month — a figure that is
+    // gaps since it was added while the denominator covered the whole month - a figure that is
     // flattering, stable and meaningless.
     $this->site->forceFill(['created_at' => now()->subHours(4)])->save();
 
@@ -193,7 +193,7 @@ it('does not count the time before a site existed as uptime', function (): void 
 
     $window = app(SiteUptime::class)->for($this->site->fresh(), 720);
 
-    // Two hours of heartbeats then two hours of silence, inside a four-hour life — not a rounding
+    // Two hours of heartbeats then two hours of silence, inside a four-hour life - not a rounding
     // error inside a thirty-day window.
     expect($window->from->diffInHours(now()))->toBeLessThan(5)
         ->and($window->availability)->toBeLessThan(60.0)
@@ -205,7 +205,7 @@ it('does not expect fewer check-ins than a well-behaved site sends', function ()
      | The regression that produced "Check-ins 8 of ~7" on screen.
      |
      | A site paired 35 minutes ago, reporting every five minutes, has checked in at 0, 5, 10, 15,
-     | 20, 25, 30 and 35 — eight times across seven intervals. Both ends of the window count, so the
+     | 20, 25, 30 and 35 - eight times across seven intervals. Both ends of the window count, so the
      | expectation is eight, and a site doing exactly what was asked of it must never appear to have
      | done more than that.
      */
@@ -228,8 +228,8 @@ it('explains a site that checks in more often than the schedule asks for', funct
      | The sibling of the case above, and the opposite mistake to make about it.
      |
      | "37 of ~35" is not a counting error. `expected` models one producer beating on a fixed
-     | interval; a connector has two that throttle independently — the cron task and the web trigger
-     | that fires off ordinary traffic — so a busy site with both enabled sits above the estimate
+     | interval; a connector has two that throttle independently - the cron task and the web trigger
+     | that fires off ordinary traffic - so a busy site with both enabled sits above the estimate
      | permanently. Clamping the count would hide a figure worth having; the screen explains it
      | instead.
      */
@@ -277,8 +277,8 @@ it('says nothing about the schedule when a site keeps to it', function (): void 
 
 it('does not describe an hour in progress as though it were over', function (): void {
     // The same off-by-one in the chart: a bucket still filling was measured against a whole hour's
-    // worth of check-ins, so it read "3 of 12" while the bar beside it — already scaled by elapsed
-    // time — drew as full.
+    // worth of check-ins, so it read "3 of 12" while the bar beside it - already scaled by elapsed
+    // time - drew as full.
     for ($minute = 0; $minute <= 10; $minute += 5) {
         Heartbeat::factory()->for($this->site)->create([
             'received_at' => now()->subMinutes(10 - $minute),
@@ -339,7 +339,7 @@ it('offers the day of the week only for a schedule that reads it', function (): 
     // invites somebody to set a value that is saved, audited, and then never consulted.
     //
     // The form lives on the Backups screen now, which shows nothing but an explanation until the
-    // capability is granted — there is no point scheduling what the site has not been permitted to
+    // capability is granted - there is no point scheduling what the site has not been permitted to
     // do.
     CapabilityGrant::factory()->for($this->site)->capability('backups:create')->create();
 
@@ -485,7 +485,7 @@ it('lists this site\'s artifacts and flags a stale one', function (): void {
         ->assertSee('Over a week old')
         ->assertSee('Checksum matched')
         // Ciphertext can be downloaded; plaintext still cannot, and there is still no restore button.
-        // Both of those absences are deliberate — see BackupScreenTest for the full argument.
+        // Both of those absences are deliberate - see BackupScreenTest for the full argument.
         ->assertSee('manager:backups:fetch')
         ->assertSee('manager-restore decrypt')
         ->assertDontSee('Restore</');
@@ -552,7 +552,7 @@ it('hands the uptime chart its figures as data rather than as markup', function 
 it('shows only this site\'s audit events', function (): void {
     $other = Site::factory()->for($this->organisation)->create(['name' => 'Other Site']);
 
-    // Sequence numbers are per organisation and unique, so they are set explicitly here — the
+    // Sequence numbers are per organisation and unique, so they are set explicitly here - the
     // factory produces rows to look at, not valid chains.
     AuditEvent::factory()->for($this->organisation)->for($this->site)
         ->create(['seq' => 1, 'action' => 'site.refreshed']);
@@ -580,7 +580,7 @@ it('offers a cron entry for every task the connector runs', function (): void {
         ->assertOk()
         ->getContent();
 
-    // Scheduled tasks, not the job vocabulary — those are deliberately different things.
+    // Scheduled tasks, not the job vocabulary - those are deliberately different things.
     foreach (['heartbeat', 'jobs', 'logins', 'report', 'system', 'updates'] as $task) {
         expect($html)->toContain("php craft manager-connector/{$task}");
     }
@@ -593,8 +593,8 @@ it('does not tell anybody cron is required', function (): void {
     /*
      | It is not, and has not been since connector 1.5.0: webTrigger is on by default and drives the
      | schedule from ordinary traffic, so a paired site reports without anyone touching crontab. The
-     | documentation has said so throughout — "Cron is optional. Everything works out of the box
-     | without it." — while two places on screen still said otherwise, which is the wrong way round
+     | documentation has said so throughout - "Cron is optional. Everything works out of the box
+     | without it." - while two places on screen still said otherwise, which is the wrong way round
      | for somebody on hosting where cron is not available deciding whether this product works.
     */
     $html = $this->actingAs($this->user)

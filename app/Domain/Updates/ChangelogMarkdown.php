@@ -9,20 +9,20 @@ use Illuminate\Support\Str;
 /**
  * The one place release notes become HTML.
  *
- * Two sources feed this, and they do not speak the same language — which is the bug this class was
+ * Two sources feed this, and they do not speak the same language - which is the bug this class was
  * changed to fix.
  *
  * Craft's own changelog is Markdown: {@see ChangelogFetcher} pulls `CHANGELOG.md` from GitHub, and
  * {@see render} is right for it. Plugin notes are **HTML**, because Craft's update API hands them
  * over already rendered and the connector forwards what Craft downloaded. Both were going through
- * `render()`, whose `html_input => 'strip'` returns an empty string for an HTML block — so every
+ * `render()`, whose `html_input => 'strip'` returns an empty string for an HTML block - so every
  * plugin note body was discarded and the panel showed only the version headings this class had
  * generated itself.
  *
  * So there are two entry points, one per source language, and {@see renderHtml} is the one that
  * knows the body is already markup. Both end at {@see ReleaseNotesHtml}, which is the allowlist: no
  * path reaches the panel without passing it. That is why this stays a single class rather than
- * becoming two — the options and the allowlist are the sort of thing that gets fixed in one place
+ * becoming two - the options and the allowlist are the sort of thing that gets fixed in one place
  * and forgotten in the other.
  *
  * league/commonmark ships with the framework, and its unsafe-input defaults are exactly the two that
@@ -61,7 +61,7 @@ final class ChangelogMarkdown
         ]);
 
         // Commonmark has already discarded raw HTML, so this removes nothing today. It is here so
-        // that there is no route to the panel that skips the allowlist — including this one, if the
+        // that there is no route to the panel that skips the allowlist - including this one, if the
         // options above are ever loosened.
         return ReleaseNotesHtml::sanitise($html);
     }
@@ -109,8 +109,8 @@ final class ChangelogMarkdown
     /**
      * Whether a version falls in the half-open range a site would be moving across.
      *
-     * Exclusive of what is installed — a site is not interested in the notes for the version it is
-     * already running — and inclusive of the latest, which is where it is going. A null bound is
+     * Exclusive of what is installed - a site is not interested in the notes for the version it is
+     * already running - and inclusive of the latest, which is where it is going. A null bound is
      * simply not applied, so a report missing one still renders what it can.
      */
     public static function isBetween(string $version, ?string $current, ?string $latest): bool

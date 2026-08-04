@@ -118,7 +118,7 @@
 
                     @if ($row['name'] === 'Craft CMS' && $canReadChangelog)
                         {{-- A <details>, like everything else on these screens that expands. The
-                             fetch happens on first open — the same moment the link beside it would
+                             fetch happens on first open - the same moment the link beside it would
                              have sent somebody to GitHub. --}}
                         <details class="w-full border-t border-border pt-3"
                                  data-changelog
@@ -225,7 +225,7 @@
 
                                         {{-- Only where there is something to read about. A plugin the
                                              store has never heard of gets no link rather than one that
-                                             404s — a broken link teaches people not to trust the
+                                             404s - a broken link teaches people not to trust the
                                              working ones. Kept even when the panel below exists: the
                                              store listing is the fuller record, and the panel only
                                              covers releases a site has actually reported. --}}
@@ -274,13 +274,13 @@
 
             <div class="bg-surface-2 px-3.5 py-2.5 text-[12px] leading-relaxed text-text-3">
                 Release notes are held against a plugin and a version, never against a site. What a
-                version fixes is public — the Plugin Store hands it to anyone — but "this site is
+                version fixes is public - the Plugin Store hands it to anyone - but "this site is
                 behind on these fixes" is not, so that pairing is made on this screen and stored
                 nowhere. Craft's changelog above is read from Craft's own repository, once for this
                 installation and cached; plugin notes are forwarded by the sites already running the
                 plugin, so showing them asks nothing of anybody and tells no plugin author which of
                 your sites are behind.
-                <strong>Not checked</strong> means exactly that — a plugin the site's update service
+                <strong>Not checked</strong> means exactly that - a plugin the site's update service
                 knows nothing about, usually a private or VCS-installed one. It is not the same as up
                 to date.
             </div>

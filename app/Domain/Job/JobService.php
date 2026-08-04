@@ -122,7 +122,7 @@ final class JobService
          | asked is still looking at the screen.
          |
          | Here as well as in BackupReadiness, not instead of it: readiness decides whether the
-         | button is drawn, and this is what makes the rule true for every caller — including any
+         | button is drawn, and this is what makes the rule true for every caller - including any
          | future one that forgets to ask.
         */
         if ($type === Jobs::BACKUP_CREATE
@@ -145,7 +145,7 @@ final class JobService
             try {
                 // Nested, so it becomes a savepoint. A constraint violation aborts the Postgres
                 // transaction, and without a savepoint to roll back to, the recovery query below
-                // could not run — every statement after the failure would fail too.
+                // could not run - every statement after the failure would fail too.
                 $job = DB::transaction(fn (): RemoteJob => RemoteJob::query()->create([
                     'site_id' => $site->id,
                     'type' => $definition->type,
@@ -160,7 +160,7 @@ final class JobService
             } catch (QueryException $e) {
                 // The partial unique index refused a duplicate: somebody enqueued the same key
                 // between the check above and this insert. Returning their job is the point of an
-                // idempotency key — the caller asked for this work, and it is already going to happen.
+                // idempotency key - the caller asked for this work, and it is already going to happen.
                 $existing = $this->outstandingFor($site, $idempotencyKey);
 
                 if ($existing === null) {
@@ -193,7 +193,7 @@ final class JobService
      * Hand a connector the jobs it is currently allowed to run.
      *
      * The claim is a conditional UPDATE, so two connectors for the same site cannot both take one
-     * job — which is what makes invariant 16 hold here: a retried claim gets different work, or
+     * job - which is what makes invariant 16 hold here: a retried claim gets different work, or
      * nothing, never the same job twice.
      *
      * @return Collection<int, array<string, mixed>> envelopes, ready to sign
@@ -246,8 +246,8 @@ final class JobService
                  | to seal to, and that is the promise it should be held to.
                  |
                  | A backup job for an organisation with no active key is cancelled here rather than
-                 | handed out. The connector would refuse it anyway — it will not dump a database it
-                 | cannot encrypt — but cancelling means the job does not sit claimed until it expires.
+                 | handed out. The connector would refuse it anyway - it will not dump a database it
+                 | cannot encrypt - but cancelling means the job does not sit claimed until it expires.
                  */
                 $recipientFingerprints = null;
 
@@ -260,7 +260,7 @@ final class JobService
                     /*
                      | Cancelled whatever the format floor. A job with no key behind it can only
                      | produce an artifact this platform could read, which is the thing the v2 format
-                     | exists to stop — and enqueue() now refuses to create one at all, so reaching
+                     | exists to stop - and enqueue() now refuses to create one at all, so reaching
                      | here means the key was revoked between asking and collecting.
                     */
                     if ($fingerprints === []) {
@@ -408,8 +408,8 @@ final class JobService
         /*
          | A backup the site refused is the failure nobody hears about.
          |
-         | It happens before an artifact row exists — the connector checks the dump against its own
-         | size limit, and its recovery-key pinning, before it declares anything — so there is
+         | It happens before an artifact row exists - the connector checks the dump against its own
+         | size limit, and its recovery-key pinning, before it declares anything - so there is
          | nothing for BackupService::fail() to act on and nothing for the backups screen to list.
          | The job simply left the queue, and InFlightBackups only reads queued and claimed work, so
          | the row a person was watching disappeared with no explanation anywhere they would look.
@@ -425,7 +425,7 @@ final class JobService
              |
              | Reported live: four backups sitting at "Uploading" on the screen, hours apart, with
              | nothing anywhere saying why. The declaration had succeeded, so an artifact row existed
-             | in `pending` — which the screen renders as "Uploading" — and then the upload failed and
+             | in `pending` - which the screen renders as "Uploading" - and then the upload failed and
              | the job failed with it. The artifact stayed pending, so it kept claiming to be
              | uploading; and FailedBackupJobs excludes jobs that produced an artifact, on the
              | assumption the artifact would carry its own reason. It does not carry one until
@@ -526,7 +526,7 @@ final class JobService
      * An unfinished job already holding this idempotency key.
      *
      * Only queued and claimed count. A completed job must not block a later request that legitimately
-     * reuses the key — a nightly check should run again tomorrow.
+     * reuses the key - a nightly check should run again tomorrow.
      */
     private function outstandingFor(Site $site, ?string $idempotencyKey): ?RemoteJob
     {

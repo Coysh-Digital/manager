@@ -16,8 +16,8 @@ use Illuminate\Contracts\View\View;
  * One site's security posture: what is wrong with it, and what has not been looked at.
  *
  * The second half is the part an audit screen usually omits. A rule whose capability is not granted
- * is skipped rather than passed — "we were not allowed to look" and "there is nothing wrong" are
- * different answers — so the screen names the rules that could not run rather than letting an empty
+ * is skipped rather than passed - "we were not allowed to look" and "there is nothing wrong" are
+ * different answers - so the screen names the rules that could not run rather than letting an empty
  * list read as a clean bill of health.
  */
 final class SiteSecurityController
@@ -60,7 +60,7 @@ final class SiteSecurityController
             'timeline' => $this->posture->timeline($site),
             'exposure' => $this->posture->exposure($site),
 
-            // A short tail of what has been fixed. Not a history — five rows, so that a screen
+            // A short tail of what has been fixed. Not a history - five rows, so that a screen
             // showing nothing outstanding still shows evidence that something ever ran.
             'resolved' => $site->findings()
                 ->where('state', Finding::STATE_RESOLVED)

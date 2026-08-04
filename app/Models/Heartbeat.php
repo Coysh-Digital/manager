@@ -13,7 +13,7 @@ use Illuminate\Support\Carbon;
 /**
  * Evidence that a site checked in.
  *
- * Carries no site data at all — the point of a heartbeat is liveness, and anything more would be
+ * Carries no site data at all - the point of a heartbeat is liveness, and anything more would be
  * collection without a stated purpose.
  *
  * @property int $id

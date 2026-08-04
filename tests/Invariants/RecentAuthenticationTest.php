@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Route;
  * backup an organisation holds, and `sites.destroy` carries a typed confirmation whose entire
  * purpose is that somebody types it at the moment they act.
  *
- * ResumableInput has two layers — a per-route field allowlist and an unconditional key filter — and
+ * ResumableInput has two layers - a per-route field allowlist and an unconditional key filter - and
  * this file is why there are two. The first test does not read the allowlist. It walks the routes
  * the application actually has, posts sentinels at every one of them, and asserts the sentinels are
  * nowhere afterwards. A route added in a year's time is covered the day it is written, without
@@ -55,7 +55,7 @@ it('never flashes a secret through the password gate', function (): void {
     expect($gated)->not->toBeEmpty();
 
     foreach ($gated as $route) {
-        // Bound parameters are not the point here — a 404 from a missing model still runs the gate,
+        // Bound parameters are not the point here - a 404 from a missing model still runs the gate,
         // which is the middleware under test. Any placeholder will do.
         $uri = preg_replace('/\{[^}]+\}/', 'placeholder', $route->uri());
         $method = in_array('POST', $route->methods(), true) ? 'post' : 'delete';
@@ -106,7 +106,7 @@ it('names only routes that exist', function (): void {
 
 it('keeps the gate itself in front of every sensitive action', function (): void {
     // The alias was replaced with a subclass. If that swap ever stops applying, the actions below
-    // would simply run — so this asserts the gate is still there rather than trusting the wiring.
+    // would simply run - so this asserts the gate is still there rather than trusting the wiring.
     foreach (['sites.store', 'sites.destroy', 'recovery-keys.store', 'settings.mfa'] as $name) {
         $route = Route::getRoutes()->getByName($name);
 

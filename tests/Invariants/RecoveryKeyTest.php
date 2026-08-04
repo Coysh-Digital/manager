@@ -18,8 +18,8 @@ use Database\Factories\RecoveryKeyFactory;
 /**
  * Recovery keys, which are where the zero-knowledge claim is either true or decorative.
  *
- * The claim is that this platform cannot read a backup. That reduces to one question — *which public
- * keys does a site seal its next backup to* — and everything in this file is about the ways that
+ * The claim is that this platform cannot read a backup. That reduces to one question - *which public
+ * keys does a site seal its next backup to* - and everything in this file is about the ways that
  * question could be answered wrongly:
  *
  *  - a key nobody actually holds gets enrolled, and the failure surfaces at restore time;
@@ -67,7 +67,7 @@ function answerChallenge(RecoveryKey $key, string $secretKeyBase64): string
 it('has nowhere to put a recovery private key', function (): void {
     $columns = Schema::getColumnListing('recovery_keys');
 
-    // The single most important property of this table. Not "we do not write to it" — there is no
+    // The single most important property of this table. Not "we do not write to it" - there is no
     // column, encrypted or otherwise, and no escrow option that could quietly grow one. An
     // organisation wanting escrow enrols the escrow holder's public key, which is the same outcome
     // done explicitly and visibly in every artifact's manifest.
@@ -107,8 +107,8 @@ it('will not activate a key until somebody proves they hold the other half', fun
 
     $key = $this->service->submit($this->organisation, $candidate['public'], 'Ops laptop', $this->actor);
 
-    // Structural validation establishes almost nothing about an X25519 key — any 32 bytes is a valid
-    // one — so an unproven key is never a recipient of anything.
+    // Structural validation establishes almost nothing about an X25519 key - any 32 bytes is a valid
+    // one - so an unproven key is never a recipient of anything.
     expect($key->isAwaitingProof())->toBeTrue()
         ->and($key->activated_at)->toBeNull()
         ->and($this->service->activeFor($this->organisation))->toBeEmpty()
@@ -142,7 +142,7 @@ it('burns a challenge after too many wrong answers', function (): void {
         }
     }
 
-    // Even the right answer now. A challenge is 120 bits, so this is not about guessing — it is that
+    // Even the right answer now. A challenge is 120 bits, so this is not about guessing - it is that
     // a challenge somebody has been fumbling for a while should be replaced rather than kept alive.
     expect(fn () => $this->service->prove($key->fresh(), $correct, $this->actor))
         ->toThrow(RecoveryKeyRejectedException::class, 'Too many wrong answers');
@@ -184,7 +184,7 @@ it('refuses this platform\'s own artifact key', function (): void {
 });
 
 it('refuses a key that would produce a backup anybody could read', function (string $hex): void {
-    // Small-order Curve25519 points. libsodium would refuse to seal to one anyway — but it would
+    // Small-order Curve25519 points. libsodium would refuse to seal to one anyway - but it would
     // refuse on the night a site had already dumped its database to disk.
     expect(fn () => $this->service->submit($this->organisation, base64_encode((string) hex2bin($hex)), null, $this->actor))
         ->toThrow(RecoveryKeyRejectedException::class, 'anybody could read');
@@ -359,7 +359,7 @@ it('serves a recipient list a connector can actually use', function (): void {
 
     $recipients = $this->service->recipientsFor($this->organisation);
 
-    // Fingerprint, public key, label. Nothing else — in particular nothing naming a destination, which
+    // Fingerprint, public key, label. Nothing else - in particular nothing naming a destination, which
     // is the field somebody would eventually try to add here.
     expect(array_keys($recipients[0]))->toBe(['fingerprint', 'public_key', 'label'])
         ->and(KeyFingerprint::forRecoveryKey($recipients[0]['public_key']))->toBe($recipients[0]['fingerprint']);
@@ -451,7 +451,7 @@ it('never writes key material or a challenge into the audit trail', function ():
     $trail = AuditEvent::query()->get()->toJson();
 
     // The public key is harmless but adds nothing a fingerprint does not; the challenge and the answer
-    // are neither. SecretGuard would not catch any of them — its pattern does not match `challenge` —
+    // are neither. SecretGuard would not catch any of them - its pattern does not match `challenge` —
     // so this is the only thing standing between them and a log.
     expect($trail)->not->toContain($candidate['public'])
         ->and($trail)->not->toContain($candidate['secret'])

@@ -18,7 +18,7 @@ use Laravel\Passkeys\Support\WebAuthn;
 /**
  * Satisfying the second-factor challenge with a passkey.
  *
- * Reached only with a pending challenge in the session, put there by the password step — the same
+ * Reached only with a pending challenge in the session, put there by the password step - the same
  * gate the TOTP challenge uses. A passkey is an alternative to typing a code, not a way around the
  * password.
  *
@@ -30,7 +30,7 @@ use Laravel\Passkeys\Support\WebAuthn;
  *    passkey is even offered.
  *  - Verification is told which user it must belong to, and the session is issued for *that* user
  *    rather than for whoever the credential resolves to. Without it, a passkey belonging to a
- *    different account could close a challenge opened for this one — the password step would have
+ *    different account could close a challenge opened for this one - the password step would have
  *    been for one person and the second factor for another.
  */
 final class PasskeyChallengeController

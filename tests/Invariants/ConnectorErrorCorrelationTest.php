@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Route;
 /**
  * An unhandled failure is still traceable.
  *
- * Every rejection the platform composes itself carries a correlation identifier — the signature
+ * Every rejection the platform composes itself carries a correlation identifier - the signature
  * middleware, the capability middleware and each connector controller put one in the body and in the
  * Manager-Correlation-Id header. An unhandled exception carried neither, because it never reaches
  * any of that code.
@@ -30,8 +30,8 @@ beforeEach(function (): void {
     CapabilityGrant::factory()->for($this->site)->capability('inventory:read')->create();
 
     /*
-     | A connector route that throws once every piece of middleware has passed — signature verified,
-     | site resolved — which is where the real fault was: BackupDeclareController catches only
+     | A connector route that throws once every piece of middleware has passed - signature verified,
+     | site resolved - which is where the real fault was: BackupDeclareController catches only
      | BackupRejectedException, so anything else escapes as a 500.
      |
      | Registered here rather than mocking a service, so the request travels the whole genuine
@@ -97,7 +97,7 @@ it('leaves a response that already carries an identifier alone', function (): vo
 it('logs the identifier with the failure', function (): void {
     /*
      | Without this the identifier is a number the connector reports and the platform never wrote
-     | down — which is worse than not having one, because it looks traceable and is not.
+     | down - which is worse than not having one, because it looks traceable and is not.
      |
      | A recording logger bound into the container rather than Log::spy(): the handler resolves its
      | logger through the `log` binding, and asserting against the real resolution path is the point

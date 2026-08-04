@@ -10,7 +10,7 @@ use App\Domain\Health\Diagnostics;
  *
  * "Bring your own bucket" on this edition means pointing `MANAGER_BACKUP_DRIVER` at an S3-compatible
  * service. That makes the endpoint a URL this application connects to with credentials, so it gets the
- * same scrutiny a webhook destination does — and the one that matters is `169.254.169.254`, where a
+ * same scrutiny a webhook destination does - and the one that matters is `169.254.169.254`, where a
  * misconfigured endpoint turns every backup upload into a request for cloud instance credentials.
  *
  * Warnings rather than failures throughout. Some operators genuinely run MinIO on a private network
@@ -115,7 +115,7 @@ it('warns when an S3 destination has no credentials at all', function (string $m
      | Reported from a live deployment, and the reason this check exists.
      |
      | The AWS SDK ends its credential chain at the EC2 instance metadata service. With no key and
-     | no secret the upload does not refuse — it stalls for a second against 169.254.169.254 and
+     | no secret the upload does not refuse - it stalls for a second against 169.254.169.254 and
      | then fails, leaving the artifact at "uploading" and the operator holding
      |
      |     cURL error 28: Connection timed out ... 169.254.169.254

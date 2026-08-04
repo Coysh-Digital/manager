@@ -13,7 +13,7 @@ use App\Models\Site;
  * filter into a folder they never open, at which point the channel is worse than nothing because it
  * looks like coverage. These are the things worth interrupting somebody for.
  *
- * The payload carries no site content and no secrets — the same discipline as everything else that
+ * The payload carries no site content and no secrets - the same discipline as everything else that
  * leaves the platform. A webhook destination is, by assumption, possibly malicious.
  */
 final class NotificationEvent

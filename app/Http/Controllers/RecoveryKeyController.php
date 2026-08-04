@@ -10,6 +10,7 @@ use App\Http\Middleware\EnsureSiteBelongsToOrganisation;
 use App\Models\Membership;
 use App\Models\Organisation;
 use App\Models\RecoveryKey;
+use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -17,8 +18,8 @@ use Illuminate\Http\Request;
  * Enrolling and retiring the keys that backups are encrypted to.
  *
  * Owner-only, and every action sits behind recent authentication in the route file. The reasoning is
- * not that these are dangerous in the usual sense — no key material passes through here and nothing
- * here can read a backup — but that adding a recipient is the single most consequential thing anybody
+ * not that these are dangerous in the usual sense - no key material passes through here and nothing
+ * here can read a backup - but that adding a recipient is the single most consequential thing anybody
  * can do to an organisation's backups, and a hijacked session should not be able to do it quietly.
  *
  * The one thing this controller must never grow is a "generate a key for me" action. A private key
@@ -29,6 +30,28 @@ use Illuminate\Http\Request;
 final class RecoveryKeyController
 {
     public function __construct(private readonly RecoveryKeyService $keys) {}
+
+    /**
+     * The Recovery keys tab of Settings.
+     *
+     * Revoked keys are listed rather than hidden, for the same reason revoked memberships are:
+     * "which keys used to open our backups" is a question this screen should answer without anybody
+     * opening the audit log. It also keeps a fingerprint appearing in an artifact's manifest
+     * explicable a year after the key stopped being used.
+     */
+    public function show(Organisation $organisation): View
+    {
+        return view('settings.recovery-keys', [
+            'organisation' => $organisation,
+            'membership' => app(Membership::class),
+
+            'recoveryKeys' => RecoveryKey::query()
+                ->where('organisation_id', $organisation->id)
+                ->orderByRaw("case state when 'active' then 0 when 'pending_proof' then 1 else 2 end")
+                ->orderBy('id')
+                ->get(),
+        ]);
+    }
 
     /**
      * Register a public key and start the proof ceremony.
@@ -54,7 +77,7 @@ final class RecoveryKeyController
         }
 
         return redirect()
-            ->route('settings.show')
+            ->route('settings.recovery-keys')
             ->with('proveKey', $key->external_id)
             ->with('status', 'That key is registered. Prove you hold the other half to activate it.');
     }
@@ -80,7 +103,7 @@ final class RecoveryKeyController
         }
 
         return redirect()
-            ->route('settings.show')
+            ->route('settings.recovery-keys')
             ->with('status', 'Recovery key '.$key->fingerprint.' is active. New backups will be sealed to it.');
     }
 
@@ -99,7 +122,7 @@ final class RecoveryKeyController
         $this->keys->issueChallenge($recoveryKey);
 
         return redirect()
-            ->route('settings.show')
+            ->route('settings.recovery-keys')
             ->with('proveKey', $recoveryKey->external_id)
             ->with('status', 'Here is a new challenge.');
     }
@@ -133,7 +156,7 @@ final class RecoveryKeyController
         }
 
         return redirect()
-            ->route('settings.show')
+            ->route('settings.recovery-keys')
             ->with('status', 'That key will not be used for new backups. Backups already taken still open with it.');
     }
 

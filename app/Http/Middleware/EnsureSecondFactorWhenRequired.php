@@ -12,11 +12,13 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * Enforces an organisation's second-factor requirement.
  *
- * Redirects to the account page rather than refusing. Locking somebody out of a control plane to
- * improve its security is a trade made once and regretted at 2am — and it would mean turning the
+ * Redirects to the security screen rather than refusing. Locking somebody out of a control plane to
+ * improve its security is a trade made once and regretted at 2am - and it would mean turning the
  * requirement on could strand every member at once, including the person who turned it on.
  *
- * So: they can reach their account page to enrol, and sign out. Nothing else.
+ * So: they can reach Settings → Security to enrol, and sign out. Nothing else - which includes the
+ * other Settings tabs. The tab strip is rendered there but every tab on it bounces back here, and
+ * the screen says so rather than letting somebody discover it a click at a time.
  */
 final class EnsureSecondFactorWhenRequired
 {
@@ -34,7 +36,7 @@ final class EnsureSecondFactorWhenRequired
 
         // The escape hatches. Without these the enforcement would have nowhere to send anybody.
         $permitted = [
-            'account.show',
+            'settings.security',
             'account.totp.start',
             'account.totp.confirm',
             'account.recovery-codes',
@@ -50,7 +52,7 @@ final class EnsureSecondFactorWhenRequired
         }
 
         return redirect()
-            ->route('account.show')
+            ->route('settings.security')
             ->with('warning', 'This organisation requires two-factor authentication. Set it up to continue.');
     }
 }

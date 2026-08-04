@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\DB;
  * authentication, consuming is an unauthenticated request carrying a code.
  *
  * A code is returned in plaintext exactly once, from the method that created it, and only its SHA-256
- * is stored. There is no route, command or column that will reveal it again — lose it and issue another.
+ * is stored. There is no route, command or column that will reveal it again - lose it and issue another.
  * That is the whole reason it is safe to display: a code that could be retrieved later would be a
  * standing credential sitting in a database, which is precisely what pairing exists to avoid.
  */
@@ -104,7 +104,7 @@ final class EnrolmentService
 
                 // Replacing a working connector is a separate decision from issuing a code, so it is
                 // recorded as one. Without this, a code cannot displace an active connector however it
-                // is used — which stops a compromised site from silently re-pairing itself.
+                // is used - which stops a compromised site from silently re-pairing itself.
                 'replace_authorised_by' => $authoriseReplacement ? $actor->id : null,
                 'replace_authorised_at' => $authoriseReplacement ? Carbon::now() : null,
             ]);
@@ -115,7 +115,7 @@ final class EnrolmentService
                 actor: $actor,
                 targetType: 'site',
                 targetId: $site->external_id,
-                // Never the code, and never its hash — a hash of a 256-bit secret is not sensitive, but
+                // Never the code, and never its hash - a hash of a 256-bit secret is not sensitive, but
                 // recording it would invite somebody to treat the audit log as a place to look one up.
                 after: [
                     'expires_in_seconds' => (int) config('manager.enrolment.ttl'),

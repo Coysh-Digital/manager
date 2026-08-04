@@ -40,7 +40,7 @@
     {{--
         The navigation drawer's state, on narrow screens.
 
-        A checkbox rather than a click handler, so the menu works with no JavaScript at all — which
+        A checkbox rather than a click handler, so the menu works with no JavaScript at all - which
         matters on a control plane somebody may be reaching for from a phone on a bad connection
         during an incident. app.js enhances it afterwards with Escape-to-close and an aria-expanded
         that tracks it; nothing depends on that arriving.

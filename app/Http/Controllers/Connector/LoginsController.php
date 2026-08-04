@@ -18,7 +18,7 @@ use Illuminate\Http\Request;
  *
  * The rejection path matters more here than on the other endpoints. `logins.v1` permits four
  * integers and a timestamp; a payload carrying a username is refused rather than stripped, and the
- * refusal records the offending field paths and nothing else — recording the payload of a report
+ * refusal records the offending field paths and nothing else - recording the payload of a report
  * that failed this particular allowlist would store exactly the thing the allowlist exists to keep
  * out.
  */

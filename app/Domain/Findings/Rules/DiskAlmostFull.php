@@ -14,7 +14,7 @@ use App\Domain\Findings\Snapshot;
  *
  * The most boring cause of a total outage there is, and the one nobody looks at until it happens.
  * A full disk on a Craft site does not degrade gracefully: sessions stop writing, the queue stops
- * draining, image transforms fail, logs stop, and the database — if it shares the volume — stops
+ * draining, image transforms fail, logs stop, and the database - if it shares the volume - stops
  * accepting writes. All at once, at whatever hour the last gigabyte went.
  *
  * Two thresholds rather than one, because the useful moment to say something is well before the
@@ -46,7 +46,7 @@ final class DiskAlmostFull implements Rule
 
         $used = $snapshot->runtime?->diskUsedPercent();
 
-        // Null where the filesystem could not answer — common on containerised and remote storage.
+        // Null where the filesystem could not answer - common on containerised and remote storage.
         // "We could not measure it" is not "it is fine", but it is also not a finding.
         if ($used === null || $used < self::WARN_PERCENT) {
             return null;
@@ -62,7 +62,7 @@ final class DiskAlmostFull implements Rule
             detail: sprintf(
                 'The volume holding this site is %s%% full%s. A Craft site on a full disk does not '
                 .'degrade gently: sessions stop writing, the queue stops draining, transforms fail '
-                .'and — if the database shares the volume — writes stop altogether. Clear old logs, '
+                .'and - if the database shares the volume - writes stop altogether. Clear old logs, '
                 .'caches and backups, or add space.',
                 $used,
                 $free === null ? '' : sprintf(', with %s GB free', number_format($free / 1073741824, 1)),

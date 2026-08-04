@@ -10,7 +10,7 @@ use Laravel\Passkeys\Http\Requests\PasskeyRegistrationRequest;
  * A passkey registration, with the label treated as a nicety rather than a requirement.
  *
  * Everything that matters is inherited: the credential is deserialised by the parent, and the
- * creation options come from the session rather than from the request — so the challenge being
+ * creation options come from the session rather than from the request - so the challenge being
  * answered is the one this platform issued, not one the caller chose.
  *
  * The only change is the label. The package requires a name; here the form has a single optional

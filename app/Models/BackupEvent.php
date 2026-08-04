@@ -13,7 +13,7 @@ use Illuminate\Support\Carbon;
  *
  * Distinct from an audit event, and the line between them is worth stating because it is easy to blur:
  * **decisions and accesses are audited; observations are recorded here.** Somebody requesting a backup,
- * an artifact being stored, a backup being downloaded — those are things a person or a system chose to
+ * an artifact being stored, a backup being downloaded - those are things a person or a system chose to
  * do, they need to be provable, and they go into the hash-chained log. "The dump started" is a report
  * about the world, it may be lost in transit, and it does not need to be provable.
  *

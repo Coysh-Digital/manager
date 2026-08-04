@@ -17,7 +17,7 @@
                         <span class="text-[13px] font-medium text-info">Paired, but nothing reported yet</span>
                         <span class="text-[12.5px] text-text-2">
                             The connector has authenticated. Nothing is sent until something on the site
-                            asks it to — <strong>Manager never calls out to a site</strong> — and by
+                            asks it to - <strong>Manager never calls out to a site</strong> - and by
                             default the next few visitors are what asks. The first report usually
                             arrives within a few minutes of the site being used. Nothing to set up:
                             <a href="{{ route('sites.settings', $site) }}#connector" class="text-info hover:text-primary-hover">cron is optional</a>
@@ -38,7 +38,7 @@
 
         {{--
             Three sentences, each a link to the tab that can do something about it. This replaces
-            nothing — it is the one thing the Overview gained when everything else moved off it, and
+            nothing - it is the one thing the Overview gained when everything else moved off it, and
             it exists because a tab bar shows where you can go and not whether it is worth going.
         --}}
         <div class="mb-6 grid grid-cols-1 gap-px overflow-hidden rounded-[10px] border border-border bg-border sm:grid-cols-2 xl:grid-cols-4">
@@ -95,7 +95,7 @@
             Pinned notes, above everything.
 
             The one thing on this page no connector can report: why the site is the way it is. A
-            pinned note is an operational caveat somebody must read *before* acting — "PHP stays on
+            pinned note is an operational caveat somebody must read *before* acting - "PHP stays on
             8.2 until the gateway is replaced" belongs above the findings that will tell you to
             upgrade it, not in a disclosure underneath them.
         --}}
@@ -192,7 +192,7 @@
                  derived from, so they belong beside the findings rather than three rows below the
                  queue depth. --}}
             <p class="mt-2 text-[12px] text-text-3">
-                Configuration flags — dev mode, HTTPS, admin changes — are on
+                Configuration flags - dev mode, HTTPS, admin changes - are on
                 <a href="{{ route('sites.security', $site) }}" class="text-primary hover:text-primary-hover">Security</a>,
                 beside the findings derived from them.
             </p>
@@ -203,7 +203,7 @@
 
             The only free text in this product, and the only record here a connector cannot produce.
             Everything else on this page is a fact a site reported; this is a decision somebody made
-            about it, and the reason — the thing that otherwise lives in a chat thread and leaves with
+            about it, and the reason - the thing that otherwise lives in a chat thread and leaves with
             whoever wrote it.
         --}}
         <div class="mb-2.5 mt-6 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
@@ -256,7 +256,7 @@
                 <label class="sr-only" for="note-body">A note about {{ $site->name }}</label>
                 <textarea name="body" id="note-body" rows="2" required minlength="2"
                           maxlength="{{ App\Models\SiteNote::MAX_LENGTH }}"
-                          placeholder="Dev mode is on deliberately — this is a staging clone."
+                          placeholder="Dev mode is on deliberately - this is a staging clone."
                           class="w-full rounded-[7px] border border-border-2 bg-surface px-2.5 py-2 text-[13px] leading-relaxed placeholder:text-text-3">{{ old('body') }}</textarea>
                 @error('body')
                     <span class="text-[12px] text-danger">{{ $message }}</span>

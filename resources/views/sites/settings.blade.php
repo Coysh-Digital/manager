@@ -56,7 +56,7 @@
                         The expected domain is the host this site must pair from. A connector
                         presenting a different one is held for confirmation rather than adopted, so
                         changing this changes what will be accepted next time.
-                        The environment decides which findings apply — several rules only fire in
+                        The environment decides which findings apply - several rules only fire in
                         production. Both changes are recorded in the audit log with their previous
                         values.
                     </p>
@@ -191,7 +191,7 @@
                 <div class="border-b border-border p-4">
                     <p class="max-w-[80ch] text-[13px] text-text-2">
                         Removes {{ $site->name }} from the fleet and revokes its connector in the same
-                        transaction — the credentials and the permissions cannot go away separately.
+                        transaction - the credentials and the permissions cannot go away separately.
                         Its audit history is kept: the log is append-only and removing a site does not
                         remove the record of what was done to it.
                     </p>

@@ -2,7 +2,7 @@
  * The backup schedule form.
  *
  * Only some of its controls apply to any given frequency: the hour means nothing for "only when
- * asked", and the day means nothing for anything but weekly — the scheduler reads it for weekly and
+ * asked", and the day means nothing for anything but weekly - the scheduler reads it for weekly and
  * ignores it otherwise. All three used to be on screen at once, so a daily schedule showed a day
  * selector that saved, appeared in the audit diff as a change, and then did nothing.
  *

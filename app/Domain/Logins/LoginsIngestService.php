@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\DB;
  *
  * The allowlist matters more here than anywhere else in the protocol. `logins.v1` has properties for
  * four integers and a timestamp and `additionalProperties: false`, so a connector that started
- * sending usernames — through a well-meaning change, or a compromised one — is refused at the door
+ * sending usernames - through a well-meaning change, or a compromised one - is refused at the door
  * rather than having them stripped and stored anyway.
  */
 final class LoginsIngestService

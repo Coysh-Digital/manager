@@ -12,7 +12,7 @@ use App\Models\Site;
 /**
  * TLS certificate monitoring, which is the one thing this platform goes and looks at itself.
  *
- * Everything else about a site is reported by its connector, deliberately — a platform that reaches
+ * Everything else about a site is reported by its connector, deliberately - a platform that reaches
  * into the sites it manages is a platform worth attacking. A certificate is the exception because the
  * connector genuinely cannot see it: TLS terminates at the edge, so PHP on the origin sees whatever a
  * CDN or load balancer put in `$_SERVER`, which is not what a visitor's browser validates.
@@ -114,7 +114,7 @@ it('clears a stale error when a site recovers', function (): void {
 
     $this->artisan('manager:certificates:check')->assertSuccessful();
 
-    // Not asserting success — localhost is refused — but asserting the row is rewritten wholesale
+    // Not asserting success - localhost is refused - but asserting the row is rewritten wholesale
     // rather than merged. A stale error beside a fresh expiry is the kind of thing somebody acts on.
     expect($site->fresh()->certificate_expires_at)->toBeNull();
 });

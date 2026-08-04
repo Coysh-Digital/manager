@@ -8,7 +8,7 @@ use Symfony\Component\Process\Process;
 /**
  * Invariant 17: connector and platform updates must use verifiable release artifacts.
  *
- * This was the last invariant with no test, and it stayed that way deliberately for a while — there
+ * This was the last invariant with no test, and it stayed that way deliberately for a while - there
  * was nothing to test until releases existed, and a test that merely asserted a workflow file was
  * present would have proved nothing.
  *
@@ -45,7 +45,7 @@ beforeEach(function (): void {
     // The identity is supplied explicitly: an annotated tag records a tagger, and a CI runner has no
     // git identity configured, so `git tag -a` there fails with "Committer identity unknown". Left
     // implicit, that failure surfaces as six unrelated-looking assertion failures further down —
-    // missing archives, missing manifests — rather than as the one thing that actually went wrong.
+    // missing archives, missing manifests - rather than as the one thing that actually went wrong.
     $tagged = runRelease([
         'git',
         '-c', 'user.name=Manager Invariants',
@@ -130,14 +130,14 @@ it('contains only what the tag contains', function (): void {
         ->and($files)->not->toContain('/.git/');
 
     // A real .env, matched precisely. Testing for the substring ".env" would also match .env.example,
-    // which has to be there — the install instructions begin by copying it.
+    // which has to be there - the install instructions begin by copying it.
     $paths = preg_split('/\R/', trim($files)) ?: [];
 
     expect(array_filter($paths, static fn (string $path): bool => str_ends_with($path, '/.env')))
         ->toBe([])
         ->and($files)->toContain("manager-{$version}/.env.example");
 
-    // The compiled assets must be in there, or a fresh install renders nothing — which is exactly the
+    // The compiled assets must be in there, or a fresh install renders nothing - which is exactly the
     // bug the clean-room install found.
     expect($files)->toContain("manager-{$version}/public/build/manifest.json");
 });

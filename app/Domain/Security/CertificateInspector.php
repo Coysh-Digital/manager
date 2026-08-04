@@ -18,7 +18,7 @@ use Throwable;
  * only ever speaks outbound needs no inbound firewall rule.
  *
  * A certificate is the exception because the connector cannot see it. TLS is terminated at the edge —
- * a CDN, a load balancer, a reverse proxy — and PHP on the origin sees whatever that proxy chose to
+ * a CDN, a load balancer, a reverse proxy - and PHP on the origin sees whatever that proxy chose to
  * put in `$_SERVER`. Asking the site would produce a number that is confidently wrong on exactly the
  * sites where it matters most. The only way to know what a visitor's browser validates is to be one.
  *
@@ -36,7 +36,7 @@ use Throwable;
  *
  * Verification is deliberately **off** at the socket level. That looks wrong and is not: the job is to
  * report on a certificate including when it is expired, self-signed or misissued, and a verifying
- * connection refuses those instead of describing them. Nothing is trusted as a result — no data
+ * connection refuses those instead of describing them. Nothing is trusted as a result - no data
  * crosses this connection in either direction, and the certificate is evidence rather than
  * authentication.
  */

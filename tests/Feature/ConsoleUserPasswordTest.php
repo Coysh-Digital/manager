@@ -112,7 +112,7 @@ it('records the change without recording the password', function (): void {
 
 it('distinguishes clearing a second factor from there never having been one', function (): void {
     // No TOTP enrolled, and the flag passed anyway. Nothing to clear, so the log should not claim a
-    // second factor was removed — otherwise the record implies a downgrade that never happened.
+    // second factor was removed - otherwise the record implies a downgrade that never happened.
     $this->artisan('manager:user:password owner@example.org --generate --reset-second-factor')
         ->assertSuccessful();
 
@@ -126,7 +126,7 @@ it('fails helpfully on an address that does not exist', function (): void {
     $this->artisan('manager:user:password nobody@example.org --generate')
         ->expectsOutputToContain('No account with the address')
         // Lists what does exist. This is a console command for a locked-out operator, not a login form
-        // — being coy would only obstruct the person it is for.
+        // - being coy would only obstruct the person it is for.
         ->expectsOutputToContain('owner@example.org')
         ->assertFailed();
 });

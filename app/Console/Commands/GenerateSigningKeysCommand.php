@@ -12,7 +12,7 @@ use Illuminate\Console\Command;
  * Mints the platform's Ed25519 identity.
  *
  * Run once during installation. Rotating it invalidates every connector's stored copy of the
- * platform public key, so connectors have to be told the new one — which is why this refuses to
+ * platform public key, so connectors have to be told the new one - which is why this refuses to
  * overwrite an existing key without being asked twice.
  */
 final class GenerateSigningKeysCommand extends Command
@@ -58,7 +58,7 @@ final class GenerateSigningKeysCommand extends Command
         }
 
         // Nothing was saved, so the keys are printed and the operator is told exactly that. Reporting
-        // success here — as this once did — is how a signing key gets lost on the next restart, and the
+        // success here - as this once did - is how a signing key gets lost on the next restart, and the
         // symptom appears later as every site failing to pair.
         $this->line('  Nothing was written: there is no writable .env here, which is normal in a');
         $this->line('  container. Add both lines to the environment Manager starts with, then restart it.');

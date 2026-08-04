@@ -12,7 +12,7 @@
             Is the thing reporting to us still the thing we paired with?
 
             A connector authenticates with an Ed25519 signature, so a new source address is not an
-            alarm on its own — sites move and hosts rotate egress. But nothing in the interface said
+            alarm on its own - sites move and hosts rotate egress. But nothing in the interface said
             where reports were arriving from at all, which meant the one shape a compromise takes was
             the one thing nobody could see.
         --}}
@@ -89,8 +89,8 @@
                 @endif
 
                 <p class="bg-surface-2 px-3.5 py-2.5 text-[12px] leading-relaxed text-text-3">
-                    Addresses over the last 30 days. A change is not an alarm on its own — sites move
-                    and hosts rotate egress — but a key that has never rotated, reporting from an
+                    Addresses over the last 30 days. A change is not an alarm on its own - sites move
+                    and hosts rotate egress - but a key that has never rotated, reporting from an
                     address it has never used, is worth a look. Revoking the connector under
                     <a href="{{ route('sites.settings', $site) }}#connector" class="text-primary hover:text-primary-hover">Settings</a>
                     stops it reporting immediately.
@@ -110,7 +110,7 @@
                 <p class="text-[13.5px] font-medium">Nothing outstanding.</p>
                 <p class="mt-1.5 text-[13px] text-text-2">
                     Findings are derived here from what the site reports, and resolve themselves once
-                    the problem is fixed — there is nothing to tick off.
+                    the problem is fixed - there is nothing to tick off.
                 </p>
             </div>
         @else
@@ -230,8 +230,8 @@
         {{--
             What Manager itself can do here, and what it has kept.
 
-            The question an operator gets asked in an audit — "what does your monitoring platform
-            have access to, and what has it stored" — and until now the only way to answer it was to
+            The question an operator gets asked in an audit - "what does your monitoring platform
+            have access to, and what has it stored" - and until now the only way to answer it was to
             read a capability list and infer.
         --}}
         <h2 id="exposure" class="mb-2.5 mt-6 scroll-mt-6 text-[13.5px] font-semibold">What Manager holds on this site</h2>
@@ -250,7 +250,7 @@
                         No backup has been stored yet.
                     @endif
                 @else
-                    Manager holds <strong>operational metadata only</strong> for this site — versions,
+                    Manager holds <strong>operational metadata only</strong> for this site - versions,
                     counts and configuration booleans. It has no copy of the database, no entries, no
                     assets and no user records, because the capability that would read them
                     (<code class="font-mono text-[12px]">backups:create</code>) is not granted.
@@ -278,7 +278,7 @@
 
             <p class="bg-surface-2 px-3.5 py-2.5 text-[12px] leading-relaxed text-text-3">
                 Manager never holds an administrator password, an SSH key or a database credential for
-                any site — the schema has nowhere to put one. Everything above is revocable from
+                any site - the schema has nowhere to put one. Everything above is revocable from
                 <a href="{{ route('sites.settings', $site) }}#capabilities" class="text-primary hover:text-primary-hover">Settings</a>,
                 and revoking takes effect on the connector's next check-in.
             </p>
@@ -379,7 +379,7 @@
         @if ($licence === null && ! $site->hasCapability('licences:read'))
             <p class="mt-2 text-[12px] text-text-3">
                 Licence state needs <code class="font-mono">licences:read</code>. Only the state
-                computed on the site crosses the wire — never a licence key.
+                computed on the site crosses the wire - never a licence key.
             </p>
         @endif
 

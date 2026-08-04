@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Schema;
  * Scheduled backups, and the TLS certificate a site's visitors actually see.
  *
  * **Scheduling** is per site rather than per organisation, because "back this one up nightly and that
- * one weekly" is the shape of a real fleet — a busy shop and a brochure site do not warrant the same
+ * one weekly" is the shape of a real fleet - a busy shop and a brochure site do not warrant the same
  * cadence, and forcing one policy across an organisation means picking the more expensive one.
  *
  * The hour is stored separately from the frequency, and in the organisation's own time zone, because
@@ -18,13 +18,13 @@ use Illuminate\Support\Facades\Schema;
  * nightly backup is that it happens when the site is quiet.
  *
  * Note what is absent: nothing here says *where* a backup goes or *who* can read it. A schedule
- * decides when to ask, and every other property of the backup is decided elsewhere — the recipient
+ * decides when to ask, and every other property of the backup is decided elsewhere - the recipient
  * list by the organisation's recovery keys, the destination by the site's own configuration. A column
  * here naming either would be the beginning of a way to reconfigure a backup by editing a schedule.
  *
  * **Certificates** are checked by this platform reaching the site's own hostname over TLS, which is a
  * departure worth naming. Everything else about this product is reported by the connector, and there
- * is a good reason for that — a platform that can reach into sites is a platform worth attacking.
+ * is a good reason for that - a platform that can reach into sites is a platform worth attacking.
  *
  * A certificate is the exception because the connector genuinely cannot see it. TLS is terminated at
  * the edge: a CDN, a load balancer, a reverse proxy. PHP running on the origin sees whatever the proxy
@@ -51,7 +51,7 @@ return new class extends Migration
             $table->unsignedTinyInteger('backup_schedule_day')->default(7);
 
             // When the scheduler last enqueued for this site. The guard against enqueuing twice in one
-            // window is a comparison against this, not a count of jobs — a job that failed and was
+            // window is a comparison against this, not a count of jobs - a job that failed and was
             // cleaned up would otherwise let the same window fire again.
             $table->timestamp('backup_scheduled_at')->nullable();
 

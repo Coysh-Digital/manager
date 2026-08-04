@@ -39,7 +39,7 @@ it('shows existing destinations with their subscribed events', function (): void
         'events' => [NotificationEvent::FINDING_OPENED],
     ]);
 
-    $this->actingAs($this->owner)->get('/settings')
+    $this->actingAs($this->owner)->get('/settings/notifications')
         ->assertOk()
         ->assertSee('Operations mailbox')
         ->assertSee('ops@example.org')
@@ -80,13 +80,13 @@ it('generates a signing secret for a webhook and shows it once', function (): vo
 
     $response->assertSessionHas('freshSigningSecret', $secret);
 
-    // Once, on the screen the creation redirects to — a receiver needs it in order to verify
+    // Once, on the screen the creation redirects to - a receiver needs it in order to verify
     // deliveries...
-    $this->actingAs($this->owner)->get('/settings')->assertOk()->assertSee($secret);
+    $this->actingAs($this->owner)->get('/settings/notifications')->assertOk()->assertSee($secret);
 
     // ...and not again. It is encrypted at rest and there is no route that will reveal it, so
     // somebody who misses it rotates the destination rather than asking us to look it up.
-    $this->actingAs($this->owner)->get('/settings')->assertOk()->assertDontSee($secret);
+    $this->actingAs($this->owner)->get('/settings/notifications')->assertOk()->assertDontSee($secret);
 });
 
 it('refuses a webhook pointing at a private or reserved address', function (string $url): void {
@@ -256,7 +256,7 @@ it('shows a destination that has failed too often as stopped', function (): void
         'consecutive_failures' => NotificationDestination::FAILURE_LIMIT,
     ]);
 
-    $this->actingAs($this->owner)->get('/settings')
+    $this->actingAs($this->owner)->get('/settings/notifications')
         ->assertOk()
         ->assertSee('Stopped after repeated failures');
 });

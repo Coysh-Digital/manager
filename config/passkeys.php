@@ -47,10 +47,10 @@ return [
     |
     | Set PASSKEYS_USER_HANDLE_SECRET explicitly before rotating APP_KEY. Rotating the application key
     | while this is unset changes every derived handle, which orphans every passkey already
-    | registered — an account with no other second factor would be locked out.
+    | registered - an account with no other second factor would be locked out.
     |
-    | `?:` rather than an env() default, deliberately. A variable that is present but empty — which is
-    | how half the entries in .env.example start life — would otherwise be taken at its word and used
+    | `?:` rather than an env() default, deliberately. A variable that is present but empty - which is
+    | how half the entries in .env.example start life - would otherwise be taken at its word and used
     | as an empty HMAC key. Falling back on blank as well as on absent is the difference between a
     | derived handle and a constant one.
     |

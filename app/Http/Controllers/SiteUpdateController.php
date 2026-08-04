@@ -17,7 +17,7 @@ use Illuminate\Contracts\View\View;
  * Everything installed on one site, and what it could be on instead.
  *
  * The fleet-wide Updates screen answers "which sites need attention". This answers "what, exactly,
- * on this one" — which until now the interface could not, despite holding the data: the site page
+ * on this one" - which until now the interface could not, despite holding the data: the site page
  * showed a plugin count and the fleet page showed the first three handles.
  */
 final class SiteUpdateController
@@ -43,7 +43,7 @@ final class SiteUpdateController
             'plugins' => $plugins,
 
             // Which plugin rows can offer a panel. One query for the lot rather than one per row,
-            // and it asks only whether notes exist — the text itself is loaded when somebody opens
+            // and it asks only whether notes exist - the text itself is loaded when somebody opens
             // one, the same way Craft's are.
             'pluginNotes' => $this->pluginChangelog->handlesWithNotes($plugins),
 
@@ -52,7 +52,7 @@ final class SiteUpdateController
             // password prompt is a worse experience than not showing it.
             'canRequest' => app(Membership::class)->canAdminister(),
 
-            // Whether to offer the panel at all. Nothing is fetched by rendering this screen — the
+            // Whether to offer the panel at all. Nothing is fetched by rendering this screen - the
             // request happens when somebody opens the notes, which is the same moment the link
             // would have taken them to GitHub.
             'canReadChangelog' => $this->changelogs->enabled() && $updates?->craft_update_available,
@@ -89,7 +89,7 @@ final class SiteUpdateController
      * touches no network and reads no table that knows what a site is. The versions come from this
      * site's own report and decide which stored notes to show.
      *
-     * A handle that is not one produces the fallback panel rather than a 404 — it is a plugin whose
+     * A handle that is not one produces the fallback panel rather than a 404 - it is a plugin whose
      * report was odd, not a route somebody has no business calling.
      */
     public function pluginChangelog(Site $site, string $handle): View

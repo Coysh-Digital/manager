@@ -27,8 +27,8 @@ use Illuminate\Support\Carbon;
  * never arrives, and a state machine that lies is worse than one with fewer states.
  *
  * `dump_started` earns its place because it is the only one whose information is not derivable later.
- * It turns "the job was claimed forty minutes ago and we have heard nothing" from ambiguous — site
- * down, or dump still running? — into a definite answer, on the longest phase.
+ * It turns "the job was claimed forty minutes ago and we have heard nothing" from ambiguous - site
+ * down, or dump still running? - into a definite answer, on the longest phase.
  *
  * Nothing decides anything on what arrives here. A stage is a claim about a site's own state, the site
  * may be wrong or lying, and the artifact's own `state` column is the only thing that gates behaviour.
@@ -50,7 +50,7 @@ final class BackupProgressController
         if ($problems !== []) {
             return response()->json([
                 'error' => 'payload_rejected',
-                // Field paths only, never values — the protocol validator is written never to quote a
+                // Field paths only, never values - the protocol validator is written never to quote a
                 // rejected value, and this keeps that property at the boundary.
                 'problems' => array_slice($problems, 0, 20),
                 'correlation_id' => $correlationId->get(),

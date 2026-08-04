@@ -14,7 +14,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
- * Receives a runtime report — disk, PHP limits, response timings. Requires `runtime:read`.
+ * Receives a runtime report - disk, PHP limits, response timings. Requires `runtime:read`.
  *
  * A payload that fails the allowlist is refused and audited by field path only. The payload itself
  * is never recorded: a report that failed validation is precisely where a filesystem path would be.
@@ -65,7 +65,7 @@ final class SystemController
          | two sides are upgraded by different people on different days: whoever runs the platform
          | upgrades it, and each site upgrades its own plugin. A connector that assumed the newer
          | version would have its reports refused by any platform that had not caught up, and a
-         | runtime report is fire-and-forget — the only symptom is a Health screen that stops
+         | runtime report is fire-and-forget - the only symptom is a Health screen that stops
          | moving, which nobody notices for weeks.
          |
          | One reporting cycle behind, deliberately. A connector learns this from a reply, so it

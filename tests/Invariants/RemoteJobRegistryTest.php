@@ -156,7 +156,7 @@ it('cancels a queued job when its capability is revoked before it is claimed', f
     $claimed = $this->jobs->claimFor($this->site->fresh(), $this->connector);
 
     // Authorisation is re-checked at claim time. Without that, revoking a capability would only stop
-    // work nobody had asked for yet — the queued job would still run.
+    // work nobody had asked for yet - the queued job would still run.
     expect($claimed)->toHaveCount(0)
         ->and($job->fresh()->state)->toBe(Jobs::STATE_CANCELLED)
         ->and($job->fresh()->failure_reason)->toContain('capability revoked');
@@ -220,7 +220,7 @@ it('hands one job to only one claimer', function (): void {
     $first = $this->jobs->claimFor($this->site, $this->connector);
     $second = $this->jobs->claimFor($this->site, $this->connector);
 
-    // The claim is a conditional UPDATE, so a repeated claim gets different work or nothing — never
+    // The claim is a conditional UPDATE, so a repeated claim gets different work or nothing - never
     // the same job twice.
     expect($first)->toHaveCount(1)
         ->and($second)->toHaveCount(0);

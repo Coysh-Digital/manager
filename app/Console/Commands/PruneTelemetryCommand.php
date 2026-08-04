@@ -18,13 +18,13 @@ use Illuminate\Support\Carbon;
  *
  * Three tables, all of which grow on a schedule and none of which anything else would ever remove:
  *
- *  - **Heartbeats.** The smallest record the platform keeps — a site id, a version, a source address
- *    and a time — arriving every five minutes per site. The table's own migration said they were
+ *  - **Heartbeats.** The smallest record the platform keeps - a site id, a version, a source address
+ *    and a time - arriving every five minutes per site. The table's own migration said they were
  *    "pruned on a schedule" from the day it was written; nothing pruned them until the Health screen
  *    started reading them, at which point unbounded growth stopped being merely untidy.
  *  - **Runtime reports.** Four a day per site. Small individually, and the interface only ever reads
  *    the latest one.
- *  - **Login reports.** Forty-eight a day per site — the fastest-growing of the three, and the one
+ *  - **Login reports.** Forty-eight a day per site - the fastest-growing of the three, and the one
  *    whose rows are almost all identical zeros.
  *
  * Only the latest of each report is ever shown, so keeping ninety days of them is already generous:
@@ -36,7 +36,7 @@ use Illuminate\Support\Carbon;
  * maintenance task becomes an outage.
  *
  * Plugin release notes are pruned too, on a different key and for a different reason. They are not
- * telemetry — no site is named in them and none grows on a schedule — but a fleet that stops running
+ * telemetry - no site is named in them and none grows on a schedule - but a fleet that stops running
  * a plugin leaves its notes behind forever, and rows nothing will ever read again are still rows.
  * They are removed on `updated_at`, which every report touches, so a note describing a plugin still
  * installed somewhere is never a candidate however old the release is.

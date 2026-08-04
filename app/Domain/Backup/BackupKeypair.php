@@ -21,7 +21,7 @@ use RuntimeException;
  * documentation says so plainly rather than calling it end-to-end encryption.
  *
  * Losing the secret key makes every stored artifact permanently unreadable. There is no recovery path
- * and there should not be one — a backup of the backup key held next to the backups would defeat the
+ * and there should not be one - a backup of the backup key held next to the backups would defeat the
  * point of encrypting them.
  */
 final class BackupKeypair

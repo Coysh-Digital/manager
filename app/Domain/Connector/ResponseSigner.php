@@ -13,8 +13,8 @@ use Illuminate\Http\JsonResponse;
  * Signs responses that carry commands or security-sensitive configuration.
  *
  * The signature covers the request nonce as well as the body, which binds a response to the single
- * request that asked for it. Without that binding, a captured response — a set of granted
- * capabilities, say — could be replayed at the connector against some later request.
+ * request that asked for it. Without that binding, a captured response - a set of granted
+ * capabilities, say - could be replayed at the connector against some later request.
  *
  * A connector that expects a signed response and does not get a valid one must treat the whole
  * exchange as failed, never as an unsigned success.

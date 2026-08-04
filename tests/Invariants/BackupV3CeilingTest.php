@@ -26,15 +26,15 @@ use Illuminate\Support\Str;
  * Where the ceiling on a backup lives.
  *
  * It used to live in the wire contract. `backup.v2` declared `artifact_bytes` with a 2 GiB maximum
- * and described it as "the platform's artifact limit", which it was not — it was the protocol's, and
+ * and described it as "the platform's artifact limit", which it was not - it was the protocol's, and
  * no platform could change it. Manager Cloud had already decided the opposite for its own customers:
  * storage it sells is billed for rather than capped, and it tells connectors there is no limit. The
  * wire contract then refused anyway, after a site had dumped and encrypted its whole database.
  *
  * So `backup.v3` carries no maximum and this file is where the consequence is pinned down: an
  * artifact is bounded by `manager.backups.max_bytes`, an operator can move that, and the refusal says
- * so. Everything else about a v3 artifact is a v2 artifact — same envelope, same signing prefix, same
- * encryption — and the tests that prove *that* live in BackupV2PipelineTest, which still passes
+ * so. Everything else about a v3 artifact is a v2 artifact - same envelope, same signing prefix, same
+ * encryption - and the tests that prove *that* live in BackupV2PipelineTest, which still passes
  * unchanged.
  */
 beforeEach(function (): void {
@@ -44,7 +44,7 @@ beforeEach(function (): void {
      | Generated here rather than read from the environment.
      |
      | The claim response is signed, so the three negotiation tests at the foot of this file need a
-     | platform keypair. A configured installation has one and a fresh checkout does not — which is
+     | platform keypair. A configured installation has one and a fresh checkout does not - which is
      | exactly the trap BackupPipelineTest names: a suite that only passes on a machine where somebody
      | has run `manager:keys:generate` is a suite that stops running on CI. It did, and this is why.
      */
@@ -80,7 +80,7 @@ beforeEach(function (): void {
      * the fake agreed with itself.
      *
      * `$claimBytes` lets a declaration describe an artifact far larger than the one actually built.
-     * That is not a cheat — declaring is a separate step from uploading, and the size is checked
+     * That is not a cheat - declaring is a separate step from uploading, and the size is checked
      * against the ceiling here and against the arriving stream later. It is the only way to exercise
      * a twenty-gigabyte declaration without writing twenty gigabytes.
      *
@@ -234,7 +234,7 @@ it('refuses the same artifact when the ceiling is lowered, and only then', funct
     $refused->assertStatus(422);
 
     // Naming the number and the setting, because a configurable ceiling nobody is told about is not
-    // configurable. Sizes only — the connector already knows both of these.
+    // configurable. Sizes only - the connector already knows both of these.
     expect($refused->json('reason'))->toContain((string) $tenGigabytes)
         ->and($refused->json('reason'))->toContain('MANAGER_BACKUP_MAX_BYTES');
 
@@ -259,7 +259,7 @@ it('still holds a v2 declaration to v2 limits', function (): void {
 
 it('requires a v3 declaration to carry a v3 manifest', function (): void {
     // Strict pairing rather than a matrix of four. Without it a v2 manifest could ride inside a v3
-    // declaration, or the reverse — and the reverse is the dangerous direction, because it would put
+    // declaration, or the reverse - and the reverse is the dangerous direction, because it would put
     // a twenty-gigabyte manifest behind a schema whose job was to bound it.
     $artifact = ($this->makeArtifact)('backup.v3', manifestVersion: 'backup-manifest.v2');
 
@@ -273,8 +273,8 @@ it('names the manifest field that failed, rather than nothing at all', function 
     /*
      | This was a bug, and the shape of it is worth keeping.
      |
-     | The manifest refusal interpolated `$problems` — the *declaration's* problems, necessarily empty
-     | by the time execution reaches there — instead of `$manifestProblems`. So the one message
+     | The manifest refusal interpolated `$problems` - the *declaration's* problems, necessarily empty
+     | by the time execution reaches there - instead of `$manifestProblems`. So the one message
      | written to name the failing field produced "...did not satisfy backup-manifest.v3: ." and named
      | nothing. Exactly the diagnosis cost that adding field paths was meant to remove, surviving in
      | the half of the pair that had no test.
@@ -333,7 +333,7 @@ it('advertises the ceiling, so a site is refused before it dumps', function (): 
 
 it('advertises zero when there is no ceiling, rather than omitting the field', function (): void {
     /*
-     * Zero is the wire's "no ceiling", and the connector reads it as one — it skips the check on
+     * Zero is the wire's "no ceiling", and the connector reads it as one - it skips the check on
      * zero exactly as it does on an absent field. The field is still sent, because *absent* is how
      * a platform too old to have an opinion looks, and this platform has one.
      *

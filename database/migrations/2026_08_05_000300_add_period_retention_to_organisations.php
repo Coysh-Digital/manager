@@ -16,8 +16,8 @@ use Illuminate\Support\Facades\Schema;
  * below N and nothing looking wrong.
  *
  * The replacement is the grandfather-father-son shape: everything for some days, then one a week, then
- * one a month. The oldest surviving copy is then genuinely old — from before whatever started going
- * wrong — instead of merely being the oldest of a recent batch.
+ * one a month. The oldest surviving copy is then genuinely old - from before whatever started going
+ * wrong - instead of merely being the oldest of a recent batch.
  *
  * `backup_keep_count` is left in place and unread. Dropping a column in the same deployment that stops
  * writing it means a rollback loses the value, and this table is small enough that a dead column costs

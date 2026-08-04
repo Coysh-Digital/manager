@@ -23,7 +23,7 @@ class RecoveryKeyFactory extends Factory
      * The secret halves of the keys this factory generated, by fingerprint.
      *
      * A test that wants to prove possession needs the other half, and a real one is the only way to
-     * exercise the ceremony end to end — a stubbed challenge would pass whether or not the sealing
+     * exercise the ceremony end to end - a stubbed challenge would pass whether or not the sealing
      * actually worked.
      *
      * @var array<string, string>

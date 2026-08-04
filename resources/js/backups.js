@@ -3,7 +3,7 @@
  *
  * A backup waits for the site to collect it, which is up to five minutes away and longer on a site
  * whose scheduler is driven by web traffic. For that whole time the screen is correct and looks
- * broken, and the observable consequence is somebody pressing "Back up now" again — which is another
+ * broken, and the observable consequence is somebody pressing "Back up now" again - which is another
  * full dump of a production database.
  *
  * So: poll, narrowly. Only while there is something outstanding, only for the phase and the elapsed

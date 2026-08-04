@@ -69,7 +69,7 @@ final class PairController
                 'platform_public_key' => $keypair->publicKey(),
 
                 // The encryption key artifacts get sealed to. Separate from the signing key above,
-                // and null when backups are not configured — a connector that is told nothing seals
+                // and null when backups are not configured - a connector that is told nothing seals
                 // nothing rather than guessing.
                 'backup_public_key' => $backups->isConfigured() ? $backups->publicKey() : null,
 

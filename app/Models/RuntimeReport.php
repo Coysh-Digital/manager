@@ -125,7 +125,7 @@ class RuntimeReport extends Model
      * configuration. Reporting them identically is why "Not measured" read as a fault when most of
      * the time it is not one.
      *
-     * Null for a volume that was measured, and for a report from a connector too old to say — an
+     * Null for a volume that was measured, and for a report from a connector too old to say - an
      * older plugin sends `system.v1`, which has no reason to give, and inventing one from the shape
      * of what arrived would be guessing on a screen.
      *
@@ -138,7 +138,7 @@ class RuntimeReport extends Model
         }
 
         return match ($volume['unmeasured_reason'] ?? null) {
-            'remote' => 'On remote storage. Walking it would mean an API call per directory, billed to the site, to fill in a dashboard — so it is left alone.',
+            'remote' => 'On remote storage. Walking it would mean an API call per directory, billed to the site, to fill in a dashboard - so it is left alone.',
             'timeout' => 'The walk ran out of the connector\'s time budget, so the figures beside it are a floor rather than a total. Raise storageWalkSeconds in the site\'s config/manager-connector.php to measure more of it.',
             'unreadable' => 'The path resolved but could not be opened. Unlike the other two this is a fault worth looking at: check the volume\'s filesystem settings and that the web user can read it.',
             default => null,

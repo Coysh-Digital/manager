@@ -61,7 +61,7 @@ final class ScheduleBackupsCommand extends Command
 
         foreach ($sites as $site) {
             // The site's own zone. "03:00" has to mean the quiet hour where this site is, and a
-            // fleet spread across London and Sydney cannot share one — which is why this stopped
+            // fleet spread across London and Sydney cannot share one - which is why this stopped
             // being the organisation's.
             $timezone = $site->timezone ?: 'UTC';
             $now = Carbon::now($timezone);
@@ -114,7 +114,7 @@ final class ScheduleBackupsCommand extends Command
                 $job = $jobs->enqueue(
                     $site,
                     Jobs::BACKUP_CREATE,
-                    // No parameters. A backup job carries none at all — not a destination, not a
+                    // No parameters. A backup job carries none at all - not a destination, not a
                     // recipient, not a format. Everything about the backup is decided elsewhere.
                     [],
                     actor: null,

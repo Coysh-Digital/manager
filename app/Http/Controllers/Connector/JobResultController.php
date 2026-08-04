@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\Log;
  * shape the platform never asked for, which matters for the same reason inventory reports are
  * validated: it is the boundary that stops a compromised site sending whatever it likes.
  *
- * The response is unsigned. It carries no instruction — only an acknowledgement — and signing
+ * The response is unsigned. It carries no instruction - only an acknowledgement - and signing
  * everything indiscriminately trains a connector to treat a signature as decoration.
  */
 final class JobResultController

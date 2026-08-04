@@ -26,7 +26,7 @@ jobs:
           DECLARED=$(php -r 'echo json_decode(file_get_contents("composer.json"), true)["version"] ?? "";' 2>/dev/null || true)
           EXPECTED="${GITHUB_REF_NAME#v}"
 
-          # The platform manifest carries no version field — the tag is the only statement of it, which
+          # The platform manifest carries no version field - the tag is the only statement of it, which
           # is the arrangement that cannot drift. If one is ever added, it has to agree.
           if [ -n "$DECLARED" ] && [ "$DECLARED" != "$EXPECTED" ]; then
             echo "::error::composer.json says ${DECLARED} but the tag is ${EXPECTED}."

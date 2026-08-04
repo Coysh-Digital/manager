@@ -13,7 +13,7 @@ use Illuminate\Support\Carbon;
  * Read only, and assembled for the screen. Nothing here is authoritative about anything: the phase is
  * partly the platform's own record of the job and partly the site's claim about itself, and the two
  * are kept distinct because a site can be wrong or lying. `BackupArtifact::$state` remains the only
- * thing that gates behaviour — see the note on the `stage` column, which says it is "a claim, where
+ * thing that gates behaviour - see the note on the `stage` column, which says it is "a claim, where
  * `state` is a fact".
  */
 final readonly class InFlightBackup
@@ -52,7 +52,7 @@ final readonly class InFlightBackup
         public bool $reportedBySite,
 
         /**
-         * When this last changed — the newest phase report, or the request if there has been none.
+         * When this last changed - the newest phase report, or the request if there has been none.
          *
          * Separate from `requestedAt` because they answer different questions. "Requested 50 minutes
          * ago" is normal for a large site; "nothing has changed for 50 minutes" is the one that
@@ -117,7 +117,7 @@ final readonly class InFlightBackup
     /**
      * The sentence under the label.
      *
-     * The queued case is the one worth explaining. Nothing is wrong and nothing is stuck — the
+     * The queued case is the one worth explaining. Nothing is wrong and nothing is stuck - the
      * platform cannot reach into a site, so a request waits for the site to come and ask, and a
      * person watching a screen that says only "queued" has no way to know that is normal.
      */

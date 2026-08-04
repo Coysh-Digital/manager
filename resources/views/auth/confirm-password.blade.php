@@ -10,7 +10,7 @@
     @if (! empty($interrupted))
         <p class="mb-3 text-[13px] text-text-2">
             You were about to <span class="font-medium text-text">{{ $interrupted }}</span>. Nothing
-            has been done yet, and what you had typed is kept — confirm below and you will be taken
+            has been done yet, and what you had typed is kept - confirm below and you will be taken
             back to it.
         </p>
     @endif

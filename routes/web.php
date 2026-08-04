@@ -14,6 +14,7 @@ use App\Http\Controllers\BackupDownloadController;
 use App\Http\Controllers\CapabilityController;
 use App\Http\Controllers\FindingController;
 use App\Http\Controllers\HealthController;
+use App\Http\Controllers\MailSettingsController;
 use App\Http\Controllers\NotificationDestinationController;
 use App\Http\Controllers\PaletteController;
 use App\Http\Controllers\PasskeyController;
@@ -45,8 +46,8 @@ use Illuminate\Support\Facades\Route;
 
 /*
  | Readiness, for orchestrators. Liveness is Laravel's own /up, which answers "is PHP running";
- | this answers "can this instance serve a request". Unauthenticated by necessity — a load balancer
- | has no credentials — so it names which check failed and nothing else.
+ | this answers "can this instance serve a request". Unauthenticated by necessity - a load balancer
+ | has no credentials - so it names which check failed and nothing else.
  */
 Route::get('ready', [HealthController::class, 'ready'])->name('health.ready');
 
@@ -82,7 +83,7 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
     Route::redirect('/', '/sites');
 
     // What the command palette can jump to. Read-only, scoped to the organisation, and fetched once
-    // per page rather than per keystroke — a fleet is small enough to filter in the browser, and a
+    // per page rather than per keystroke - a fleet is small enough to filter in the browser, and a
     // search-as-you-type endpoint would put what somebody typed into the access log.
     Route::get('palette', PaletteController::class)->name('palette');
 
@@ -119,7 +120,7 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
         Route::get('sites/{site}/backups', [SiteBackupController::class, 'show'])->name('sites.backups');
 
         // Read-only, and the same tenant scoping as the screen it serves. It carries a job
-        // identifier and a phase name — nothing the page rendering it cannot already see.
+        // identifier and a phase name - nothing the page rendering it cannot already see.
         Route::get('sites/{site}/backups/status', [SiteBackupController::class, 'status'])
             ->name('sites.backups.status');
 
@@ -145,7 +146,7 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
      |
      | Outside the recent-authentication group deliberately, and for the same reason notes are: this
      | destroys nothing. The job row, its failure reason and the audit entry for the failure all
-     | survive — only the panel stops leading with it. Administrators, matching the button that asks
+     | survive - only the panel stops leading with it. Administrators, matching the button that asks
      | for a backup in the first place.
      */
     /*
@@ -153,7 +154,7 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
      |
      | Outside the recent-authentication group with the notices below, and for a reason worth
      | stating: this is the brake rather than the accelerator. It grants nothing, destroys no stored
-     | backup, and is worth having at the moment somebody realises they did not want it — which is
+     | backup, and is worth having at the moment somebody realises they did not want it - which is
      | usually the moment they are least willing to go and find their password.
      */
     Route::post('backups/cancel', [BackupController::class, 'cancel'])->name('backups.cancel');
@@ -166,7 +167,7 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
     /*
      | Notes.
      |
-     | Any member may write one — it changes nothing about the site, and the value comes entirely
+     | Any member may write one - it changes nothing about the site, and the value comes entirely
      | from being easy enough that people actually do it. Outside the recent-authentication group for
      | the same reason: a note is not a privileged action, and making somebody re-enter their password
      | to record "the client wants PHP left alone" is how a feature goes unused.
@@ -187,9 +188,37 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
 
     Route::get('activity', [ActivityController::class, 'index'])->name('activity.index');
 
+    /*
+     | Settings, as several screens rather than one.
+     |
+     | Real routes rather than panels switched by script, and rather than the `#people` anchors this
+     | replaced, for the same reason a site has seven of them: a tab somebody can link to, bookmark
+     | and reach with the back button is worth more than one that saves a request. Each also loads
+     | only what it shows, where the single screen ran every query on every visit.
+     |
+     | The GETs sit outside the recent-authentication group below, as the one settings screen always
+     | has. None of them renders a secret - including Mail, whose stored password is write-only.
+     |
+     | The write routes keep the names they have always had: team.*, recovery-keys.*, notifications.*
+     | and account.* are the audit log's own vocabulary, and renaming them would be churn for no
+     | gain. <x-settings-tabs> matches on them explicitly instead.
+     */
     Route::get('settings', [SettingsController::class, 'show'])->name('settings.show');
+    Route::get('settings/account', [AccountController::class, 'show'])->name('settings.account');
+    Route::get('settings/security', [AccountController::class, 'security'])->name('settings.security');
+    Route::get('settings/people', [TeamController::class, 'show'])->name('settings.people');
+    Route::get('settings/notifications', [NotificationDestinationController::class, 'show'])
+        ->name('settings.notifications');
+    Route::get('settings/recovery-keys', [RecoveryKeyController::class, 'show'])
+        ->name('settings.recovery-keys');
 
-    Route::get('account', [AccountController::class, 'show'])->name('account.show');
+    // Self-hosted only, and owner-only. The controller refuses on both counts rather than relying on
+    // the tab being absent - see MailSettingsController::authorise().
+    Route::get('settings/mail', [MailSettingsController::class, 'show'])->name('settings.mail');
+
+    // GET /account is gone rather than redirected. It was one of two settings destinations, and the
+    // whole point of the change is that there is now one; a redirect would keep the second URL alive
+    // and, with it, the idea that the account is somewhere else.
 
     // Which clock this account reads dated times in. Outside the recent-authentication group below,
     // with the notes and for the same reason: it is a display preference, it grants nothing, and
@@ -222,7 +251,7 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
          |
          | Behind recent authentication with the other two, and for the same reason: this hands over a
          | complete copy of a customer's database, encrypted, and a session left open on an unlocked
-         | machine must not be enough. It decrypts nothing — see the controller for why that
+         | machine must not be enough. It decrypts nothing - see the controller for why that
          | distinction is the whole design, and why this route can exist when a plaintext one still
          | should not.
         */
@@ -250,7 +279,7 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
                 ->name('sites.backups.schedule');
 
             // How far back this site's backups are kept. Owner-level rather than administrator,
-            // because shortening it decides how far back this site can be recovered from — which is
+            // because shortening it decides how far back this site can be recovered from - which is
             // a different kind of decision from asking for a backup.
             Route::post('sites/{site}/backups/retention', [SiteBackupController::class, 'updateRetention'])
                 ->name('sites.backups.retention');
@@ -291,10 +320,19 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
          |
          | Bound on external_id like everything else, so a sequential identifier is never in a URL.
          */
-        // Sends to the signed-in owner's own address and nowhere else. A destination field here
-        // would be an open relay on an authenticated page.
-        Route::post('settings/mail/test', [SettingsController::class, 'testMail'])
-            ->name('settings.mail.test');
+        /*
+         | Mail.
+         |
+         | Changing where this installation's mail leaves from is a change to how a password reset
+         | reaches somebody, so it sits behind recent authentication with everything else that
+         | matters. The test send has always been here; the two writes joined it.
+         |
+         | The test sends to the signed-in owner's own address and nowhere else. A destination field
+         | would be an open relay on an authenticated page.
+         */
+        Route::post('settings/mail', [MailSettingsController::class, 'update'])->name('settings.mail.update');
+        Route::delete('settings/mail', [MailSettingsController::class, 'forget'])->name('settings.mail.forget');
+        Route::post('settings/mail/test', [MailSettingsController::class, 'test'])->name('settings.mail.test');
 
         Route::post('settings/recovery-keys', [RecoveryKeyController::class, 'store'])
             ->name('recovery-keys.store');

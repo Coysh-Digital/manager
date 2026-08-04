@@ -70,7 +70,7 @@ it('gives each site its own numbers rather than the first site\'s', function ():
     // Two sites on two different servers. Their disk readings are facts about different machines,
     // and there is no arrangement of them under which one stands for the other. The grouped layout
     // printed $group->first()->detail as the description for the whole rule, so both rows carried
-    // the first server's percentage — reported from a live fleet, where it read as one site
+    // the first server's percentage - reported from a live fleet, where it read as one site
     // borrowing another's disk.
     $second = Site::factory()->for($this->organisation)->connected()->create(['name' => 'Second Site']);
 
@@ -191,7 +191,7 @@ it('says an empty list is only as complete as what was granted', function (): vo
     $this->actingAs($this->owner)
         ->get('/findings')
         ->assertOk()
-        // A rule is skipped, not passed, when its capability is missing — so "no findings" needs that
+        // A rule is skipped, not passed, when its capability is missing - so "no findings" needs that
         // caveat attached or it reads as a clean bill of health.
         ->assertSee('skipped, not passed');
 });
@@ -340,13 +340,14 @@ it('hides the irreversible actions from a non-owner', function (): void {
  | Mail
  |-------------------------------------------------------------------------------------------------
  |
- | Configured in the environment and displayed nowhere. "A transport is configured" and "mail leaves
- | this server" are different claims, and only one of them can be tested from a button.
+ | Mail has a screen of its own now, and the tests that belong to it live in MailSettingsTest. What
+ | stays here is what this screen still has to be true about: that the General tab is not that place,
+ | and that the health check reports mail without configuring it.
  */
 
 it('sends a test message to the owner and nobody else', function (): void {
     // Asserted against the callback rather than through Mail::fake(). Mail::raw() builds no Mailable,
-    // so there is nothing for assertSent() to inspect — the same limitation EmailTransport documents,
+    // so there is nothing for assertSent() to inspect - the same limitation EmailTransport documents,
     // and the reason its body is a public method.
     $addressed = null;
 
@@ -372,7 +373,18 @@ it('sends a test message to the owner and nobody else', function (): void {
         ->toBe(AuditEvent::OUTCOME_SUCCESS);
 });
 
-it('never puts mail configuration on the settings screen', function (): void {
+it('keeps mail configuration off the general settings screen', function (): void {
+    /*
+     | This used to assert that mail configuration appeared nowhere in the interface at all, on the
+     | reasoning that whoever can reach Settings is not necessarily whoever holds the relay's
+     | credentials. That reasoning was right; the conclusion was not, because the alternative it left
+     | was a shell on the server - and the one thing that cannot be used to tell somebody their mail
+     | is broken is email.
+     |
+     | So the rule became a permission rather than an absence: there is a Mail screen, it is
+     | owner-only and self-hosted-only, and the credential is write-only. What survives unchanged is
+     | that *this* screen is not that place. Its reader is any member.
+     */
     config()->set('mail.default', 'smtp');
     config()->set('mail.mailers.smtp.host', 'smtp.internal.example');
     config()->set('mail.mailers.smtp.username', 'postmaster@example.org');
@@ -381,13 +393,14 @@ it('never puts mail configuration on the settings screen', function (): void {
 
     $html = $this->actingAs($this->owner)->get(route('settings.show'))->assertOk()->getContent();
 
-    // Whoever can reach this screen is not necessarily whoever holds the relay's credentials, and the
-    // health check answers the only question the screen needs to: will a password reset arrive.
     expect($html)->not->toContain('smtp.internal.example')
         ->and($html)->not->toContain('postmaster@example.org')
         ->and($html)->not->toContain('hunter2')
         ->and($html)->not->toContain('manager@example.org')
-        ->and($html)->toContain('Send a test email');
+        ->and($html)->not->toContain('Send a test email')
+        // The health check still answers the question this screen exists to answer: will a password
+        // reset arrive. It just no longer carries the controls.
+        ->and($html)->toContain('Mail');
 });
 
 it('warns rather than failing when no mail transport is configured', function (): void {
@@ -423,6 +436,17 @@ it('reports a failing transport without repeating what it was configured with', 
         ->toBe(AuditEvent::OUTCOME_FAILURE);
 });
 
+function hostedRelay(): void
+{
+    app()->bind(MailAdministration::class, fn (): MailAdministration => new class implements MailAdministration
+    {
+        public function operatorManaged(): bool
+        {
+            return false;
+        }
+    });
+}
+
 it('keeps the test send to owners', function (): void {
     $member = User::factory()->create(['email_verified_at' => now()]);
     Membership::factory()->for($member)->for($this->organisation)->create();
@@ -432,48 +456,47 @@ it('keeps the test send to owners', function (): void {
         ->assertForbidden();
 });
 
-it('offers no test send on an edition that does not administer its own mail', function (): void {
+it('offers no Mail tab on an edition that does not administer its own mail', function (): void {
     /*
-     | The button proves that mail leaves *this* server, which is a useful thing for whoever owns the
+     | The screen configures *this* server's relay, which is a useful thing for whoever owns the
      | server and a meaningless one for everybody else. On a hosted edition the relay belongs to
-     | whoever runs the service; an administrator cannot change it, and the paragraph beside the
-     | button is worse than the button — it tells them to edit a .env file they cannot reach.
+     | whoever runs the service; an administrator cannot change it, and a form that looked as though
+     | they could would be worse than no form.
      |
      | Bound rather than configured, like every other seam: see App\Contracts\MailAdministration.
     */
-    app()->bind(MailAdministration::class, fn (): MailAdministration => new class implements MailAdministration
-    {
-        public function operatorManaged(): bool
-        {
-            return false;
-        }
-    });
+    hostedRelay();
 
     $html = $this->actingAs($this->owner)->get(route('settings.show'))->assertOk()->getContent();
 
-    expect($html)->not->toContain('Send a test email')
-        // The instruction to edit .env goes with it.
-        ->and($html)->not->toContain('MAIL_*')
-        // The health check still reports whether mail works; it just stops naming a missing button.
+    expect($html)->not->toContain('settings/mail')
+        // The health check still reports whether mail works; it just stops naming a screen that is
+        // not there.
         ->and($html)->toContain('Mail')
         ->and($html)->not->toContain('Send a test from Settings');
 });
 
-it('refuses the test-send route as well as hiding the button', function (): void {
-    // Hiding a control is not removing it. A route that still works when its button has gone is how
+it('refuses every mail route as well as hiding the tab', function (): void {
+    // Hiding a control is not removing it. A route that still works when its control has gone is how
     // a removed feature comes back by URL.
-    app()->bind(MailAdministration::class, fn (): MailAdministration => new class implements MailAdministration
-    {
-        public function operatorManaged(): bool
-        {
-            return false;
-        }
-    });
+    hostedRelay();
 
-    $this->actingAs($this->owner)
-        ->withSession($this->recentAuth)
-        ->post(route('settings.mail.test'))
-        ->assertNotFound();
+    $this->actingAs($this->owner)->get(route('settings.mail'))->assertNotFound();
+
+    $this->actingAs($this->owner)->withSession($this->recentAuth)
+        ->post(route('settings.mail.test'))->assertNotFound();
+
+    $this->actingAs($this->owner)->withSession($this->recentAuth)
+        ->post(route('settings.mail.update'), [
+            'transport' => 'smtp',
+            'host' => 'smtp.relay.example',
+            'port' => 587,
+            'from_address' => 'manager@example.org',
+            'from_name' => 'Manager',
+        ])->assertNotFound();
+
+    $this->actingAs($this->owner)->withSession($this->recentAuth)
+        ->delete(route('settings.mail.forget'))->assertNotFound();
 });
 
 /*
@@ -483,7 +506,7 @@ it('refuses the test-send route as well as hiding the button', function (): void
  | It was reachable from a couple of emails and from nowhere inside the application, so somebody who
  | wanted to sort out payment before a trial ran out had to know the URL. The fix is a link, and a
  | link is the kind of thing that gets moved, wrapped in the wrong condition, or quietly dropped in
- | a refactor — so it gets tests rather than a comment.
+ | a refactor - so it gets tests rather than a comment.
  */
 
 /** A hosted edition's answer: somewhere to go. */
@@ -535,8 +558,8 @@ it('keeps billing away from everybody who is not an owner', function (): void {
 
     $html = $this->actingAs($member)->get(route('settings.show'))->assertOk()->getContent();
 
-    // The sidebar entry is not owner-gated — it is the way to a page that decides for itself who may
-    // see what — but the Settings block, which sits among this screen's owner-only controls, is.
+    // The sidebar entry is not owner-gated - it is the way to a page that decides for itself who may
+    // see what - but the Settings block, which sits among this screen's owner-only controls, is.
     expect($html)->not->toContain('Manage billing');
 });
 
@@ -546,7 +569,7 @@ it('offers no billing at all on an installation nobody bills', function (): void
      |
      | Nothing is bound here, so the seam answers null exactly as it does on a real self-hosted
      | install. There is no subscription, no card and no allowance to buy more of, so there is
-     | nothing to link to — and the link disappears rather than becoming a page that explains why it
+     | nothing to link to - and the link disappears rather than becoming a page that explains why it
      | does not apply.
      |
      | This is the one that catches somebody dropping the condition around a link that is already

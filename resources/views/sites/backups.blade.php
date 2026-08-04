@@ -8,8 +8,8 @@
         <x-site-header :site="$site" :connector="$connector" :pending-connector="$pendingConnector" />
         <x-site-tabs :site="$site" :update-count="$updateCount" :finding-count="$findingCount" />
 
-        {{-- This screen had no errors block at all, so its own validation messages — "that site does
-             not have permission", and now the readiness ones — were flashed and then silently
+        {{-- This screen had no errors block at all, so its own validation messages - "that site does
+             not have permission", and now the readiness ones - were flashed and then silently
              discarded. The fleet screen has always rendered them. --}}
         @if ($errors->any())
             <div class="mb-4 rounded-lg border border-danger-line bg-danger-bg px-3.5 py-2.5 text-[12.5px] text-danger">
@@ -20,7 +20,7 @@
         @if (! $site->hasCapability('backups:create'))
             {{--
                 Not merely "no backups yet". The permission is off, it is off deliberately, and the
-                screen says which of the two states this is — somebody who granted it last week and
+                screen says which of the two states this is - somebody who granted it last week and
                 sees an empty list needs to be able to tell them apart.
             --}}
             <div class="rounded-[10px] border border-border bg-surface p-8 text-center">
@@ -64,8 +64,8 @@
                         $figures = [
                             'Stored' => $storedCount.' '.Str::plural('backup', $storedCount),
                             'In storage' => number_format($storedBytes / 1048576, 1).' MB',
-                            'Latest size' => $latest?->humanSize() ?? '—',
-                            'Deleted' => $latest?->expires_at?->diffForHumans(short: true) ?? '—',
+                            'Latest size' => $latest?->humanSize() ?? '-',
+                            'Deleted' => $latest?->expires_at?->diffForHumans(short: true) ?? '-',
                         ];
                     @endphp
 
@@ -128,7 +128,7 @@
                             <p class="text-text-2">
                                 A backup is encrypted to keys you hold and to nothing else, so until this
                                 organisation has one active recovery key there is nothing to encrypt it to.
-                                <a href="{{ route('settings.show') }}#recovery-keys" class="text-primary hover:text-primary-hover">
+                                <a href="{{ route('settings.recovery-keys') }}" class="text-primary hover:text-primary-hover">
                                     Add one in Settings
                                 </a>.
                             </p>
@@ -140,7 +140,7 @@
                     The schedule, on the screen its effect is visible on.
 
                     It used to be on this site's Settings form, sharing a Save button with the site's
-                    name and its expected domain — so the answer to "why has this site not been
+                    name and its expected domain - so the answer to "why has this site not been
                     backed up" lived on a different screen from the evidence that it had not. The
                     fields are unchanged; only where they are has moved.
                 --}}
@@ -185,7 +185,7 @@
 
                                 {{-- Shown only for a weekly schedule, because that is the only one the
                                      scheduler reads it for. It used to be on screen for all three,
-                                     saved, audited as a change, and then ignored — a control that
+                                     saved, audited as a change, and then ignored - a control that
                                      does nothing is worse than no control, because somebody sets it
                                      and believes it. --}}
                                 <label class="flex flex-col gap-1 sm:w-[140px]"
@@ -216,7 +216,7 @@
                             </label>
 
                             {{-- The current state as a sentence, including the zone, because an hour
-                                 without one is a number somebody has to guess at — and the guess is
+                                 without one is a number somebody has to guess at - and the guess is
                                  usually their own rather than the site's, which is the one the
                                  scheduler reads. --}}
                             <p class="max-w-[80ch] text-[12px] leading-relaxed text-text-3">
@@ -349,7 +349,7 @@
                 <div class="rounded-[10px] border border-border bg-surface p-8 text-center">
                     <p class="mb-1.5 text-[14px] font-medium">Granted, but nothing has arrived yet</p>
                     <p class="mx-auto max-w-[560px] text-[13px] text-text-2">
-                        Manager cannot reach into the site to take one — it queues the job and the
+                        Manager cannot reach into the site to take one - it queues the job and the
                         connector collects it on its next check-in.
                         @if ($membership->canAdminister())
                             Press <strong>Back up now</strong> above, and the first artifact appears once
@@ -392,7 +392,7 @@
                                         </td>
 
                                         <td class="whitespace-nowrap px-3 py-2.5 text-[12.5px] text-text-2">
-                                            {{ trim($artifact->engine.' '.$artifact->engine_version) ?: '—' }}
+                                            {{ trim($artifact->engine.' '.$artifact->engine_version) ?: '-' }}
                                         </td>
 
                                         <td class="whitespace-nowrap px-3 py-2.5">
@@ -402,7 +402,7 @@
                                                      unverified artifact is a file, not a backup. --}}
                                                 <x-status-badge tone="ok" label="Checksum matched" />
                                             @else
-                                                <span class="text-[12.5px] text-text-3">—</span>
+                                                <span class="text-[12.5px] text-text-3">-</span>
                                             @endif
                                         </td>
 
@@ -411,7 +411,7 @@
                                         </td>
 
                                         <td class="whitespace-nowrap px-3 py-2.5 text-[12.5px] text-text-2">
-                                            {{ $artifact->expires_at?->diffForHumans(short: true) ?? '—' }}
+                                            {{ $artifact->expires_at?->diffForHumans(short: true) ?? '-' }}
                                         </td>
 
                                         <td class="px-3 py-2.5 text-right">
@@ -468,19 +468,19 @@
                         and stored to <span class="font-mono">{{ $storage }}</span>. That key is sealed
                         to this organisation's recovery keys, which exist only where you put them, so
                         an artifact opens with one of those and with nothing held here. A backup is
-                        still a complete copy of the database — treat the store as being as sensitive
+                        still a complete copy of the database - treat the store as being as sensitive
                         as the site itself.
                     </div>
                 </div>
 
                 {{-- Download is ciphertext. Decryption is still a command and still off the web
-                     request — that distinction is the whole design, and it is why a download button
+                     request - that distinction is the whole design, and it is why a download button
                      can exist here when a plaintext one still should not. --}}
                 <div class="mt-3 rounded-[10px] border border-border bg-surface p-4">
                     <p class="mb-1.5 text-[13px] font-medium">Retrieving one</p>
                     <p class="mb-2.5 max-w-[80ch] text-[12.5px] text-text-2">
                         <strong>Download</strong> hands over the artifact exactly as it is stored, still
-                        encrypted. Decrypt it on your own machine, where the recovery key is — nothing is
+                        encrypted. Decrypt it on your own machine, where the recovery key is - nothing is
                         decrypted through the browser, because on a database of any size that would hold a
                         worker against a timeout and could leave a half-written file that looks complete.
                     </p>
@@ -494,7 +494,7 @@
                     @else
                         <p class="mt-2.5 mb-1.5 max-w-[80ch] text-[12.5px] text-text-2">
                             A backup taken before any recovery key was enrolled is encrypted to a key this
-                            platform can unwrap instead, and there is no key of yours that opens one — ask
+                            platform can unwrap instead, and there is no key of yours that opens one - ask
                             us and we will produce it. Every backup taken since is sealed to your keys
                             alone, which is why it is the last thing we can do this for.
                         </p>

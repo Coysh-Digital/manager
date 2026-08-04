@@ -71,7 +71,7 @@ return [
              | That is the point. A passkey is a second factor here, not a credential in its own
              | right, so nothing in the guard should be able to turn one into a session. Verification
              | happens in the two-factor challenge controller, against a challenge the password step
-             | opened — and the session is issued there, explicitly, for the user that step named.
+             | opened - and the session is issued there, explicitly, for the user that step named.
              |
              | An assertion-aware provider would put the two on an equal footing and make "a passkey
              | alone must never sign anybody in" a matter of which routes exist rather than of what

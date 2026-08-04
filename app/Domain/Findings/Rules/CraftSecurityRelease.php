@@ -45,7 +45,7 @@ final class CraftSecurityRelease implements Rule
             detail: sprintf(
                 'This site runs Craft %s and %s is available, with at least one release in between '
                 .'flagged as critical by Craft. Apply it. Consult the Craft changelog for what it '
-                .'fixes — Manager does not retrieve release notes.',
+                .'fixes - Manager does not retrieve release notes.',
                 $report->craft_current ?? 'an unknown version',
                 $report->craft_latest ?? 'a newer version',
             ),

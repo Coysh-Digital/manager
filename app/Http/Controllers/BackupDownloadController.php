@@ -20,7 +20,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  * The backups screen had no download button for a long time, and the reasoning was sound as far as it
  * went: decrypting a multi-gigabyte artifact inside a web request means holding a worker against a
  * timeout it will probably lose, and leaving a half-written file that cannot be told apart from a
- * complete one. That argument is about *decryption*, and it still holds — there is no route here or
+ * complete one. That argument is about *decryption*, and it still holds - there is no route here or
  * anywhere else that decrypts through a browser, and `manager:backups:fetch` remains how a v1 artifact
  * is turned into SQL.
  *
@@ -95,7 +95,7 @@ final class BackupDownloadController
     }
 
     /**
-     * The fallback, for a store that cannot sign a URL — a local volume, typically.
+     * The fallback, for a store that cannot sign a URL - a local volume, typically.
      */
     private function stream(BackupArtifact $artifact, string $key): StreamedResponse
     {
@@ -143,7 +143,7 @@ final class BackupDownloadController
      *
      * Long enough to survive a slow click and a redirect, short enough that a link left in browser
      * history or a proxy log is not a way back to a customer's encrypted database. The transfer
-     * itself is not bounded by this — S3 checks the signature when the request opens, not throughout.
+     * itself is not bounded by this - S3 checks the signature when the request opens, not throughout.
      */
     private const URL_SECONDS = 300;
 }

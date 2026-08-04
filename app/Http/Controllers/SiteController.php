@@ -30,7 +30,7 @@ use Illuminate\Support\Collection;
  * The fleet.
  *
  * Filters live in the query string rather than the session, so a filtered view can be linked to,
- * bookmarked and reloaded — which is what people actually do with a screen they leave open.
+ * bookmarked and reloaded - which is what people actually do with a screen they leave open.
  */
 final class SiteController
 {
@@ -50,7 +50,7 @@ final class SiteController
         $sites = $this->query($organisation, $filters)->get();
 
         // The latest runtime report per site, in one query rather than one per row. Only the two
-        // figures the fleet table shows — a month of reports is a lot of jsonb to drag back for a
+        // figures the fleet table shows - a month of reports is a lot of jsonb to drag back for a
         // disk percentage.
         $runtime = $this->latestRuntimeFor($sites);
 
@@ -201,7 +201,7 @@ final class SiteController
 
             try {
                 // The idempotency key is what makes repeated presses harmless. Without one,
-                // outstandingFor() returns null and every press inserts another job — which is what
+                // outstandingFor() returns null and every press inserts another job - which is what
                 // this did until a test pressed the button four times and found four jobs.
                 //
                 // Keyed on the type rather than the moment, so a second press finds the outstanding job
@@ -232,7 +232,7 @@ final class SiteController
     /**
      * Add a site and issue its first enrolment code.
      *
-     * The code is shown once, on the redirect, and never again — only its hash is stored. Anybody who
+     * The code is shown once, on the redirect, and never again - only its hash is stored. Anybody who
      * misses it issues another, which is cheaper than having somewhere a live credential can be looked
      * up.
      */
@@ -246,7 +246,7 @@ final class SiteController
             'environment' => ['required', 'in:production,staging,development'],
 
             // The read-only set only. backups:create is absent from the rule, not merely from the form,
-            // so a crafted request cannot reach it either — it has its own confirmation flow, and
+            // so a crafted request cannot reach it either - it has its own confirmation flow, and
             // invariant 7 is the reason.
             'capabilities' => ['nullable', 'array'],
             'capabilities.*' => ['string', 'in:'.implode(',', CapabilityService::grantableFromInterface())],
@@ -352,8 +352,8 @@ final class SiteController
     /**
      * The latest runtime report per site, as the two figures the fleet shows.
      *
-     * One query for the whole page. The obvious implementation — `$site->runtimeReports()->latest()`
-     * inside the loop — is a query per row, which is invisible on a fleet of three and painful on a
+     * One query for the whole page. The obvious implementation - `$site->runtimeReports()->latest()`
+     * inside the loop - is a query per row, which is invisible on a fleet of three and painful on a
      * fleet of two hundred.
      *
      * @param  Collection<int, Site>  $sites

@@ -38,7 +38,7 @@ Schedule::command('manager:backups:prune')
  |
  | Hourly rather than nightly, and deciding per site inside the command. A fleet of forty sites all
  | dumping at 03:00 is forty databases being read at once on shared hosting, and "nightly" means
- | something different in Auckland from what it means in Bristol — the hour is stored per site, in the
+ | something different in Auckland from what it means in Bristol - the hour is stored per site, in the
  | organisation's own time zone.
  |
  | Nothing here decides what a backup is encrypted to or where it goes. It decides when to ask.
@@ -55,7 +55,7 @@ Schedule::command('manager:backups:schedule')
  | twenty-four to learn the same thing.
  |
  | The one check where this platform reaches out to a site rather than waiting to be told, because the
- | connector genuinely cannot see the certificate a visitor validates — TLS terminates at the edge.
+ | connector genuinely cannot see the certificate a visitor validates - TLS terminates at the edge.
  */
 Schedule::command('manager:certificates:check')
     ->dailyAt('05:00')

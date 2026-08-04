@@ -1,7 +1,7 @@
 /*
  * The navigation drawer, on narrow screens.
  *
- * The drawer itself is a checkbox and a CSS transform — it opens, closes and is reachable with the
+ * The drawer itself is a checkbox and a CSS transform - it opens, closes and is reachable with the
  * keyboard whether or not this file ever loads. That matters more than it usually would: this is a
  * control plane, and the screen somebody reaches for at 2am is often a phone on a bad connection.
  *
@@ -28,8 +28,8 @@ function sync() {
 /*
  * Bring the current tab into view.
  *
- * The site tab bar scrolls sideways on a phone, and it starts at the left. Landing on Audit — the
- * last of seven — and being shown Overview is the tab bar telling you where you are not.
+ * The site tab bar scrolls sideways on a phone, and it starts at the left. Landing on Audit - the
+ * last of seven - and being shown Overview is the tab bar telling you where you are not.
  */
 function revealCurrentTab() {
     const current = document.querySelector('nav[aria-label="Site sections"] [aria-current="page"]');

@@ -58,7 +58,7 @@
                         $figures = [
                             'Check-ins' => [
                                 $uptime->received.' of ~'.$uptime->expected,
-                                'Approximate because the period is measured from whichever is later, the start of the window or the site being added — and because a site may report from more than one trigger.',
+                                'Approximate because the period is measured from whichever is later, the start of the window or the site being added - and because a site may report from more than one trigger.',
                             ],
                             'Gaps' => [(string) count($uptime->outages), null],
                             'Longest gap' => [$uptime->longest?->duration() ?? 'None', null],
@@ -139,7 +139,7 @@
         --}}
         <p class="mt-3 rounded-[9px] border border-border bg-surface-2 px-4 py-3 text-[12px] leading-relaxed text-text-2">
             This measures whether the <strong>connector</strong> checked in, not whether the website
-            answered a visitor — Manager never calls out to a site, which is why a connector works
+            answered a visitor - Manager never calls out to a site, which is why a connector works
             from behind NAT with no inbound port open. The two usually agree, but not always: a site
             whose schedule is driven by ordinary traffic rather than cron reports only while it has
             visitors, so a quiet night shows as a gap, and a site whose web server is down but whose
@@ -211,7 +211,7 @@
                     and figures arrive once the site has served enough traffic to measure.
                 @else
                     Granted, but not enough traffic sampled yet. The connector needs twenty requests
-                    before it will report a figure — a mean of three would move violently for reasons
+                    before it will report a figure - a mean of three would move violently for reasons
                     nobody can act on.
                 @endif
             </div>
@@ -243,7 +243,7 @@
                 <p class="bg-surface-2 px-3.5 py-2.5 text-[12px] leading-relaxed text-text-3">
                     Measured on the site, across
                     {{ $runtimeReport->value('response.samples') }} requests it was serving anyway.
-                    This is how long PHP took to build a response — <strong>not</strong> time to
+                    This is how long PHP took to build a response - <strong>not</strong> time to
                     first byte: it excludes DNS, TLS, any queueing in front of PHP and the network
                     to the visitor. Manager never calls out to a site, so there is nobody outside
                     holding a stopwatch. Nothing about who made those requests is recorded.
@@ -382,7 +382,7 @@
                 @endif
 
                 <p class="bg-surface-2 px-3.5 py-2.5 text-[12px] leading-relaxed text-text-3">
-                    File sizes, never file names — a byte count says how much is there and nothing
+                    File sizes, never file names - a byte count says how much is there and nothing
                     about what.
                     @if ($runtimeReport->hasUnmeasuredVolumes())
                         A volume that could not be measured contributes nothing to the total above,
@@ -390,7 +390,7 @@
                     @endif
                     @if ($runtimeReport->hasRemoteVolumes())
                         A volume on remote storage is not on this server's disk at all, so it counts
-                        towards neither the total nor the free space above it — those describe the
+                        towards neither the total nor the free space above it - those describe the
                         machine Craft runs on.
                     @endif
                     @if (! $runtimeReport->reportsVolumeLocation() && $runtimeReport->hasUnmeasuredVolumes())

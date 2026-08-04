@@ -2,8 +2,8 @@
     The fragment behind the Notes panel.
 
     Rendered on its own, without a layout, because it is fetched into a page that already exists.
-    When there is nothing to show — the fetch is off, the network refused, or the versions did not
-    line up — this says so plainly and hands back the link, which is what the screen offered before
+    When there is nothing to show - the fetch is off, the network refused, or the versions did not
+    line up - this says so plainly and hands back the link, which is what the screen offered before
     any of this existed.
 
     Serves both sources. Craft's notes are fetched from GitHub once per installation; a plugin's were
@@ -14,7 +14,7 @@
 @php($source = $source ?? 'craft')
 
 @if ($notes)
-    {{-- Rendered and sanitised server-side against a fixed allowlist — no media, no scripts, and
+    {{-- Rendered and sanitised server-side against a fixed allowlist - no media, no scripts, and
          http(s) links only. Craft's changelog arrives as Markdown and goes through commonmark; a
          plugin's arrives as HTML, because Craft's update API renders it before the connector sees
          it. Both end at ReleaseNotesHtml. Nothing is parsed or sanitised in the browser. --}}

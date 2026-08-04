@@ -34,7 +34,7 @@ final class FailedQueueJobs implements Rule
             // accumulate unseen for months, which is how a broken integration goes unnoticed.
             severity: Severity::LOW,
             title: $failed === 1 ? 'A queue job has failed' : "{$failed} queue jobs have failed",
-            detail: 'Something the site queued did not complete. Manager reports the count only — the '
+            detail: 'Something the site queued did not complete. Manager reports the count only - the '
                 .'job payloads are not read, because they would carry site content. Check the queue in '
                 .'the control panel.',
             evidence: ['failed' => $failed],

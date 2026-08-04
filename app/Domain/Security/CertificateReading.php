@@ -37,7 +37,7 @@ final class CertificateReading
      * Days until expiry, negative when already expired.
      *
      * Null when there is nothing to count from, which a caller must handle rather than treating as
-     * zero — a site we could not reach is not a site whose certificate expires today.
+     * zero - a site we could not reach is not a site whose certificate expires today.
      */
     public function daysRemaining(): ?int
     {
@@ -47,7 +47,7 @@ final class CertificateReading
 
         // Carbon returns a float here, and a partial day would render as "expires in 6.97 days" on a
         // screen. Truncated towards zero rather than rounded, so a certificate with a few hours left
-        // reads as 0 rather than as 1 — the direction that makes somebody act sooner.
+        // reads as 0 rather than as 1 - the direction that makes somebody act sooner.
         return (int) now()->startOfDay()->diffInDays($this->expiresAt->startOfDay(), false);
     }
 }

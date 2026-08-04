@@ -36,7 +36,7 @@ use Throwable;
  *
  * The pipeline has three steps and they are separate on purpose:
  *
- *  1. **Declare.** The connector says what it is about to send — sizes, checksums, and the keys the
+ *  1. **Declare.** The connector says what it is about to send - sizes, checksums, and the keys the
  *     artifact was sealed to. Validated against a schema that is an allowlist.
  *
  *     There are two formats and the difference between them is the whole point. Under `backup.v1` the
@@ -52,7 +52,7 @@ use Throwable;
  * the bytes and their claimed hash would have to be read before it could be judged; here the claim is
  * authenticated first, and the stream is compared against a promise made before it started.
  *
- * Step 1 is keyed on the job, which is what makes a retry harmless — invariant 16. A connector that
+ * Step 1 is keyed on the job, which is what makes a retry harmless - invariant 16. A connector that
  * declares twice for the same job gets the same artifact back, not a second one.
  */
 final class BackupService
@@ -131,7 +131,7 @@ final class BackupService
         if ($site->organisation->backup_format_floor === Protocol::BACKUP_FORMAT_V2) {
             /*
              | This organisation has recovery keys, so a v1 declaration means a connector too old to
-             | use them — or a downgrade attempt.
+             | use them - or a downgrade attempt.
              |
              | It is worth being clear about what this defends against. Not a compromised platform:
              | that is the same party enforcing the rule. The control that works against that lives on
@@ -178,8 +178,8 @@ final class BackupService
         }
 
         // The sealed key is opened here, at the boundary, and re-wrapped for storage. Two reasons: it
-        // confirms straight away that the key is one this platform can actually use — better than
-        // discovering it when somebody needs the backup — and it means the stored form is wrapped by
+        // confirms straight away that the key is one this platform can actually use - better than
+        // discovering it when somebody needs the backup - and it means the stored form is wrapped by
         // the key service, which is the seam the Cloud edition replaces.
         try {
             $plaintextKey = $this->keypair->unseal((string) $artifact['sealed_key']);
@@ -294,7 +294,7 @@ final class BackupService
      *  - the recipient set is **exactly** the set served when this job was claimed.
      *
      * That last one is the interesting one and also the limit of what this side can do. The platform
-     * cannot verify a seal it cannot open — that is what zero-knowledge means, not a gap — so a
+     * cannot verify a seal it cannot open - that is what zero-knowledge means, not a gap - so a
      * connector that reports the right fingerprints and seals to something else is not detectable from
      * here. The honest control for that is the customer running `manager-restore verify`, and the
      * documentation says so rather than implying this check covers it.
@@ -310,7 +310,7 @@ final class BackupService
          |
          | A v3 declaration carries a v3 manifest and a v2 declaration carries a v2 one. Allowing the
          | four combinations would mean a v2 declaration could carry a manifest declaring twenty
-         | gigabytes — passing the outer schema's ceiling because the number it bounds is in the other
+         | gigabytes - passing the outer schema's ceiling because the number it bounds is in the other
          | document. One rule instead of four, and the connector applies the same one.
          */
         $manifestSchema = $schema === 'backup.v3' ? 'backup-manifest.v3' : 'backup-manifest.v2';
@@ -322,7 +322,7 @@ final class BackupService
              | The paths, not just the verdict.
              |
              | The validator returns exactly which fields failed and this discarded them, so a
-             | refusal said only that a declaration "did not satisfy" a schema — and diagnosing it
+             | refusal said only that a declaration "did not satisfy" a schema - and diagnosing it
              | meant guessing at eight fields from the outside. It cost several rounds of exactly
              | that on a live site.
              |
@@ -379,7 +379,7 @@ final class BackupService
              | `$manifestProblems`, not `$problems`.
              |
              | This interpolated the wrong variable. `$problems` is necessarily empty by the time
-             | execution reaches here — the declaration passed its own schema several checks ago — so
+             | execution reaches here - the declaration passed its own schema several checks ago - so
              | the one message written to name the failing field named nothing at all, and read as
              | "That artifact manifest did not satisfy backup-manifest.v2: ." Exactly the diagnosis
              | cost that adding the paths was meant to remove, in the half of the pair nobody tested.
@@ -415,7 +415,7 @@ final class BackupService
 
         if ($manifest['site_id'] !== $site->external_id) {
             // The signature already proves which site signed it, so this catches a site signing a
-            // manifest that names a different one — a bug rather than an attack, and one that would
+            // manifest that names a different one - a bug rather than an attack, and one that would
             // otherwise produce an artifact nobody could attribute.
             throw new BackupRejectedException('That artifact manifest names a different site.');
         }
@@ -430,7 +430,7 @@ final class BackupService
              | 'larger than this platform accepts' was adequate while the ceiling was a protocol
              | constant nobody could change. It is not adequate now that this line *is* the ceiling:
              | the whole point of moving it out of `backup.v2` is that an operator can raise it, and
-             | nobody raises a number they were not told. Sizes only — an artifact's size is already
+             | nobody raises a number they were not told. Sizes only - an artifact's size is already
              | in the declaration the connector sent, so this reveals nothing it does not know.
              */
             throw new BackupRejectedException(sprintf(
@@ -474,12 +474,12 @@ final class BackupService
              | An edition that sells storage in blocks has to know how much is arriving before it can
              | decide how many blocks to grant. Granting one block beyond current usage quietly assumed
              | no single artifact could be larger than a block, which stopped being true the moment the
-             | 2 GiB ceiling came off — and would have refused the twenty-gigabyte backup this whole
+             | 2 GiB ceiling came off - and would have refused the twenty-gigabyte backup this whole
              | change exists to allow, after everything else had been fixed.
              */
             $remaining = $this->quota->remainingBytes($site->organisation, $declaredBytes);
 
-            // Measured against the whole file, which is what storage will hold — the encrypted stream
+            // Measured against the whole file, which is what storage will hold - the encrypted stream
             // plus its envelope. Under v1 those were the same number; here they are not.
             if ($remaining !== null && $declaredBytes > $remaining) {
                 throw new BackupRejectedException('This organisation has no room left for another backup.');
@@ -510,7 +510,7 @@ final class BackupService
                 'artifact_sha256' => $declaration['artifact_sha256'],
 
                 // Only v3 declares one. Null on every v2 artifact, which is also every artifact taken
-                // before this existed — and an artifact with no CRC simply cannot take the multipart
+                // before this existed - and an artifact with no CRC simply cannot take the multipart
                 // path, which is correct: it was small enough not to need it.
                 'artifact_crc32c' => $declaration['artifact_crc32c'] ?? null,
 
@@ -717,7 +717,7 @@ final class BackupService
             $artifact->expectedUploadBytes(),
 
             // Empty for a v2 artifact, which predates the field. An implementation needing it for a
-            // multipart assembly must refuse rather than assume — an artifact large enough to need
+            // multipart assembly must refuse rather than assume - an artifact large enough to need
             // parts is, by construction, one declared under v3.
             (string) ($artifact->artifact_crc32c ?? ''),
         );
@@ -734,8 +734,8 @@ final class BackupService
             'upload_mode' => 'direct',
 
             // The store's handle for a multipart upload in progress, so the confirmation step can
-            // complete it. Null for an ordinary grant. Not a bearer credential — it names an upload
-            // rather than authorising one — but it is kept out of audit rows and logs regardless.
+            // complete it. Null for an ordinary grant. Not a bearer credential - it names an upload
+            // rather than authorising one - but it is kept out of audit rows and logs regardless.
             'upload_reference' => $grant->reference,
         ])->save();
 
@@ -770,7 +770,7 @@ final class BackupService
             base64_encode((string) hex2bin($expected)),
 
             // Present when the upload was assembled from parts, in which case completing it is part
-            // of confirming it — and completing it is where the store checks the assembled whole
+            // of confirming it - and completing it is where the store checks the assembled whole
             // against the checksum committed to before the first part was sent.
             $artifact->upload_reference,
         );
@@ -823,7 +823,7 @@ final class BackupService
      * Take delivery of the bytes.
      *
      * Streamed to a local staging file first, hashing as it goes, and only moved into storage once the
-     * hash matches. The alternative — streaming straight into storage and deleting on mismatch — leaves
+     * hash matches. The alternative - streaming straight into storage and deleting on mismatch - leaves
      * an unverified artifact in the bucket for as long as the upload takes, and leaves it there for good
      * if the platform dies mid-request.
      *
@@ -846,8 +846,8 @@ final class BackupService
         }
 
         try {
-            // The two formats upload different things — a bare stream under v1, an envelope wrapped
-            // around one under v2 — so what the bytes must hash to is asked of the artifact rather
+            // The two formats upload different things - a bare stream under v1, an envelope wrapped
+            // around one under v2 - so what the bytes must hash to is asked of the artifact rather
             // than assumed here.
             $received = $this->stage($input, $staging, $artifact->expectedUploadBytes());
 
@@ -965,7 +965,7 @@ final class BackupService
              | A v2 artifact's key was sealed to the organisation's own recovery keys and to nothing
              | else, so there is no path from here to its plaintext and there is not meant to be. The
              | message names the tool rather than saying "no key", because "that artifact has no key
-             | and cannot be opened" is technically true and entirely misleading — it reads like data
+             | and cannot be opened" is technically true and entirely misleading - it reads like data
              | loss rather than like encryption.
              */
             throw new BackupRejectedException(
@@ -1054,7 +1054,7 @@ final class BackupService
      * about. Deleting a stored artifact leaves a tombstone because something existed and no longer
      * does, and a customer is entitled to see that recorded. A failed declaration held no
      * ciphertext and no key, so a tombstone for it records the absence of a thing that was already
-     * absent — and on a site failing nightly those rows are most of the screen.
+     * absent - and on a site failing nightly those rows are most of the screen.
      *
      * The audit entry is what remains, and it carries the failure reason, so nothing is lost that
      * anybody can act on. Its timeline rows and recipient rows go with it, by the cascade the
@@ -1120,13 +1120,13 @@ final class BackupService
         );
 
         /*
-         | Tell somebody. An audit entry is a record for afterwards, not a way of finding out — and
+         | Tell somebody. An audit entry is a record for afterwards, not a way of finding out - and
          | this failure is silent by nature: the screen shows the previous backup, which succeeded,
          | and nothing about the estate looks different until a restore is needed.
          |
          | Suppressed for a backup somebody cancelled on purpose. A notification saying a backup
          | failed, sent to a channel, seconds after a person deliberately stopped it, teaches people
-         | that the channel cries wolf — and the one thing this notification has to keep is being
+         | that the channel cries wolf - and the one thing this notification has to keep is being
          | believed. The audit entry still records it.
         */
         if ($notify) {
@@ -1156,7 +1156,7 @@ final class BackupService
      * Where an artifact's bytes go.
      *
      * Built entirely from identifiers the platform generated. Nothing a connector sent reaches this,
-     * which is why there is no path traversal to worry about — there is no input to traverse with.
+     * which is why there is no path traversal to worry about - there is no input to traverse with.
      */
     public function storageKeyFor(BackupArtifact $artifact): string
     {

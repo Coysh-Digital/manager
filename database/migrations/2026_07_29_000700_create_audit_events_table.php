@@ -63,7 +63,7 @@ return new class extends Migration
             $table->ulid('correlation_id')->nullable();
 
             // Safe before and after values only. Never secrets, never backup content, never a
-            // payload that failed validation — a rejected payload is exactly where key material
+            // payload that failed validation - a rejected payload is exactly where key material
             // would be if a connector were misbehaving.
             $table->jsonb('before')->nullable();
             $table->jsonb('after')->nullable();

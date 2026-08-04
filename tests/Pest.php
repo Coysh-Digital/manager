@@ -38,7 +38,7 @@ pest()->extend(TestCase::class)->in('Unit');
  *
  * The body is encoded once and both signed and transmitted as those same bytes. Using the
  * framework's postJson() helper would re-encode the payload, so the signature could cover
- * different bytes from the ones that arrive — which is the sort of thing that makes a test pass
+ * different bytes from the ones that arrive - which is the sort of thing that makes a test pass
  * while production fails.
  *
  * @param  array<string, mixed>  $payload
@@ -106,7 +106,7 @@ function breakRedisConnection(): void
     }
 
     // The RedisManager captures its configuration when it is constructed, so editing config() is
-    // not enough on its own — the singleton has to go so it is rebuilt from the new values.
+    // not enough on its own - the singleton has to go so it is rebuilt from the new values.
     app()->forgetInstance('redis');
     app()->forgetInstance('redis.connection');
 

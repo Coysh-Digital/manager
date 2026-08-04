@@ -268,7 +268,7 @@ it('lets an administrator set a schedule, and records the change', function (): 
         ->and($site->backup_schedule_day)->toBe(6);
 
     // Changing when a site is backed up is a change to the site, and the audit trail shows what it
-    // was before — the same treatment the expected domain gets. Its own action now that it has its
+    // was before - the same treatment the expected domain gets. Its own action now that it has its
     // own form: "site.updated" covering both meant an audit reader could not filter for the one
     // that decides a production database is dumped.
     $event = AuditEvent::query()->where('action', 'site.backup_schedule.updated')->latest('id')->first();
@@ -355,7 +355,7 @@ it('always lets a schedule be turned off', function (): void {
 
 it('refuses to queue a backup for an organisation with no key, whoever asks', function (): void {
     // The rule lives in JobService as well as in BackupReadiness, so a caller that never consults
-    // readiness — a command, a future screen — cannot create a job that can only be cancelled later.
+    // readiness - a command, a future screen - cannot create a job that can only be cancelled later.
     $this->key->forceFill(['state' => RecoveryKey::STATE_REVOKED, 'revoked_at' => now()])->save();
 
     $site = ($this->makeSite)();
@@ -369,7 +369,7 @@ it('refuses to queue a backup for an organisation with no key, whoever asks', fu
 it('sets the schedule on the screen that shows what it produced', function (): void {
     /*
      | Reported from use: the schedule was on the site's Settings form, sharing a Save button with
-     | the site's name and its expected domain — so the answer to "why has this site not been backed
+     | the site's name and its expected domain - so the answer to "why has this site not been backed
      | up" lived on a different screen from the evidence that it had not.
      */
     $site = ($this->makeSite)(['backup_schedule' => 'off']);
@@ -393,7 +393,7 @@ it('sets the schedule on the screen that shows what it produced', function (): v
 
 it('names the zone the schedule is in, which is the site\'s and not the reader\'s', function (): void {
     // An hour with no zone beside it is a number somebody guesses at, and the guess is their own
-    // zone rather than the site's — which is the one ScheduleBackupsCommand reads.
+    // zone rather than the site's - which is the one ScheduleBackupsCommand reads.
     $site = ($this->makeSite)([
         'backup_schedule' => 'daily',
         'backup_schedule_hour' => 3,

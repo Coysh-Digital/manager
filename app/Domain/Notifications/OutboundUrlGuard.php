@@ -18,7 +18,7 @@ namespace App\Domain\Notifications;
  *     something to broadcast in the clear.
  *  2. **Address ranges blocked.** Loopback, link-local, private, and the cloud metadata address.
  *  3. **The resolved address is pinned.** Checking DNS and then letting the HTTP client resolve it
- *     again leaves a window in which the answer changes — DNS rebinding. So this returns the address
+ *     again leaves a window in which the answer changes - DNS rebinding. So this returns the address
  *     it validated, and the caller connects to that.
  *
  * A hostname resolving to several addresses must have *all* of them acceptable. One good answer
@@ -56,7 +56,7 @@ final class OutboundUrlGuard
         '0.0.0.0/8',
         '::/128',
 
-        // Reserved and documentation ranges — no legitimate webhook lives here, and they are the
+        // Reserved and documentation ranges - no legitimate webhook lives here, and they are the
         // sort of thing used to probe for parsing bugs.
         '192.0.0.0/24',
         '192.0.2.0/24',

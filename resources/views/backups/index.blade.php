@@ -34,16 +34,16 @@
             </div>
         @endif
 
-        {{-- One organisation-wide cause, stated once rather than repeated down every row — and with
+        {{-- One organisation-wide cause, stated once rather than repeated down every row - and with
              somewhere to go, which the per-row text has no space for. --}}
         @if ($needsRecoveryKey)
             <div class="mb-4 rounded-lg border border-amber-line bg-amber-bg px-3.5 py-3 text-[12.5px] leading-relaxed text-text">
                 <p><span class="font-medium">No backups can be taken yet.</span>
                     A backup is encrypted to keys you hold and to nothing else, so until this organisation
                     has one active recovery key there is nothing to encrypt one to. You generate it on your
-                    own machine — it never exists on this server.</p>
+                    own machine - it never exists on this server.</p>
                 <p class="mt-1.5">
-                    <a href="{{ route('settings.show') }}#recovery-keys" class="text-primary hover:text-primary-hover">Add a recovery key in Settings</a>,
+                    <a href="{{ route('settings.recovery-keys') }}" class="text-primary hover:text-primary-hover">Add a recovery key in Settings</a>,
                     or read
                     <a href="https://managerforcraft.com/docs/recovery-keys" target="_blank" rel="noopener noreferrer" class="text-primary hover:text-primary-hover">how recovery keys work ↗</a>.
                 </p>
@@ -60,7 +60,7 @@
             Said once, at the top, rather than implied by the word "encrypted".
 
             The second half of this used to read "but this platform can decrypt them, so this is not
-            end-to-end encryption". True of the v1 format, and left standing when v2 replaced it — so
+            end-to-end encryption". True of the v1 format, and left standing when v2 replaced it - so
             the screen went on saying it above a table where every row names the recovery keys its
             artifact is sealed to.
 
@@ -78,8 +78,8 @@
         <div class="mb-3.5 rounded-[10px] border border-border bg-surface-2 px-4 py-3 text-[12.5px] text-text-2">
             A backup is a complete copy of a site's database, including user accounts, password hashes
             and any personal information the site holds. Each one is encrypted on the site with its own
-            key before it is uploaded, and that key is sealed to this organisation's recovery keys —
-            which exist only where you put them — so an artifact opens with one of those and with
+            key before it is uploaded, and that key is sealed to this organisation's recovery keys -
+            which exist only where you put them - so an artifact opens with one of those and with
             nothing held here. Treat the backup store as being as sensitive as the sites themselves.
         </div>
 
@@ -220,7 +220,7 @@
                                         @endif
                                         {{-- Which recovery key opens this one. An organisation can have
                                              several, and rotating them means older backups need older
-                                             keys — so "which key do I need" is a real question with a
+                                             keys - so "which key do I need" is a real question with a
                                              recorded answer, and making somebody download the file and
                                              inspect it to find out would be perverse. --}}
                                         @if ($artifact->isZeroKnowledge() && $artifact->recipients->isNotEmpty())
@@ -242,7 +242,7 @@
                                         {{ $artifact->shortChecksum() }}
                                     </td>
                                     <td class="border-b border-border px-4 py-2.5 whitespace-nowrap text-text-2">
-                                        {{ $artifact->expires_at?->diffForHumans(short: true) ?? '—' }}
+                                        {{ $artifact->expires_at?->diffForHumans(short: true) ?? '-' }}
                                     </td>
                                     <td class="border-b border-border px-4 py-2.5 text-right">
                                         <div class="flex items-center justify-end gap-3">
@@ -280,7 +280,7 @@
             </div>
 
             {{-- Download hands over ciphertext and nothing else. This panel used to say there was no
-                 download button at all, and gave the timeout argument for it — which is an argument
+                 download button at all, and gave the timeout argument for it - which is an argument
                  about decrypting inside a web request, not about handing over the bytes as they are
                  already stored. The first is still refused here. The second was leaving customers
                  told to run a command against a file they had no way to obtain. --}}
@@ -288,7 +288,7 @@
                 <p class="mb-1.5 text-[13px] font-medium">Retrieving a backup</p>
                 <p class="mb-2.5 text-[12.5px] text-text-2">
                     <strong>Download</strong> gives you the artifact exactly as it is stored, still
-                    encrypted. Decrypt it on your own machine with the recovery key named on the row —
+                    encrypted. Decrypt it on your own machine with the recovery key named on the row -
                     the secret half never comes here, which is the entire point of it. Nothing is
                     decrypted through the browser: on a database of any size that would hold a worker
                     against a timeout and could leave a half-written file that looks complete.
@@ -301,7 +301,7 @@
                 </p>
 
                 {{-- Whether a command is an instruction anybody here can follow. Self-hosted it is the
-                     better one — it streams and verifies in a single pass, which no web request can
+                     better one - it streams and verifies in a single pass, which no web request can
                      promise. On a hosted edition the shell belongs to whoever runs the service, and a
                      paragraph ending "run this on the server" reads as the answer while being
                      impossible to act on. --}}
@@ -310,7 +310,7 @@
                 @if (app(App\Contracts\ServerAccess::class)->reachable())
                     <p class="mb-2.5 text-[12.5px] text-text-2">
                         A backup taken before any recovery key was enrolled is encrypted to a key this
-                        platform can unwrap, and needs no key of yours. Run this on the server — it streams,
+                        platform can unwrap, and needs no key of yours. Run this on the server - it streams,
                         decrypts and verifies against the checksum recorded when the backup was taken, in one
                         pass and with no timeout to lose.
                     </p>
@@ -318,7 +318,7 @@
                 @else
                     <p class="mb-2.5 text-[12.5px] text-text-2">
                         A backup taken before any recovery key was enrolled is encrypted to a key this
-                        platform can unwrap, and no key of yours will open one — ask us and we will produce
+                        platform can unwrap, and no key of yours will open one - ask us and we will produce
                         it. Every backup taken since a key was enrolled is sealed to your keys alone, so
                         this is the last set we are able to do it for.
                     </p>

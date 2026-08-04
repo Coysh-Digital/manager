@@ -9,8 +9,8 @@ use Illuminate\Support\Facades\Schema;
 /**
  * Backup artifacts.
  *
- * Note what these columns are and are not. There is metadata about an artifact — how big, which
- * checksums, when taken, which key opened it — and there is nowhere at all to put anything from inside
+ * Note what these columns are and are not. There is metadata about an artifact - how big, which
+ * checksums, when taken, which key opened it - and there is nowhere at all to put anything from inside
  * one. No table names, no row counts, no schema dump, no sample. The bytes live in object storage and
  * the database knows only how to find them and how to verify them.
  *
@@ -36,14 +36,14 @@ return new class extends Migration
             $table->foreignId('remote_job_id')->nullable()->unique()->constrained()->nullOnDelete();
 
             /*
-             | pending  — declared, bytes not yet uploaded
-             | stored   — bytes present and verified against the declared checksum
-             | failed   — the upload did not complete or did not verify
-             | deleted  — removed by retention or by hand; the row survives for the audit trail
+             | pending  - declared, bytes not yet uploaded
+             | stored   - bytes present and verified against the declared checksum
+             | failed   - the upload did not complete or did not verify
+             | deleted  - removed by retention or by hand; the row survives for the audit trail
              */
             $table->string('state')->default('pending');
 
-            // Where the bytes are. Built by the platform from the artifact's own identifier — never
+            // Where the bytes are. Built by the platform from the artifact's own identifier - never
             // from anything a connector sent.
             $table->string('storage_key', 512)->nullable();
             $table->string('storage_disk')->nullable();

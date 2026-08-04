@@ -21,7 +21,7 @@ use Illuminate\Validation\Rules\Password;
 /**
  * First run: create the organisation and its owner.
  *
- * Reachable only while no account exists — see {@see EnsureSetupIsAvailable}.
+ * Reachable only while no account exists - see {@see EnsureSetupIsAvailable}.
  * There is no token to configure and no default credential to forget to change, which is the point:
  * the specification requires refusing insecure defaults, and the surest way to do that is to have
  * none.
@@ -91,7 +91,7 @@ final class SetupController
         $request->session()->put('auth.password_confirmed_at', now()->timestamp);
 
         return redirect()
-            ->route('account.show')
+            ->route('settings.security')
             ->with('status', 'Welcome. Set up two-factor authentication before you add any sites.');
     }
 }

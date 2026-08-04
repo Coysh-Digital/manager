@@ -6,7 +6,7 @@
 # The service is called manager-redis, not redis, and that matters. ddev attaches custom services to
 # the shared ddev_default network as well as the project's own, so a service named "redis" takes the
 # "redis" DNS alias on a network every other ddev project is also on. With a plain name, this
-# project silently reached another project's Redis — including while its own was stopped, which made
+# project silently reached another project's Redis - including while its own was stopped, which made
 # a fail-closed check appear to pass. A project-scoped name removes the ambiguity.
 #
 # Persistence is deliberately off. Locally this holds nonces and cache entries, both of which are

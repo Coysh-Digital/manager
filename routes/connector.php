@@ -59,7 +59,7 @@ Route::middleware('connector.signed')->group(function (): void {
      | Disk usage, PHP limits and sampled response timings.
      |
      | Its own capability rather than an extension of system:read. Measuring disk means walking a
-     | directory tree and timing responses means observing traffic — both are a different kind of
+     | directory tree and timing responses means observing traffic - both are a different kind of
      | collection from reading a version number, and widening an existing grant to cover them would
      | have sites start doing both without anybody deciding to.
      */
@@ -68,7 +68,7 @@ Route::middleware('connector.signed')->group(function (): void {
         ->name('system');
 
     /*
-     | Counts of failed control-panel sign-ins. Never usernames, never addresses — the schema has
+     | Counts of failed control-panel sign-ins. Never usernames, never addresses - the schema has
      | nowhere to put either, which is where that promise is kept rather than in a code review.
      */
     Route::post('logins', LoginsController::class)
@@ -101,7 +101,7 @@ Route::middleware('connector.signed')->group(function (): void {
     /*
      | Which phase a backup has reached, as reported by the site.
      |
-     | Telemetry, and nothing acts on it. Exactly one stage is sent today — the dump, because it is
+     | Telemetry, and nothing acts on it. Exactly one stage is sent today - the dump, because it is
      | the longest phase and the only one whose information is not derivable from a later report.
      | Reports for the other phases are accepted so a newer connector needs no platform change.
      */
@@ -129,7 +129,7 @@ Route::middleware('connector.signed')->group(function (): void {
 | entire database into memory before deciding whether to trust the request that carried it.
 |
 | In streaming mode the hash comes from a header the signature covers, so authentication happens before
-| the body is touched at all — and the body is then compared against a promise that has already been
+| the body is touched at all - and the body is then compared against a promise that has already been
 | verified as coming from this connector.
 */
 Route::put('backups/{artifactId}/content', BackupUploadController::class)

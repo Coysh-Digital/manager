@@ -42,7 +42,7 @@ manager.example.org {
     # Bodies are streamed, not buffered, so a large backup upload does not land on the proxy's disk.
     #
     # Manager sets no backup ceiling of its own unless you set MANAGER_BACKUP_MAX_BYTES, so by
-    # default **this line is the ceiling** — whatever you put here is the largest database anyone
+    # default **this line is the ceiling** - whatever you put here is the largest database anyone
     # can back up, and the refusal happens here, where the message cannot explain itself.
     request_body {
         max_size 20GB
@@ -125,14 +125,14 @@ runs, and Laravel applies that to a `PUT` exactly as to a `POST`. So a generous
 `client_max_body_size` with a default `post_max_size` fails in the same way, one layer further in.
 
 ```ini
-; php.ini — 0 means unlimited, and Manager streams the upload to disk rather than reading it
+; php.ini - 0 means unlimited, and Manager streams the upload to disk rather than reading it
 ; into memory, so this is not the protection it looks like.
 post_max_size = 0
 upload_max_filesize = 0
 ```
 
 `manager:doctor` reports the effective number under **Upload path ceiling**, and fails if it is
-below a ceiling you have configured. It cannot see the proxy — see below.
+below a ceiling you have configured. It cannot see the proxy - see below.
 
 ## When a backup fails with no correlation ID
 
@@ -157,7 +157,7 @@ curl -i -X PUT --data-binary @/tmp/probe.bin \
 ```
 
 An HTML error page naming nginx is the proxy. A JSON body with a `correlation_id` means the request
-got through and the fault is somewhere else — the signature is expected to fail here, so a `401` is
+got through and the fault is somewhere else - the signature is expected to fail here, so a `401` is
 the healthy answer.
 
 ## Cloudflare and similar

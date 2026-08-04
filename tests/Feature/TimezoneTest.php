@@ -21,7 +21,7 @@ use Illuminate\Support\Carbon;
  *
  * The first version of this fell back to the organisation's zone for anybody who had not chosen
  * their own. That was wrong twice over, and reported as such: the organisation zone was never
- * presented as a setting anybody would recognise — it lived inside a block about backup retention —
+ * presented as a setting anybody would recognise - it lived inside a block about backup retention —
  * so a time rendered in it was a time in a zone the reader had never chosen and could not find. And
  * "where your sites are" is not one place, which is why scheduling reads the *site's* zone now and
  * the organisation column is gone.
@@ -65,7 +65,7 @@ it('prints a time in the zone the reader chose', function (): void {
 it('falls back to the application for somebody who has not chosen one', function (): void {
     // Not the organisation, and not the site being looked at. A reader who has expressed no
     // preference gets the installation's own clock, which is at least a zone somebody configured
-    // deliberately — the organisation's was one nobody could find.
+    // deliberately - the organisation's was one nobody could find.
     expect($this->user->timezone)->toBeNull()
         ->and(ViewerTimezone::for($this->user))->toBe(config('app.timezone'));
 });
@@ -78,7 +78,7 @@ it('prefers the reader over everything else', function (): void {
 
 it('does not read the site being looked at, however tempting', function (): void {
     /*
-     | The site has a zone now — it is what its backup schedule reads — and using it here would be
+     | The site has a zone now - it is what its backup schedule reads - and using it here would be
      | the same mistake as the organisation, one level down: a Sydney reader opening a London site
      | would see London times on one screen and their own on the next, with nothing saying which
      | was which.
@@ -136,7 +136,7 @@ it('does not move when the backup schedule runs', function (): void {
 
 it('leaves the model attribute alone when a view renders it', function (): void {
     // apply() copies rather than mutating. Carbon::setTimezone() changes the instance in place, and
-    // these are model attributes — shifting one would leave the model holding a time in a zone that
+    // these are model attributes - shifting one would leave the model holding a time in a zone that
     // is nobody's business but the view's, and the next thing to read it would be wrong.
     $this->user->forceFill(['timezone' => 'Australia/Sydney'])->save();
 

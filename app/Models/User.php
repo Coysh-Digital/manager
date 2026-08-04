@@ -113,7 +113,7 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
      * Whether this account holds any second factor at all.
      *
      * A passkey counts. It is phishing-resistant and bound to this origin, which makes it at least as
-     * strong a second factor as a code read off a screen — so requiring TOTP specifically would be
+     * strong a second factor as a code read off a screen - so requiring TOTP specifically would be
      * asking for the weaker of the two.
      */
     public function hasSecondFactor(): bool

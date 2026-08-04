@@ -8,7 +8,7 @@ namespace App\Domain\Findings;
  * One rule that turns reported metadata into a finding.
  *
  * Rules live on the platform rather than in the connector deliberately. There is one place to fix a
- * rule, adding one needs no connector release, and — the part that matters — a compromised site
+ * rule, adding one needs no connector release, and - the part that matters - a compromised site
  * cannot decide what its own findings are. A site reports facts; the platform draws conclusions.
  *
  * A rule returns null when it does not apply. That is what makes findings self-resolving: the
@@ -17,7 +17,7 @@ namespace App\Domain\Findings;
 interface Rule
 {
     /**
-     * Stable identifier, never renamed once released — acknowledgements are keyed on it.
+     * Stable identifier, never renamed once released - acknowledgements are keyed on it.
      */
     public function key(): string;
 

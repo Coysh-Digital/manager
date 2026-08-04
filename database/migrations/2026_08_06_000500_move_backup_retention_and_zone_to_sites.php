@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Schema;
  *
  * Both were organisation-wide, and both are decisions about a particular site. A busy shop and a
  * brochure site do not warrant the same history, and "03:00 where the site is" means nothing when
- * one customer's sites are in London and another's are in Sydney — a fleet cannot share one quiet
+ * one customer's sites are in London and another's are in Sydney - a fleet cannot share one quiet
  * hour. The schedule itself has already moved to the site's own Backups screen; these are the two
  * settings that decide what it does, and they were still a screen away.
  *
@@ -31,7 +31,7 @@ return new class extends Migration
     {
         Schema::table('sites', function (Blueprint $table): void {
             // Same defaults as the organisation columns carried, so a site created between this
-            // migration and the backfill below is not left at zero — which would mean "keep
+            // migration and the backfill below is not left at zero - which would mean "keep
             // nothing" rather than "not set".
             $table->unsignedSmallInteger('backup_retention_days')->default(30)->after('backup_schedule_day');
             $table->unsignedSmallInteger('backup_retention_weeks')->default(4)->after('backup_retention_days');
@@ -82,7 +82,7 @@ return new class extends Migration
          | Rolling back takes the *longest* retention any of the organisation's sites had, and the
          | zone of whichever site is alphabetically first.
          |
-         | Neither is reversible in any real sense — several values are becoming one — and the
+         | Neither is reversible in any real sense - several values are becoming one - and the
          | choice is deliberate on the retention side: taking the longest means a rollback never
          | shortens anybody's history and so never deletes a backup that was being kept. The zone is
          | a display and scheduling detail and simply cannot be reconciled, which is worth knowing

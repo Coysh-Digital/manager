@@ -41,4 +41,4 @@ restores.** See [docs/backup.md](docs/backup.md).
 
 ## Questions
 
-Anything this does not answer: **hello@coysh.digital**.
+Anything this does not answer: **support@managerforcraft.com**.

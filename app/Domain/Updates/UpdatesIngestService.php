@@ -23,8 +23,8 @@ use Illuminate\Support\Facades\DB;
  * fleet has to be upgraded in step.
  *
  * `updates.v2` adds release notes per plugin, which v1 refused outright. The refusal was aimed at a
- * real problem — a row saying "this named site is three versions behind these fixes" is a map of an
- * exploitable installation — but the problem was the association rather than the text, and the text
+ * real problem - a row saying "this named site is three versions behind these fixes" is a map of an
+ * exploitable installation - but the problem was the association rather than the text, and the text
  * is public. So the notes are taken out of the report here and written to `plugin_release_notes`,
  * which is keyed on a plugin and a version and has no idea what a site is, and what gets stored in
  * `update_reports.payload` is the report as it would have been under v1. That last part is not a
@@ -62,7 +62,7 @@ final class UpdatesIngestService
      * Which schema to hold a payload to.
      *
      * The declared version, when it is one this platform knows. Anything else is validated against
-     * the current schema, which rejects it and names the field that disagreed — better than a bare
+     * the current schema, which rejects it and names the field that disagreed - better than a bare
      * "unknown schema", and it means a connector from the future is refused rather than half-read.
      *
      * @param  array<string, mixed>  $payload

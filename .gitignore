@@ -15,7 +15,7 @@
 /auth.json
 /node_modules
 # public/build is deliberately NOT ignored. The shipped image carries no Node toolchain, so the
-# compiled assets have to be in the repository or a fresh clone renders no page at all — which is
+# compiled assets have to be in the repository or a fresh clone renders no page at all - which is
 # exactly what happened before this line was written. CI asserts they match the source.
 /public/fonts-manifest.dev.json
 /public/hot

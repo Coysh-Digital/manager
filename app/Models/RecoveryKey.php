@@ -17,7 +17,7 @@ use Illuminate\Support\Carbon;
  * A public key that backups may be encrypted to.
  *
  * The organisation holds the other half. This platform does not, has never had it, and has no column
- * it could be put in — which is the property everything else about backups now rests on.
+ * it could be put in - which is the property everything else about backups now rests on.
  *
  * The state machine is small and one edge of it is missing on purpose:
  *
@@ -154,7 +154,7 @@ class RecoveryKey extends Model
      * The fingerprint in six groups, which is how it is displayed everywhere.
      *
      * Read from the column rather than recomputed, because this is presentation. Anywhere the value is
-     * about to be *used* — served to a site, compared against a manifest — it is recomputed from the
+     * about to be *used* - served to a site, compared against a manifest - it is recomputed from the
      * key material instead. See {@see RecoveryKeyService::activeFor()}.
      */
     public function shortFingerprint(): string

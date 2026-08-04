@@ -274,8 +274,8 @@ it('records nothing when the name did not change', function (): void {
 it('will not change an email address', function (): void {
     /*
      | Not an oversight. The address identifies the account for sign-in, password resets, invitations
-     | and every audit row already written, so changing it is an account-recovery flow — proving the
-     | new address, handling the window where neither is confirmed — and none of that exists. A field
+     | and every audit row already written, so changing it is an account-recovery flow - proving the
+     | new address, handling the window where neither is confirmed - and none of that exists. A field
      | that quietly moved sign-in to an unverified address would be worse than no field.
     */
     $was = $this->owner->email;
@@ -288,7 +288,7 @@ it('will not change an email address', function (): void {
 
     // And the screen says why rather than leaving somebody hunting for the field.
     $this->actingAs($this->owner)
-        ->get(route('account.show'))
+        ->get(route('settings.account'))
         ->assertOk()
         ->assertSee('cannot be changed here');
 });

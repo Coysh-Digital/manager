@@ -20,7 +20,7 @@ use Database\Factories\RuntimeReportFactory;
  *
  * The allowlist assertions are the ones that matter. `logins.v1` exists to make it impossible to
  * store a username against a site, and `system.v1` to make it impossible to store a filesystem
- * path — both are promises kept by a schema rather than by a code review, and a test is how that
+ * path - both are promises kept by a schema rather than by a code review, and a test is how that
  * stays true.
  */
 beforeEach(function (): void {
@@ -43,7 +43,7 @@ beforeEach(function (): void {
 
 it('refuses a sign-in report carrying a username', function (): void {
     // The whole reason logins.v1 has additionalProperties: false. A connector that started sending
-    // usernames — through a well-meaning change or a compromised one — is refused at the door rather
+    // usernames - through a well-meaning change or a compromised one - is refused at the door rather
     // than having them stripped and stored anyway.
     $problems = app(LoginsIngestService::class)->validate([
         ...LoginReportFactory::samplePayload(),
@@ -121,7 +121,7 @@ it('shows storage, limits and response time on Health, and says what the timing 
         ->get(route('sites.health', $this->site))
         ->assertOk()
         ->assertSee('Server response time')
-        // Named honestly. It is render time, not TTFB, and the screen has to say so — asserted on a
+        // Named honestly. It is render time, not TTFB, and the screen has to say so - asserted on a
         // fragment the template does not wrap, since the sentence spans two source lines.
         ->assertSee('first byte:')
         ->assertSee('212 ms')
@@ -174,14 +174,14 @@ it('tells somebody the runtime capability is missing rather than showing nothing
  |-------------------------------------------------------------------------------------------------
  |
  | Reported from use: one volume showed "Not measured" while its neighbours were measured, with
- | nothing on the screen saying why — and nothing anywhere saying that a volume on S3 contributes
+ | nothing on the screen saying why - and nothing anywhere saying that a volume on S3 contributes
  | none of its bytes to the disk figures directly above it.
  */
 
 it('accepts both report versions, because the two sides upgrade on different days', function (): void {
     /*
      * The platform is upgraded by whoever runs it; each site upgrades its own plugin. Pinning one
-     * version meant a flag day, and the failure was silent in the worst way — a runtime report is
+     * version meant a flag day, and the failure was silent in the worst way - a runtime report is
      * fire-and-forget, so a refused one shows up as a Health screen that quietly stops moving.
      */
     $v1 = RuntimeReportFactory::samplePayload();
@@ -204,7 +204,7 @@ it('accepts both report versions, because the two sides upgrade on different day
 
 it('names what it accepts rather than blaming the payload for a version it never heard of', function (): void {
     // Falling back to v1 would validate a v3 payload against v1's allowlist and report the result
-    // as a schema violation — true, and completely misleading about what to do next.
+    // as a schema violation - true, and completely misleading about what to do next.
     $payload = [...RuntimeReportFactory::samplePayload(), 'schema_version' => 'system.v9'];
 
     $problems = app(RuntimeIngestService::class)->validate($payload);

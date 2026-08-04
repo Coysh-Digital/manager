@@ -2,12 +2,12 @@
     A backup that was asked for and did not happen, leaving nothing behind.
 
     The counterpart to <x-backup-progress>, and it exists because these were invisible. A site that
-    refuses the job — too large for what its connector is configured to take, no recovery key to
-    encrypt to — refuses before it declares an artifact, so there is no row on the backups list. The
+    refuses the job - too large for what its connector is configured to take, no recovery key to
+    encrypt to - refuses before it declares an artifact, so there is no row on the backups list. The
     job then leaves the queue, so there is no in-progress row either. The request a person watched
     disappeared, and the screen went back to showing the previous backup, which succeeded.
 
-    Amber rather than red. Nothing has been lost — the earlier backups are all still there — and the
+    Amber rather than red. Nothing has been lost - the earlier backups are all still there - and the
     thing that needs to change is usually one setting. Red is for when there is nothing to restore.
 --}}
 @props(['failure', 'showSite' => false, 'canDismiss' => false])

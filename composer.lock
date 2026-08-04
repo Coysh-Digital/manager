@@ -387,7 +387,7 @@
                 "protocol"
             ],
             "support": {
-                "email": "hello@coysh.digital",
+                "email": "support@managerforcraft.com",
                 "issues": "https://github.com/Coysh-Digital/manager-protocol/issues",
                 "source": "https://github.com/Coysh-Digital/manager-protocol"
             },
@@ -6262,7 +6262,7 @@
                     "homepage": "https://symfony.com/contributors"
                 }
             ],
-            "description": "Symfony polyfill backporting some PHP 8.3+ features to lower PHP versions",
+            "description": "Symfony polyfill backporting some PHP 8.1+ features to lower PHP versions",
             "homepage": "https://symfony.com",
             "keywords": [
                 "compatibility",

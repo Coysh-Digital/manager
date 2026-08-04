@@ -22,7 +22,7 @@ use Illuminate\Support\Carbon;
  * Two rules this class enforces so call sites cannot get them wrong:
  *
  *  - **A site's clock is never authoritative.** Both timestamps are kept and ordering always uses ours,
- *    so a site with a wrong clock — or a deliberately wrong one — cannot reorder its own timeline.
+ *    so a site with a wrong clock - or a deliberately wrong one - cannot reorder its own timeline.
  *  - **A timeline write never fails a backup.** Losing the record that a dump started is annoying;
  *    failing the backup because the record could not be written is worse. Nothing here throws.
  */

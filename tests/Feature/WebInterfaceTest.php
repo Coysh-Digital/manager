@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Domain\Audit\AuditRecorder;
+use App\Domain\Updates\ChangelogLink;
 use App\Models\CapabilityGrant;
 use App\Models\Connector;
 use App\Models\Membership;
@@ -20,7 +21,34 @@ beforeEach(function (): void {
 
 it('sends an unauthenticated visitor to sign in', function (string $path): void {
     $this->get($path)->assertRedirect(route('login'));
-})->with(['/sites', '/activity', '/account']);
+})->with(['/sites', '/activity', '/settings/security']);
+
+/*
+ | Which version this is, from anywhere.
+ |
+ | It used to be on the Settings screen and nowhere else, so the first question of a support
+ | conversation needed a navigation to answer. /sites rather than /settings is the whole point of the
+ | assertion: the string has to be somewhere the reader already is.
+ */
+it('says which version it is running on every screen, not only on Settings', function (): void {
+    config()->set('manager.version', '1.4.2');
+
+    $this->actingAs($this->user)
+        ->get('/sites')
+        ->assertOk()
+        ->assertSee('1.4.2')
+        ->assertSee(ChangelogLink::manager(), false);
+});
+
+it('says as much on an installation that cannot know its version', function (): void {
+    // The normal state for a clone or a tarball. Printing a guess would be worse than saying so.
+    config()->set('manager.version', null);
+
+    $this->actingAs($this->user)
+        ->get('/sites')
+        ->assertOk()
+        ->assertSee('unreleased build');
+});
 
 it('renders the sign-in page', function (): void {
     $this->get('/login')
@@ -51,7 +79,7 @@ it('creates the first organisation and owner through setup', function (): void {
         'email' => 'owner@example.org',
         'password' => 'correct-horse-battery-staple-42',
         'password_confirmation' => 'correct-horse-battery-staple-42',
-    ])->assertRedirect(route('account.show'));
+    ])->assertRedirect(route('settings.security'));
 
     $owner = User::query()->where('email', 'owner@example.org')->firstOrFail();
 
@@ -193,9 +221,9 @@ it('shows only this organisation on the activity log', function (): void {
         ->assertDontSee('other.thing');
 });
 
-it('renders the account page and offers both kinds of second factor', function (): void {
+it('offers both kinds of second factor on the security screen', function (): void {
     $this->actingAs($this->user)
-        ->get('/account')
+        ->get('/settings/security')
         ->assertOk()
         // Named separately, because "two-factor authentication" covering both an authenticator app
         // and a passkey makes it unclear which one the buttons act on.
@@ -203,6 +231,17 @@ it('renders the account page and offers both kinds of second factor', function (
         ->assertSee('Passkeys')
         ->assertSee('Add a passkey')
         ->assertSee('Set up two-factor authentication');
+});
+
+it('keeps who somebody is on a different screen from how they get in', function (): void {
+    // The split is the point: listing every time zone identifier and rendering an enrolment QR code
+    // no longer happen for each other's benefit.
+    $this->actingAs($this->user)
+        ->get('/settings/account')
+        ->assertOk()
+        ->assertSee('Your details')
+        ->assertSee('Time zone')
+        ->assertDontSee('Authenticator app');
 });
 
 it('renders in both themes from one set of templates', function (): void {

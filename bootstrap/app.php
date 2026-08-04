@@ -48,7 +48,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'setup.available' => EnsureSetupIsAvailable::class,
             'second-factor' => EnsureSecondFactorWhenRequired::class,
 
-            // Overrides the framework's own 'password.confirm' alias — custom aliases are merged
+            // Overrides the framework's own 'password.confirm' alias - custom aliases are merged
             // over the defaults, so this one wins. Same gate, same redirect; it additionally keeps
             // the typed form, which Laravel's cannot because a POST body does not survive
             // Redirector::guest(). See RequirePasswordConfirmation.

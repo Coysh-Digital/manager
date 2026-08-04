@@ -72,7 +72,7 @@ it('escalates as the disk fills', function (float $freeFraction, ?string $severi
 
 it('treats a filesystem that cannot answer as unmeasured rather than fine', function (): void {
     // Common on containerised and remote storage. "We could not measure it" is not "it is fine", but
-    // it is also not a finding — inventing a percentage would be worse than either.
+    // it is also not a finding - inventing a percentage would be worse than either.
     $payload = RuntimeReportFactory::samplePayload();
     unset($payload['storage']['disk_free_bytes'], $payload['storage']['disk_total_bytes']);
 

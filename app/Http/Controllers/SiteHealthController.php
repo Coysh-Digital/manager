@@ -14,7 +14,7 @@ use Illuminate\Http\Request;
  * How reliably a site has been checking in, and how it is coping.
  *
  * The window lives in the query string rather than the session, so a view somebody wants to keep
- * open on a wall can be linked to and reloaded — the same reasoning as the fleet filters.
+ * open on a wall can be linked to and reloaded - the same reasoning as the fleet filters.
  */
 final class SiteHealthController
 {

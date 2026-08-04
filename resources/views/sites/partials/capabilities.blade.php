@@ -5,7 +5,7 @@
     Settings; the old route still resolves and redirects here.
 
     Every capability the platform defines appears, granted or not. A list of only the granted ones
-    answers the less useful half of the question — what is *not* permitted is usually what somebody
+    answers the less useful half of the question - what is *not* permitted is usually what somebody
     came to check.
 --}}
 <div class="flex flex-col gap-3">
@@ -32,7 +32,7 @@
 
                         @unless ($capability['grantable'])
                             {{-- Not offered as a switch. Either the connector cannot do it yet, or it
-                                 modifies the site and needs its own confirmation flow — a toggle
+                                 modifies the site and needs its own confirmation flow - a toggle
                                  beside the read switches would understate what granting it means. --}}
                             <span class="rounded-[5px] border border-info-line bg-info-bg px-1.5 py-0.5 font-mono text-[11px] text-info">
                                 {{ $capability['readOnly'] ? 'Not yet available' : 'Needs separate confirmation' }}
@@ -67,7 +67,7 @@
 
             @if ($capability['confirmable'] && ! $capability['granted'] && $connector)
                 {{-- Deliberately not a switch. Granting this authorises a copy of every user record on
-                     the site, so it asks for the site's name, an acknowledgement and a reason — and
+                     the site, so it asks for the site's name, an acknowledgement and a reason - and
                      says what it will do before it asks. --}}
                 <form method="POST" action="{{ route('capabilities.grant-confirmed', $site) }}"
                       class="flex flex-col gap-3 border-b border-border bg-surface-2 p-4">

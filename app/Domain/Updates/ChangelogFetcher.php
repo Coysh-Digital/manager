@@ -17,12 +17,12 @@ use Illuminate\Support\Facades\Cache;
  * so, and none of that has been softened.
  *
  * What makes this safe is that the fetch carries no such association. One request, for one public
- * file, made once per installation and cached — not per site, not per organisation, not per viewer.
+ * file, made once per installation and cached - not per site, not per organisation, not per viewer.
  * The cache key is a constant. Nothing about which sites exist, which are behind, or who is looking
  * reaches the network, and the result is the same bytes whether an installation manages one site or
  * a hundred. It is closer to reading the documentation than to reporting an inventory.
  *
- * Only Craft, and it stays that way. Plugin notes arrive by a different route entirely — connectors
+ * Only Craft, and it stays that way. Plugin notes arrive by a different route entirely - connectors
  * forward what their own Craft install already downloaded, and {@see PluginChangelog} serves them —
  * precisely so that this class never has to resolve a handle to a destination. Doing that would mean
  * asking a third party about every plugin in the fleet, which is the leak this class exists to avoid,

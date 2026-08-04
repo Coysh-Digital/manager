@@ -24,7 +24,7 @@
                     @endif
                 @endunless
                 Derived on the platform from what each site reports. A finding resolves itself once the
-                problem is fixed — there is nothing to tick off.
+                problem is fixed - there is nothing to tick off.
             </p>
         </div>
 
@@ -41,7 +41,7 @@
             </p>
             @unless ($showResolved)
                 <p class="mt-1.5 text-[13px] text-text-2">
-                    Bear in mind a rule is skipped, not passed, when its capability is not granted — so
+                    Bear in mind a rule is skipped, not passed, when its capability is not granted - so
                     an empty list is only as complete as what each site has been asked to report.
                 </p>
             @endunless
@@ -51,7 +51,7 @@
             Grouped by rule, not listed by instance.
 
             A finding is rule × site. Listed flat, one misconfigured deploy template produced one
-            full-width card per site — four identical "Development mode is on in production" cards
+            full-width card per site - four identical "Development mode is on in production" cards
             at twelve sites, forty at forty, each repeating the same title, the same description and
             the same rule name. The reader was made to notice the repetition and then discount it.
 
@@ -59,7 +59,7 @@
 
             What is stated once is the *title*, which is a property of the rule and true of every
             site in the group. The description is not always. Roughly a third of the rules —
-            disk_almost_full, slow_response_times, certificate_expiring, failed_queue_jobs — build
+            disk_almost_full, slow_response_times, certificate_expiring, failed_queue_jobs - build
             their detail from that site's own measurements, and printing the first site's
             "90.5% full, with 5.5 GB free" above a list of twelve sites attributes one server's
             disk to eleven other machines. Reported from a live fleet, where two sites on two

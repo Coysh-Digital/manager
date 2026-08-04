@@ -9,7 +9,7 @@ use Illuminate\Support\Env;
  | A size limit must never be a limit of zero.
  |
  | env('KEY', $fallback) returns the fallback only when the key is absent. Present and blank returns
- | an empty string, and (int) '' is 0 — so a cap that reads as "unset" becomes a cap that refuses
+ | an empty string, and (int) '' is 0 - so a cap that reads as "unset" becomes a cap that refuses
  | everything. .env.example ships several of these lines blank, so copying it is enough to set one.
  |
  | This is not hypothetical and it is not new: the same trap is documented on cloud.kms.region, was
@@ -19,12 +19,12 @@ use Illuminate\Support\Env;
  | What this file asserts changed with the ceiling itself, and the protection did not. It used to
  | say "max_bytes is always a positive number", because the only way to express "no ceiling" was a
  | number so large nobody reached it. A ceiling is now null when the operator has not set one, so
- | the assertion is "null, or a positive number — never zero". Same guarantee: **there is no
+ | the assertion is "null, or a positive number - never zero". Same guarantee: **there is no
  | configuration in which this platform refuses every backup it is asked to store.**
  |
  | It also stopped reimplementing the thing it checks. The previous version asserted against
  | `((int) '') ?: $expected` written out in the test body, which is a copy of the config line rather
- | than the config line — it would have stayed green through any change to the real one, including
+ | than the config line - it would have stayed green through any change to the real one, including
  | this one. These load config/manager.php with a controlled environment and read what it actually
  | produces.
  */
@@ -70,7 +70,7 @@ it('keeps a backup ceiling the operator actually set', function (): void {
 
 it('treats a blank payload limit as unset rather than as zero', function (): void {
     // Unchanged, and deliberately still a number. This one bounds a JSON report held in memory, so
-    // "no limit" is not a thing it may express — see config/manager.php.
+    // "no limit" is not a thing it may express - see config/manager.php.
     $config = configuredWith('MANAGER_MAX_PAYLOAD_BYTES', '');
 
     expect($config['connector']['max_payload_bytes'])->toBe(Protocol::MAX_PAYLOAD_BYTES)

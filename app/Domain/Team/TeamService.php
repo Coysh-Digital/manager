@@ -20,7 +20,7 @@ use Illuminate\Support\Str;
  * account or a shell session away from one.
  *
  * The invitation is deliberately not a password. An administrator creates the account with a random
- * secret nobody ever sees — not even them — and the new user sets their own through the ordinary
+ * secret nobody ever sees - not even them - and the new user sets their own through the ordinary
  * reset flow. Two things follow from that: no administrator ever handles a colleague's credential,
  * and there is no "temporary password" sitting in a chat log waiting to be found. The token is
  * Laravel's own broker: single-use, expiring and stored hashed.
@@ -40,9 +40,9 @@ final class TeamService
     public static function assignableRoles(): array
     {
         return [
-            Membership::ROLE_OWNER => 'Owner — everything, including billing, removal and other owners',
-            Membership::ROLE_ADMIN => 'Administrator — sites, capabilities, backups and people',
-            Membership::ROLE_MEMBER => 'Member — read the fleet and ask sites to report',
+            Membership::ROLE_OWNER => 'Owner - everything, including billing, removal and other owners',
+            Membership::ROLE_ADMIN => 'Administrator - sites, capabilities, backups and people',
+            Membership::ROLE_MEMBER => 'Member - read the fleet and ask sites to report',
         ];
     }
 
@@ -65,7 +65,7 @@ final class TeamService
                     'email' => $email,
 
                     // Random, never shown, never recoverable. The account is unusable until the
-                    // invitee sets their own through the reset link — which is the point: an
+                    // invitee sets their own through the reset link - which is the point: an
                     // administrator must not be able to sign in as somebody they invited.
                     'password' => Str::random(64),
                 ]);
@@ -132,7 +132,7 @@ final class TeamService
      * Revoke access.
      *
      * A timestamp rather than a delete, so every audit record still points at something real, and
-     * because access checks read live membership on each request — revocation takes effect on the
+     * because access checks read live membership on each request - revocation takes effect on the
      * next one rather than whenever a session happens to expire.
      */
     public function revoke(Membership $membership, User $actor): void
@@ -159,7 +159,7 @@ final class TeamService
     /**
      * Whether removing or demoting this membership would leave nobody in charge.
      *
-     * An organisation with no owner cannot grant a capability, remove a site or invite anybody — it
+     * An organisation with no owner cannot grant a capability, remove a site or invite anybody - it
      * is a locked installation needing a shell to recover. Cheaper to refuse the last step.
      */
     public function isLastOwner(Membership $membership): bool
