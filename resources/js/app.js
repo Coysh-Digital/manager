@@ -2,7 +2,7 @@
  * Theme switching.
  *
  * Deliberately tiny. The rest of the interface is server-rendered Blade, and a control plane is
- * somewhere every dependency has to earn its place — this is a dozen lines rather than a framework.
+ * somewhere every dependency has to earn its place - this is a dozen lines rather than a framework.
  * Charts are the one exception, and charts.js says what it is paying for.
  *
  * The initial theme is applied by an inline script in the layout head, before first paint, so

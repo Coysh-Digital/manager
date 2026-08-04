@@ -25,11 +25,11 @@ router_https_port: "443"
 # Pin the *host* ports.
 #
 # The two settings above are the router's ports inside Docker. Without the three below, ddev picks
-# ephemeral host ports and reassigns them on every restart — so anything pointed at 127.0.0.1 from
+# ephemeral host ports and reassigns them on every restart - so anything pointed at 127.0.0.1 from
 # outside breaks silently the next time the project is restarted for an unrelated reason.
 #
 # That is not hypothetical: an ngrok tunnel forwarding to this project returned 502 for every
-# request — including a live site's connector heartbeats — after a restart moved the port from 54747
+# request - including a live site's connector heartbeats - after a restart moved the port from 54747
 # to 63205, with nothing to indicate why. A database client pointed at the db port has the same
 # failure mode, so that is pinned too.
 #

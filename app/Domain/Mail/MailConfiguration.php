@@ -15,7 +15,7 @@ use Throwable;
  * The environment is never written to. That is not an implementation detail, it is the design:
  *
  *  - `.env` would need a `config:cache` to take effect, and the Docker entrypoint caches config at
- *    boot, before `migrate` — so a value written at runtime would be read by nothing.
+ *    boot, before `migrate` - so a value written at runtime would be read by nothing.
  *  - It would be lost on the next container start, because the image bakes the file.
  *  - It would put a relay password in a file on disk beside everything else.
  *  - And, most of all: because the environment is untouched, discarding the stored configuration is
@@ -114,7 +114,7 @@ final class MailConfiguration
         try {
             /*
              | Asked rather than assumed. `key:generate`, `config:cache` and `manager:doctor` all run
-             | before `migrate` on a first install — see deploy/docker/entrypoint.sh — and an
+             | before `migrate` on a first install - see deploy/docker/entrypoint.sh - and an
              | invitation email must not become a 500 because a table is one deploy behind.
              |
              | hasTable rather than catching the query error, because in Postgres a failed statement

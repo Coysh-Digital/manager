@@ -19,13 +19,13 @@ use Illuminate\Support\Facades\Schema;
  * is three versions behind *these fixes* is a map of an exploitable installation. Somebody who gets a
  * read on this database should not thereby get a target list.
  *
- * `updates.v2` accepts them because the danger was located slightly wrong. The text is public — the
+ * `updates.v2` accepts them because the danger was located slightly wrong. The text is public - the
  * Craft Plugin Store serves it to anyone, and every site running the plugin already downloaded it,
  * which is why forwarding it costs no outbound request. What was never safe was the *association*,
  * and that is a property of where the receiver puts things. So:
  *
  *  - notes live in `plugin_release_notes`, keyed on a plugin and a version, with no site column and
- *    no organisation column — the table cannot express the association even if asked;
+ *    no organisation column - the table cannot express the association even if asked;
  *  - `update_reports.payload` keeps the whole body a site sent, so the notes are stripped out of it
  *    before it is written;
  *  - and no new outbound destination was introduced to make any of this work.
@@ -52,7 +52,7 @@ it('keeps release notes out of the report it stores against a site', function ()
         ->and($encoded)->not->toContain('"releases":')
         ->and($encoded)->not->toContain('"notes":');
 
-    // And the report is otherwise intact — stripping must not cost the fields the screen reads.
+    // And the report is otherwise intact - stripping must not cost the fields the screen reads.
     expect($stored->payload['plugins'][0]['handle'])->toBe('formie')
         ->and($stored->payload['plugins'][0]['latest'])->toBe('3.0.14')
         ->and($stored->craft_latest)->toBe('5.6.4');
@@ -123,7 +123,7 @@ it('adds no outbound destination to serve plugin notes', function (): void {
      |
      | Resolving a plugin handle against the Plugin Store would have been far less code. It would
      | also have told that store which plugins every site in a fleet runs and which of them are
-     | behind — the fleet inventory leaking one request at a time. Connectors forward what their own
+     | behind - the fleet inventory leaking one request at a time. Connectors forward what their own
      | Craft install already downloaded instead, so the platform asks nobody anything.
      |
      | ChangelogFetchTest guards the same constant from the other side; this asserts the plugin route

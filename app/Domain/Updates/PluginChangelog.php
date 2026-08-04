@@ -20,7 +20,7 @@ use Illuminate\Support\Carbon;
  * when Craft checked its own updates, and since `updates.v2` the connector forwards what it already
  * has. The platform makes no outbound request at all for this feature.
  *
- * The association is what stays out of the database — see the migration for the full argument. Notes
+ * The association is what stays out of the database - see the migration for the full argument. Notes
  * are stored against a plugin and a version, this class reads them back by handle, and the join to a
  * particular site happens in the controller, from the versions that site's report already carried.
  */
@@ -144,14 +144,14 @@ final class PluginChangelog
                 continue;
             }
 
-            // Heading and body kept apart. What a plugin publishes is HTML — Craft's update API
-            // renders it before the connector ever sees it — so a Markdown heading concatenated
+            // Heading and body kept apart. What a plugin publishes is HTML - Craft's update API
+            // renders it before the connector ever sees it - so a Markdown heading concatenated
             // onto the front produced a document that was half one language and half the other, and
             // the renderer discarded the half it did not recognise. That was the whole bug.
             $sections[] = [
                 'heading' => $release->released_on === null
                     ? $release->version
-                    : $release->version.' — '.$release->released_on,
+                    : $release->version.' - '.$release->released_on,
                 'body' => $release->notes,
             ];
 
@@ -168,7 +168,7 @@ final class PluginChangelog
      *
      * One query for the whole table, not one per plugin: the updates screen renders every installed
      * plugin, a busy site has a couple of hundred, and asking per row is how a screen quietly becomes
-     * two hundred queries. Only handles and versions are selected — the note bodies are loaded by
+     * two hundred queries. Only handles and versions are selected - the note bodies are loaded by
      * {@see between} when somebody actually opens one.
      *
      * @param  list<array{handle: string, current: string|null, latest: string|null, ...}>  $plugins

@@ -42,8 +42,8 @@ final class AccountsLockedOut implements Rule
         }
 
         return new RuleMatch(
-            // Medium rather than high. Nobody's security is worse for a lockout — that is the
-            // lockout working — but somebody is stuck, and a control panel that noticed and said
+            // Medium rather than high. Nobody's security is worse for a lockout - that is the
+            // lockout working - but somebody is stuck, and a control panel that noticed and said
             // nothing is not much of a control panel.
             severity: Severity::MEDIUM,
             title: 'Accounts are locked out of the control panel',

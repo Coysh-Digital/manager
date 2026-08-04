@@ -7,7 +7,7 @@ namespace App\Contracts;
 /**
  * How large a backup may be, asked at both ends of the wire.
  *
- * Two limits, two machines, one edition decision — which is why they share a seam.
+ * Two limits, two machines, one edition decision - which is why they share a seam.
  *
  * `megabytes()` is about the dump on the *site's* disk. The connector carries `maxBackupMegabytes`,
  * defaulting to 2 GB, and it is a safety valve for the machine the dump is written on: an operator
@@ -20,7 +20,7 @@ namespace App\Contracts;
  *
  * On a hosted edition both are the wrong control in the wrong place. The storage belongs to whoever
  * runs the service, it is metered and billed, and a customer whose database has grown past a number
- * they never chose gets a refused backup and a setting they cannot reach — the plugin's config lives
+ * they never chose gets a refused backup and a setting they cannot reach - the plugin's config lives
  * on their own server, and most sites have no config file at all, so the default is simply a
  * ceiling. Charging for the space is the answer there, not refusing the work.
  *
@@ -40,7 +40,7 @@ interface BackupSizeLimit
      * The largest artifact this platform will accept, in bytes, or null for no ceiling.
      *
      * The sibling above bounds a dump on somebody else's disk. This bounds what arrives on ours,
-     * and it is a different question with a different answer per edition — which is why it is here
+     * and it is a different question with a different answer per edition - which is why it is here
      * rather than read from config at each of the four places that enforce it. Self-hosted, the
      * operator's `MANAGER_BACKUP_MAX_BYTES` is the answer. Hosted, there is no ceiling, because the
      * storage is metered and sold and refusing a large database is refusing paid work.

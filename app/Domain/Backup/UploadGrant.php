@@ -9,7 +9,7 @@ use Illuminate\Support\Carbon;
 /**
  * Permission to write one object, to one place, for a short while.
  *
- * Note what this carries and — much more importantly — what it does not. There is a path, a query
+ * Note what this carries and - much more importantly - what it does not. There is a path, a query
  * string, a set of headers the request must send, an expiry and a size ceiling. **There is no host and
  * no scheme.**
  *
@@ -53,7 +53,7 @@ final class UploadGrant
      * The form a connector receives, on the signed claim response.
      *
      * `parts` and `part_bytes` appear only when there are parts, so a grant for an ordinary artifact
-     * is byte-identical to what this produced before multipart existed — which matters because a
+     * is byte-identical to what this produced before multipart existed - which matters because a
      * connector too old to understand them is the common case and must see nothing new.
      *
      * `reference` is never here. It is the store's handle for the upload in progress, this platform

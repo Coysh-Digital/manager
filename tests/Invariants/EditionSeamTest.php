@@ -74,7 +74,7 @@ it('offers no billing of its own', function (): void {
      | Nobody bills a self-hosted installation.
      |
      | You have the source and you are running it on your own infrastructure. There is no
-     | subscription, no card, no invoice and no allowance to buy more of — so there is nothing for
+     | subscription, no card, no invoice and no allowance to buy more of - so there is nothing for
      | this repository to show, and the correct amount of billing interface here is none. Not a
      | greyed-out link, not a page explaining that it does not apply.
      |
@@ -128,14 +128,14 @@ it('never tells a reader to run a command without asking whether they can', func
      |
      | This one is written from a bug rather than from a worry. The backups screen told every reader
      | to run `php artisan manager:backups:fetch` on the server, and on a hosted edition that is a
-     | machine they have no account on — so it read as the answer to "how do I get my backup" while
+     | machine they have no account on - so it read as the answer to "how do I get my backup" while
      | being impossible to follow. Two more screens did it with `manager:audit:verify`, and Settings
      | with `manager:doctor`. MailAdministration exists because the identical thing happened with a
      | `.env` file.
      |
      | Coarse on purpose: it asks only that a view naming an artisan command also names the seam, not
      | that the gate is correctly placed. A finer check would have to parse Blade. This one catches
-     | the regression that actually happens — a new instruction written without the question being
+     | the regression that actually happens - a new instruction written without the question being
      | asked at all.
      |
      | `manager-restore` is deliberately not covered. It runs on the reader's own machine, and on a
@@ -239,7 +239,7 @@ it('has no notion of an edition at all', function (): void {
      |
      | It used to carry a MANAGER_EDITION variable and a doctor check that failed when an installation
      | called itself "cloud" while still wrapping backup keys from APP_KEY. That check was useful, and
-     | it was useful to *Cloud* — a self-hosted operator could never trip it, and the variable was not
+     | it was useful to *Cloud* - a self-hosted operator could never trip it, and the variable was not
      | even in .env.example, because there was nothing for them to set it to.
      |
      | Carrying it here meant somebody reading the health checks found one about a key service they

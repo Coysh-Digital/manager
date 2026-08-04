@@ -166,7 +166,7 @@ final class FindingsEvaluator
 
         if ($existing !== null && $existing->isOutstanding()) {
             // Still true. The severity, title and detail are refreshed because a rule may now have
-            // more to say — a second plugin needing a security update, say — but the acknowledgement
+            // more to say - a second plugin needing a security update, say - but the acknowledgement
             // and the first-seen date are left alone.
             $existing->forceFill([
                 'severity' => $match->severity,

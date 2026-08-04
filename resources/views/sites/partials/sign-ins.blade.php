@@ -2,7 +2,7 @@
     Failed sign-ins to the site's control panel.
 
     Counts, and the caveat that makes them honest. Craft resets an account's failed-attempt counter
-    on a successful sign-in, so an attacker who eventually gets in erases their own tally — which
+    on a successful sign-in, so an attacker who eventually gets in erases their own tally - which
     means a reassuring zero is exactly the number that deserves the footnote.
 
     What is not here is the design rather than an omission: no username, no email address, no source
@@ -14,7 +14,7 @@
             Sign-in counts need <code class="font-mono">logins:read</code>, which this site has not been
             granted.
             <a href="{{ route('sites.settings', $site) }}#capabilities" class="text-primary hover:text-primary-hover">Grant it</a>
-            — it reports counts only, never a username or an address.
+            - it reports counts only, never a username or an address.
         </p>
     @elseif ($loginReport === null)
         <p class="px-4 py-6 text-center text-[13px] text-text-2">
@@ -60,7 +60,7 @@
         </div>
 
         <p class="bg-surface-2 px-3.5 py-2.5 text-[12px] leading-relaxed text-text-3">
-            Counts only — never a username, an email address or the address anyone connected from.
+            Counts only - never a username, an email address or the address anyone connected from.
             <strong>These are a floor, not a total:</strong> Craft resets an account's counter on a
             successful sign-in, so somebody who guessed correctly on the twentieth attempt leaves
             nothing behind here. Reported

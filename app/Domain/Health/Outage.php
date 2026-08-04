@@ -27,7 +27,7 @@ final class Outage
     }
 
     /**
-     * "3h 12m", "45m", "2d 4h" — the shape somebody reads off a table rather than a sentence.
+     * "3h 12m", "45m", "2d 4h" - the shape somebody reads off a table rather than a sentence.
      */
     public function duration(): string
     {

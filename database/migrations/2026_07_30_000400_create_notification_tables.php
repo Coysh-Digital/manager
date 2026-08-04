@@ -27,7 +27,7 @@ return new class extends Migration
 
             $table->string('label');
 
-            // An address or an HTTPS URL. Validated per transport before it is written — a webhook
+            // An address or an HTTPS URL. Validated per transport before it is written - a webhook
             // URL has passed the outbound guard by the time it reaches here.
             $table->string('target', 512);
 

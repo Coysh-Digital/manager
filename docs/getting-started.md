@@ -142,7 +142,7 @@ php craft plugin/install manager-connector
 ```
 
 Installing the plugin does not create a config file, and there is no config file to find until you
-write one. That is not an oversight — it is optional, and the connector works without it.
+write one. That is not an oversight - it is optional, and the connector works without it.
 
 Create `config/manager-connector.php` anyway. It is the file the fingerprint pin lives in at step 5,
 and creating it now saves coming back:
@@ -160,7 +160,7 @@ if you want to see every option.
 
 Setting `platformUrl` here rather than typing it on the pairing screen also locks the address: with
 it set, the pairing screen shows it read-only, so a hijacked control panel session cannot repoint
-the site at somebody else's Manager. Without it, you type the address when you pair — that works,
+the site at somebody else's Manager. Without it, you type the address when you pair - that works,
 and the site is paired either way.
 
 Then pair:
@@ -181,7 +181,7 @@ confirmation rather than accepting it.
 
 This is the step people skip, and it is the one that carries the most weight.
 
-Add the fingerprint to the same `config/manager-connector.php` — creating it now if you skipped it
+Add the fingerprint to the same `config/manager-connector.php` - creating it now if you skipped it
 at step 4, because this is the one thing that has nowhere else to live:
 
 ```php

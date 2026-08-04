@@ -1,17 +1,17 @@
-# Manager — the control plane, and the repositories around it
+# Manager - the control plane, and the repositories around it
 
 **This repository is `Coysh-Digital/manager`, and it is public.** It is Manager Self-Hosted: the
 Laravel control plane people install on their own infrastructure. Everything in this checkout ships
 to them.
 
 It is normally one of several checkouts sitting side by side in a workspace, and this file used to
-open by describing that workspace as though you were standing in it — "this directory is a
-workspace, not a repository" — which was false in the one place the file actually lives. If a
+open by describing that workspace as though you were standing in it - "this directory is a
+workspace, not a repository" - which was false in the one place the file actually lives. If a
 `CLAUDE.md` exists in the parent directory it is the authority on cross-repository work; this file
 covers what is true of `platform/` whether or not that parent is there.
 
 Getting a change into the wrong repository is the mistake that matters most here, because one of
-them is public and one of them is not, and a push to a public repository cannot be undone — a
+them is public and one of them is not, and a push to a public repository cannot be undone - a
 force-push removes the ref, not the objects, and not anybody's fetch, GitHub's cache, or the forks
 network.
 
@@ -32,7 +32,7 @@ the public core.
 
 Each has a reason it cannot simply be folded into another.
 
-### `platform/` → `Coysh-Digital/manager` — **PUBLIC**
+### `platform/` → `Coysh-Digital/manager` - **PUBLIC**
 
 The Laravel control plane. **This is Manager Self-Hosted**, and it is what people install on their own
 infrastructure, free.
@@ -50,9 +50,9 @@ Two branches matter, and they live on different remotes:
 `tests/Invariants/NoCloudCodeTest.php` enforces the boundary and has already caught a real leak.
 Do not disable it; if it fires, it is right.
 
-### `connector/` → `Coysh-Digital/craft-manager-connector` — **PUBLIC**
+### `connector/` → `Coysh-Digital/craft-manager-connector` - **PUBLIC**
 
-The Craft CMS plugin installed on managed sites — Craft 4.4 or later, and Craft 5. Separate because
+The Craft CMS plugin installed on managed sites - Craft 4.4 or later, and Craft 5. Separate because
 it is installed by Composer into customers' own servers, and it cannot depend on the whole control
 plane to do that.
 
@@ -61,7 +61,7 @@ ability to shell out, accept a destination as a parameter, accept a recovery key
 pinned, register a URL rule, or take a dependency outside a fixed allowlist. If it goes red, the fix
 is the code, not the check.
 
-### `protocol/` → `Coysh-Digital/manager-protocol` — **PUBLIC, MIT**
+### `protocol/` → `Coysh-Digital/manager-protocol` - **PUBLIC, MIT**
 
 The wire contract: canonical strings, signing, schemas, the backup artifact format.
 
@@ -72,39 +72,39 @@ MIT, like `connector` and `restore` and unlike this repository, so anyone can ve
 reimplement either side without asking.
 
 **Schemas are add-only.** Never edit a published one; add `.v2` beside it. The committed signing
-fixtures are the change detector — if they stop verifying, that is a wire-format break and a version
+fixtures are the change detector - if they stop verifying, that is a wire-format break and a version
 bump, not a fixture to regenerate.
 
-### `restore/` → `Coysh-Digital/manager-restore` — **PUBLIC, MIT**
+### `restore/` → `Coysh-Digital/manager-restore` - **PUBLIC, MIT**
 
 The offline CLI that generates recovery keys and decrypts backups. Depends only on `manager-protocol`.
 
-Separate rather than folded into the protocol package, because the plugin depends on protocol — and
+Separate rather than folded into the protocol package, because the plugin depends on protocol - and
 folding it in would put restore code onto every managed Craft site that will never run it.
 
 It has to be able to outlive Coysh Digital. Manager holds ciphertext it cannot decrypt, so if we stop
 existing, this plus the protocol spec is what stands between a customer and a permanently unreadable
 archive. That is why it is MIT and why it opens no sockets.
 
-### `cloud/` → `Coysh-Digital/manager-cloud` — **PRIVATE**
+### `cloud/` → `Coysh-Digital/manager-cloud` - **PRIVATE**
 
 The marketing site at managerforcraft.com. Laravel and Blade, no database, no queue, no session store.
 
 Private while pricing and roadmap copy are in flux. Nothing in it is sensitive; nobody needs to install
 it.
 
-### `Coysh-Digital/manager-private` — **PRIVATE** (no separate checkout)
+### `Coysh-Digital/manager-private` - **PRIVATE** (no separate checkout)
 
 Not a directory here. It is a second remote on `platform/`, added as `private`.
 
-- `main` — mirror of the public repository, kept in step.
-- `console` — `main` plus `cloud/`, the hosting layer. Deploys console.managerforcraft.com.
-- `archive/overlay` — history of the retired `manager-cloud-overlay` package. Reference only.
+- `main` - mirror of the public repository, kept in step.
+- `console` - `main` plus `cloud/`, the hosting layer. Deploys console.managerforcraft.com.
+- `archive/overlay` - history of the retired `manager-cloud-overlay` package. Reference only.
 
 The mirror earns its place: diffing `private/main` against `origin/main` shows at a glance that nothing
 private has travelled the wrong way.
 
-### `testbed/` — not a repository
+### `testbed/` - not a repository
 
 A local ddev Craft 5 install for exercising the connector. Gitignored, disposable, rebuild with
 `connector/bin/create-testbed.sh`.
@@ -124,7 +124,7 @@ A local ddev Craft 5 install for exercising the connector. Gitignored, disposabl
 
 **Never `git add -A` in `platform/` without looking at what it staged.** A `cloud/` directory in that
 checkout is excluded by `.gitignore` and `.dockerignore`, but a dependency declaration naming the
-private package is not caught by either — that is exactly how the one real leak happened.
+private package is not caught by either - that is exactly how the one real leak happened.
 
 **Never push `platform` to `origin` with anything Cloud-shaped in it.** Run
 `vendor/bin/pest --testsuite=Invariants` first. It is fast.
@@ -141,13 +141,13 @@ are written to fail rather than warn, and every one of them exists because somet
 
 The packages depend on each other, so releases have an order:
 
-1. `protocol` — tag and publish first. Everything else resolves against it.
-2. `restore` and `connector` — both require `manager-protocol`.
-3. `platform` — regenerate `composer.lock`, which cannot satisfy the constraint until step 1 is done.
-4. `private/console` — merge `main`, resolve the `.gitignore` conflict deliberately, deploy.
+1. `protocol` - tag and publish first. Everything else resolves against it.
+2. `restore` and `connector` - both require `manager-protocol`.
+3. `platform` - regenerate `composer.lock`, which cannot satisfy the constraint until step 1 is done.
+4. `private/console` - merge `main`, resolve the `.gitignore` conflict deliberately, deploy.
 
 The version each of those requires is in the relevant `composer.json`. It is not written out here,
-and neither is what is currently tagged or published — see below.
+and neither is what is currently tagged or published - see below.
 
 No repository verifies a release signature. `platform`'s workflow used to require a signed tag
 checked against `.github/allowed_signers` and refuse to publish an unsigned one; that gate, the
@@ -155,7 +155,7 @@ signer files and the invariants asserting them were removed deliberately. A rele
 SHA256 manifest and is built reproducibly, so integrity is checkable; authorship is not.
 
 **A tag is what a site can install.** A version declared in `composer.json` and not tagged has
-reached nobody, and a version already tagged cannot be changed — a fix to it needs a new number.
+reached nobody, and a version already tagged cannot be changed - a fix to it needs a new number.
 
 Nothing in `platform/` needs a local path repository. The protocol used to be symlinked from a
 sibling checkout via an uncommitted `repositories` block; that is gone, and `composer install`
@@ -170,7 +170,7 @@ was three releases behind, a lockfile described as missing the Cloud layer had l
 and a claim that releases need a signed tag contradicted the paragraph directly above it in this
 same file.
 
-None of it was careless. All of it was true when written, which is the point — a fact that changes
+None of it was careless. All of it was true when written, which is the point - a fact that changes
 does not belong in a document that does not.
 
 Query it instead. From the workspace checkout:
@@ -195,7 +195,7 @@ cd ../testbed && ddev start && ddev craft plugin/install manager-connector
 
 `testbed/` consumes `connector/` as a symlinked Composer path repository, so editing
 `connector/src/*.php` takes effect on the next request. Always use `ddev composer` there, never host
-composer — the path repository points at a container-absolute path.
+composer - the path repository points at a container-absolute path.
 
 Mutagen is on for `platform/` and deliberately off for `testbed/`. If a file edit does not seem to
 reach the container, `ddev mutagen sync`.

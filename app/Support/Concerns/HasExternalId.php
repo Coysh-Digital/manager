@@ -9,7 +9,7 @@ use Illuminate\Support\Str;
 /**
  * Gives a model an unguessable public identifier, distinct from its primary key.
  *
- * Everything that leaves the application — URLs, API responses, audit records, log lines — uses the
+ * Everything that leaves the application - URLs, API responses, audit records, log lines - uses the
  * ULID. Sequential primary keys stay internal, because exposing them would let anyone holding one
  * resource enumerate the rest and infer how many exist.
  */

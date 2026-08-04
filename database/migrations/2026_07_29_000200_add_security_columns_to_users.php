@@ -36,7 +36,7 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
 
             // Hashed, never recoverable. The plaintext is shown once at generation and cannot be
-            // shown again — regenerating replaces the whole set.
+            // shown again - regenerating replaces the whole set.
             $table->string('code_hash', 255);
 
             // Marked used rather than deleted, so "you have three codes left, one was used on

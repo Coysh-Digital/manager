@@ -30,13 +30,13 @@ use Illuminate\Support\Str;
  *
  * The claim under test is a negative one: **this platform cannot read the artifacts it stores.** A
  * suite of doubles could not tell you whether that is true, so everything here is genuine libsodium —
- * real keypairs, real sealed boxes, real chunked streams, a real envelope — and the decisive test
+ * real keypairs, real sealed boxes, real chunked streams, a real envelope - and the decisive test
  * takes a stored artifact and opens it with a recovery key the platform has never seen, having first
  * established that the platform itself refuses to.
  *
  * The other theme is what the platform *can* check about something it cannot open. It turns out to be
- * a fair amount — the manifest's checksum, its signature, its schema, whether each recipient's
- * fingerprint really belongs to its key, and whether the set matches what was served — and exactly one
+ * a fair amount - the manifest's checksum, its signature, its schema, whether each recipient's
+ * fingerprint really belongs to its key, and whether the set matches what was served - and exactly one
  * thing it cannot: whether the sealed blobs contain the artifact key at all. That last one is the
  * definition of zero-knowledge rather than a gap, and the tests say so rather than papering over it.
  */
@@ -63,7 +63,7 @@ beforeEach(function (): void {
 
     $this->organisation->forceFill(['backup_format_floor' => Protocol::BACKUP_FORMAT_V2])->save();
 
-    // Claimed, and carrying the recipient set that was served with it — which is the state a real
+    // Claimed, and carrying the recipient set that was served with it - which is the state a real
     // claim leaves behind and the state a declaration is checked against.
     $this->job = RemoteJob::factory()->for($this->site)->create([
         'type' => Jobs::BACKUP_CREATE,
@@ -253,7 +253,7 @@ it('seals to every active key, so losing one costs nothing', function (): void {
 
 it('does not encrypt a wrapped key with our own application key', function (): void {
     // The tempting mistake, and an actively harmful one. This platform cannot open a sealed box either
-    // way, so an `encrypted` cast would add no confidentiality — and it would make the customer's
+    // way, so an `encrypted` cast would add no confidentiality - and it would make the customer's
     // restore depend on our APP_KEY surviving, recreating the exact dependency the format removes.
     ($this->declare)(($this->makeArtifact)()['declaration'])->assertOk();
 
@@ -320,7 +320,7 @@ it('refuses a recipient labelled with somebody else\'s fingerprint', function ()
 });
 
 it('refuses an artifact sealed to nobody', function (): void {
-    // The schema cannot express this — the validator implements no minItems — so it is a check in the
+    // The schema cannot express this - the validator implements no minItems - so it is a check in the
     // service, and an artifact sealed to nobody is one nobody could ever open.
     $artifact = ($this->makeArtifact)(mutateManifest: function (array $manifest): array {
         $manifest['key_wrapping']['recipients'] = [];
@@ -463,7 +463,7 @@ it('refuses the old format once an organisation has recovery keys', function ():
     fclose($in);
     fclose($out);
 
-    // The likelier failure this guards against is not a compromised platform — it is somebody rolling
+    // The likelier failure this guards against is not a compromised platform - it is somebody rolling
     // a connector fleet back a version and quietly producing backups we can read.
     ($this->declare)([
         'schema_version' => 'backup.v1',

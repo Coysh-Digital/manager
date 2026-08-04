@@ -39,8 +39,8 @@ beforeEach(function (): void {
  * Attach a registered passkey to a user without going through a WebAuthn ceremony.
  *
  * There is no ceremony here and there cannot be: an assertion requires a real authenticator holding
- * a private key. What this fabricates is the *stored* side of a registration — the row the platform
- * would hold afterwards — which is what everything tested below actually reads: whether an account
+ * a private key. What this fabricates is the *stored* side of a registration - the row the platform
+ * would hold afterwards - which is what everything tested below actually reads: whether an account
  * has a second factor, which credentials get offered, and what removing one does.
  *
  * The stored credential is built by serialising a genuine CredentialRecord rather than by hand, so
@@ -281,7 +281,7 @@ it('redirects an unenrolled member to enrol rather than locking them out', funct
         ->assertRedirect(route('settings.security'));
 
     // Locking somebody out of a control plane to improve its security is a trade made once and
-    // regretted at 2am — and turning the requirement on could otherwise strand everybody at once,
+    // regretted at 2am - and turning the requirement on could otherwise strand everybody at once,
     // including whoever turned it on.
     expect(session('warning'))->toContain('requires two-factor authentication');
 });

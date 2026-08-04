@@ -143,7 +143,7 @@
                     <p class="max-w-[80ch] text-[12px] leading-relaxed text-text-3">
                         No password passes through you. The account is created with a random secret
                         nobody ever sees, and they set their own through a single-use link that
-                        expires — the same mechanism as a forgotten password. Until they do, the
+                        expires - the same mechanism as a forgotten password. Until they do, the
                         account cannot be signed in to at all.
                     </p>
 

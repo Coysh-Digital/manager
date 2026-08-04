@@ -14,7 +14,7 @@ use coyshdigital\managerprotocol\Sealing;
  * What the health screen says about the platform's own artifact key.
  *
  * The key belongs to the v1 format, where the platform holds the recipient and can read every
- * artifact. An organisation on v2 seals to its own recovery keys and never consults it — so for those
+ * artifact. An organisation on v2 seals to its own recovery keys and never consults it - so for those
  * sites its absence is correct and its presence is legacy.
  *
  * Reporting one answer for both was wrong in both directions at once, and the second direction is the
@@ -86,7 +86,7 @@ it('passes when the only sites with permission seal to their own recovery keys',
      * The regression that matters.
      *
      * Removing the legacy key is the right thing to do once no v1 artifacts remain, and before this
-     * the check called that an outage — on a screen an operator trusts, and in a command that runs on
+     * the check called that an outage - on a screen an operator trusts, and in a command that runs on
      * every deploy.
      */
     removeBackupKeypair();

@@ -55,7 +55,7 @@ final class JobDefinition
     /**
      * Validate parameters against this job's schema.
      *
-     * Unknown parameters are rejected rather than ignored — that is invariant 9's second half, and
+     * Unknown parameters are rejected rather than ignored - that is invariant 9's second half, and
      * the reason every parameter schema sets `additionalProperties: false`.
      *
      * @param  array<string, mixed>  $parameters

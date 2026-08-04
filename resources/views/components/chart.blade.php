@@ -4,7 +4,7 @@
     A chart, and the same figures in text underneath it.
 
     The table is not a nicety. A canvas is a picture to a screen reader, to a printer that drops
-    background graphics, and to anybody whose script blocked — and the numbers behind these charts
+    background graphics, and to anybody whose script blocked - and the numbers behind these charts
     are the sort somebody pastes into a ticket. It is visually hidden rather than absent, so the
     page has one source of figures rather than two that can disagree.
 --}}
@@ -19,7 +19,7 @@
         The hiding goes on a wrapper, not on the table.
 
         `sr-only` clips with `overflow: hidden` on a one-pixel box, and a table's overflow does not
-        clip its own `<caption>` — the caption is laid out outside the table box. So the summary
+        clip its own `<caption>` - the caption is laid out outside the table box. So the summary
         sentence, which is a whole sentence naming the site, escaped and rendered at its full width
         while being invisible. Measured on a 375px viewport it ran to 475px, which is exactly the
         horizontal scrollbar somebody reported on every screen carrying a chart.

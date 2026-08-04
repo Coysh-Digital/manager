@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Schema;
  * The backups screen shows a "Did not complete" panel built from failed, expired and cancelled
  * backup jobs that left no artifact behind. It ages out after seven days on its own, which is right
  * for a problem nobody has looked at yet and wrong for one that has been read, understood and
- * either fixed or accepted — that one goes on being shouted about for a week, and a panel somebody
+ * either fixed or accepted - that one goes on being shouted about for a week, and a panel somebody
  * has learned to scroll past is a panel that no longer reports anything.
  *
  * Nullable, and null is the normal state. This does not delete the job, its failure reason or its

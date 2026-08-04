@@ -99,7 +99,7 @@ final class LoginController
      *
      * Separate from completeLogin only because the passkey path answers a fetch() with JSON rather
      * than a redirect. Everything that decides whether the login is *safe* happens here, so the two
-     * paths cannot drift apart on it — session regeneration above all, since a passkey path that
+     * paths cannot drift apart on it - session regeneration above all, since a passkey path that
      * forgot to regenerate would leave a session fixed before login perfectly usable after it.
      */
     public static function issueSession(Request $request, User $user, bool $remember, string $factor): void

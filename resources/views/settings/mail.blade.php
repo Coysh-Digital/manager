@@ -6,7 +6,7 @@
 @section('content')
     @php
         // What the form starts from. A stored configuration if there is one, otherwise whatever the
-        // environment holds — so a first visit shows the settings already in force rather than an
+        // environment holds - so a first visit shows the settings already in force rather than an
         // empty form that would silently replace them on save. Never the password, from either.
         $transport = old('transport', $settings->transport ?? $environment['transport']);
         $host = old('host', $settings->host ?? $environment['host']);
@@ -37,7 +37,7 @@
 
             "The configuration validates" and "mail leaves this server" are different claims, and
             only one of them can be tested from a button. Until somebody has pressed it, the honest
-            state of this screen is that nobody knows — and the moment that matters is the one where
+            state of this screen is that nobody knows - and the moment that matters is the one where
             a password reset is the only way back in.
         --}}
         @if ($settings && $settings->last_test_outcome !== App\Models\MailSetting::OUTCOME_SUCCESS)
@@ -79,7 +79,7 @@
             <p class="border-t border-border bg-surface-2 px-4 py-2.5 text-[12px] leading-relaxed text-text-3">
                 Saving here overrides the <span class="font-mono text-[11.5px]">MAIL_*</span> variables
                 the server was started with. The environment is never written to, so discarding this
-                puts it straight back — which is the way out if a change stops mail working and mail
+                puts it straight back - which is the way out if a change stops mail working and mail
                 is how you would normally be told.
             </p>
         </div>
@@ -102,7 +102,7 @@
                                  MAIL_MAILER=postmark should find out here why it never sent, rather
                                  than wonder where the option went. --}}
                             <option value="{{ $option }}" @selected($transport === $option) @disabled($missing)>
-                                {{ $labels[$option] ?? $option }}@if ($missing) — needs {{ $missing }} @endif
+                                {{ $labels[$option] ?? $option }}@if ($missing) - needs {{ $missing }} @endif
                             </option>
                         @endforeach
                     </select>
@@ -197,11 +197,11 @@
 
                     {{-- Write-only, and this is why the old rule survives the screen it was written
                          against. The stored value is never rendered back into the form, so there is
-                         nothing here for a page source to give away — and an untouched password input
+                         nothing here for a page source to give away - and an untouched password input
                          arrives empty, which is what makes "leave blank to keep" free. --}}
                     <p class="max-w-[80ch] text-[12px] leading-relaxed text-text-3">
                         @if ($settings?->password)
-                            A credential is stored. Leave this blank to keep it — it is never shown
+                            A credential is stored. Leave this blank to keep it - it is never shown
                             again, here or anywhere else.
                         @else
                             Stored encrypted, and never displayed again once saved.
@@ -251,7 +251,7 @@
         <div class="mb-3.5 flex flex-wrap items-center justify-between gap-3 rounded-[10px] border border-border bg-surface px-4 py-3.5 shadow-[var(--shadow)]">
             <p class="max-w-[70ch] text-[12px] leading-relaxed text-text-2">
                 A test goes to <span class="font-mono text-[11.5px]">{{ auth()->user()->email }}</span>
-                and nowhere else — there is no destination field, because a form that sends mail from
+                and nowhere else - there is no destination field, because a form that sends mail from
                 this relay to any address anybody types is an open relay with extra steps. It is sent
                 immediately rather than queued: a queued send proves the queue works.
             </p>
@@ -283,7 +283,7 @@
             The part that decides whether any of the above matters.
 
             A correctly configured relay and a message in a spam folder look identical from this
-            screen, and the message people notice missing is the password reset — which arrives at
+            screen, and the message people notice missing is the password reset - which arrives at
             the moment somebody is already locked out and least inclined to trust us.
         --}}
         <div class="overflow-hidden rounded-[10px] border border-border bg-surface shadow-[var(--shadow)]">

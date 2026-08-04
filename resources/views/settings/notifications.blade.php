@@ -15,7 +15,7 @@
                     {{-- Shown once. A receiver needs it to verify deliveries; we have no reason to be
                          able to show it again. --}}
                     <div class="mb-4 rounded-lg border border-amber-line bg-amber-bg p-3">
-                        <p class="mb-1.5 text-[13px] font-medium">Signing secret — save this now</p>
+                        <p class="mb-1.5 text-[13px] font-medium">Signing secret - save this now</p>
                         <p class="mb-2 text-[12.5px] text-text-2">
                             Verify each delivery with
                             <code class="font-mono">HMAC-SHA256(timestamp + "\n" + body)</code>

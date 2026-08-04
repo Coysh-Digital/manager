@@ -87,13 +87,13 @@ final class Diagnostics
      * How large an artifact this installation will accept.
      *
      * Reported because it is invisible until it refuses something, and because when it refuses it
-     * does so in middleware — before anything with context about the artifact runs, and with a
+     * does so in middleware - before anything with context about the artifact runs, and with a
      * correlation id nothing writes down. A blank MANAGER_BACKUP_MAX_BYTES made this zero on a live
      * console and every upload was refused with "payload too large", including a 2.1 MB one, for
      * four nights.
      *
-     * The blank case cannot recur — every degenerate value now means "no ceiling" rather than a
-     * ceiling of zero, and an invariant asserts it — but a deliberately small value can, and looks
+     * The blank case cannot recur - every degenerate value now means "no ceiling" rather than a
+     * ceiling of zero, and an invariant asserts it - but a deliberately small value can, and looks
      * identical from the outside. So the number is stated rather than left to be discovered.
      *
      * Read through {@see BackupSizeLimit} rather than from config, because a hosted edition answers
@@ -107,14 +107,14 @@ final class Diagnostics
         /*
          | No ceiling is the default, and it is a pass rather than a warning.
          |
-         | The size is still bounded — by the organisation's quota, by the disk, and by whatever the
+         | The size is still bounded - by the organisation's quota, by the disk, and by whatever the
          | web server will carry. Only the last of those is invisible from in here, and it has its
          | own check below rather than a hedge in this one.
          */
         if ($bytes === null) {
             // The other half of "shown to everybody". How large a backup this platform will accept
             // is a fact about the reader's own data rather than about our machine, and on a hosted
-            // edition this branch is the only one reachable — the ceiling is lifted there, so the
+            // edition this branch is the only one reachable - the ceiling is lifted there, so the
             // row says so instead of leaving somebody to wonder.
             return Check::pass(
                 'Backup size ceiling',
@@ -137,7 +137,7 @@ final class Diagnostics
          | Raised past what a single request can carry, on an edition that cannot split one.
          |
          | An object store refuses a single PUT over five gigabytes, so above that an artifact has to
-         | arrive in parts — and only an edition binding {@see DirectUploadGrants} to something real
+         | arrive in parts - and only an edition binding {@see DirectUploadGrants} to something real
          | can issue them. Self-hosted binds {@see NoDirectUploads}, so every byte comes through this
          | application instead: a ceiling above 5 GB there is a promise the upload path cannot keep,
          | and without this it would be discovered at the end of a multi-hour upload.
@@ -163,17 +163,17 @@ final class Diagnostics
      * Whether the request path can actually carry what the check above says it will accept.
      *
      * The ceiling is a policy. This is the plumbing, and when the two disagree the plumbing wins
-     * silently — which is the whole reason this exists.
+     * silently - which is the whole reason this exists.
      *
      * PHP refuses a request whose Content-Length exceeds `post_max_size` before any application
      * code runs, and Laravel's ValidatePostSize applies it to a PUT exactly as to a POST. So an
      * installation can advertise unlimited backups on the job claim, accept the declaration, and
-     * then refuse the bytes — with a 413 the operator never configured and cannot find in this
+     * then refuse the bytes - with a 413 the operator never configured and cannot find in this
      * application's own settings. The shipped Docker image did precisely this: nginx carved the
      * upload route out of its body limit while php.ini left `post_max_size` at 2M.
      *
      * **This cannot see nginx**, or Cloudflare, or any other proxy, and that is not a gap this
-     * check can close from inside PHP — the request never arrives. A body limit there answers with
+     * check can close from inside PHP - the request never arrives. A body limit there answers with
      * its own error page, so the connector reports "Correlation ID: unknown" and this platform logs
      * nothing at all. That failure is diagnosed by sending a large request and reading the response,
      * not from here. It cost four nights on a live console at `client_max_body_size 2m`.
@@ -361,14 +361,14 @@ final class Diagnostics
      *
      * Reports a status and no values. This check appears on the General settings screen, whose
      * reader is not necessarily an owner and therefore not necessarily somebody the Mail screen is
-     * offered to — so the host, the port, the username and the from-address are all things this
+     * offered to - so the host, the port, the username and the from-address are all things this
      * check knows and never says. What matters is the answer to "will a password reset arrive", and
      * that is a yes or a no.
      */
     private function mail(): Check
     {
         // The stored configuration is pushed into the config repository at send time rather than at
-        // boot — see App\Domain\Mail\MailConfiguration. Asking for it here is what stops this check
+        // boot - see App\Domain\Mail\MailConfiguration. Asking for it here is what stops this check
         // reporting on the environment while something else does the sending. Memoised, so this is
         // free after the first call in a process.
         app(MailConfiguration::class)->apply();
@@ -378,8 +378,8 @@ final class Diagnostics
         /*
          | Every remedy below names a place to go and fix it, which is the right instruction for the
          | person who can and useless to anybody else. On a hosted edition the relay belongs to
-         | whoever runs the service, so the check still reports whether mail works — that is worth
-         | knowing either way — and stops telling the reader to go and fix it.
+         | whoever runs the service, so the check still reports whether mail works - that is worth
+         | knowing either way - and stops telling the reader to go and fix it.
          |
          | Both routes are named, because both are real: the environment is what an installation
          | starts with and what a container sets, and Settings → Mail is what an owner can reach
@@ -536,11 +536,11 @@ final class Diagnostics
      * Where backups are being written, and whether that destination is somewhere sensible.
      *
      * An operator running self-hosted may point `MANAGER_BACKUP_DRIVER` at any S3-compatible service,
-     * which is how "bring your own bucket" works here — and a custom endpoint is a URL this
+     * which is how "bring your own bucket" works here - and a custom endpoint is a URL this
      * application will connect to, so it gets the same scrutiny a webhook destination does.
      *
      * The endpoint is checked against {@see OutboundUrlGuard}: HTTPS only, and no loopback,
-     * link-local, private-range or metadata address. `169.254.169.254` is the one that matters — an
+     * link-local, private-range or metadata address. `169.254.169.254` is the one that matters - an
      * endpoint pointed there turns every backup upload into a request for cloud instance credentials.
      *
      * A warning rather than a failure, deliberately. Some operators genuinely do run MinIO on a
@@ -574,7 +574,7 @@ final class Diagnostics
          |
          | The AWS SDK walks a credential chain and ends it at the EC2 instance metadata service on
          | 169.254.169.254. On an EC2 host with a role attached that is correct and deliberate.
-         | Anywhere else — which is most places, including every Ploi host — it is what happens when
+         | Anywhere else - which is most places, including every Ploi host - it is what happens when
          | the credentials were simply never set, and the symptom is not a clean refusal: the upload
          | hangs, the artifact sits at "uploading", and the operator sees
          |
@@ -583,7 +583,7 @@ final class Diagnostics
          | which reads like a network fault rather than a missing variable.
          |
          | Reported from a live console deployment, where .env.example's "Object storage" block said
-         | in as many words that AWS_* was "used for backups" — it is not, and never has been. The
+         | in as many words that AWS_* was "used for backups" - it is not, and never has been. The
          | backups disk reads MANAGER_BACKUP_S3_* alone, which is the whole point of it having its
          | own credentials. That comment is corrected in the same change as this check.
          |
@@ -618,7 +618,7 @@ final class Diagnostics
                 'Backup storage',
                 'The configured storage endpoint is not HTTPS.',
                 'Artifacts are encrypted before they leave a site, so this does not expose their '
-                .'contents — but it does expose their sizes, their names and your credentials.',
+                .'contents - but it does expose their sizes, their names and your credentials.',
             )];
         }
 
@@ -703,12 +703,12 @@ final class Diagnostics
      * Split by artifact format, and that is the whole point of the counting below. This key belongs to
      * the v1 format, where the platform holds the recipient and can therefore read every artifact. An
      * organisation that has raised its floor to v2 seals to its own recovery keys instead and never
-     * consults this key at all — so for those sites its absence is correct and its presence is legacy.
+     * consults this key at all - so for those sites its absence is correct and its presence is legacy.
      *
      * Reporting one answer for both was wrong in both directions at once. An installation whose
      * organisations had all moved to v2 was told a key it no longer uses meant its backups were
-     * readable, which understates the security it actually has; and removing that key — the right
-     * thing to do once no v1 artifacts remain — turned the check red and could fail a deploy, because
+     * readable, which understates the security it actually has; and removing that key - the right
+     * thing to do once no v1 artifacts remain - turned the check red and could fail a deploy, because
      * `manager:doctor` runs on every one.
      */
     private function backupEncryption(): Check
@@ -743,7 +743,7 @@ final class Diagnostics
                     .($legacy === 1 ? 'has' : 'have').' permission to back up. No backup will be taken '
                     .'for them until it is: a connector without a key refuses rather than uploading a '
                     .'database in the clear.',
-                    'Run: php artisan manager:backups:keygen — or set up a recovery key for those organisations, which moves them to the sealed format and retires this key.',
+                    'Run: php artisan manager:backups:keygen - or set up a recovery key for those organisations, which moves them to the sealed format and retires this key.',
                 );
             }
 
@@ -774,7 +774,7 @@ final class Diagnostics
                 'Backup encryption key',
                 'Configured, storing to '.$this->backups->describeStorage().'. '
                 .$sites($legacy).' on the v1 format '.($legacy === 1 ? 'seals' : 'seal').' to this key, '
-                .'so whoever holds it can read those backups — they are not end-to-end encrypted.'
+                .'so whoever holds it can read those backups - they are not end-to-end encrypted.'
                 .($sealed > 0 ? ' '.$sites($sealed).' already seal to their own recovery keys instead.' : ''),
             );
         }
@@ -784,7 +784,7 @@ final class Diagnostics
                 'Backup encryption key',
                 'Configured but no longer used for new backups: '.$sites($sealed).' with permission '
                 .'seal to their own organisation\'s recovery keys. Keep this key only while artifacts '
-                .'taken before that change are still within retention — it is the only thing that can '
+                .'taken before that change are still within retention - it is the only thing that can '
                 .'read them. Storing to '.$this->backups->describeStorage().'.',
             );
         }
@@ -812,7 +812,7 @@ final class Diagnostics
             /*
              | Shown to everybody, hosted included, and it is one of only two that are.
              |
-             | It is not about the machine, it is about the reader's own audit log — and "entries
+             | It is not about the machine, it is about the reader's own audit log - and "entries
              | cannot be edited or deleted" is a claim the interface makes to them in as many words.
              | Somebody told that is entitled to see it checked rather than asserted, and it is the
              | one row here where a customer of a hosted edition learns something about their data

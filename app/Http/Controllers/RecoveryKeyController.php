@@ -18,8 +18,8 @@ use Illuminate\Http\Request;
  * Enrolling and retiring the keys that backups are encrypted to.
  *
  * Owner-only, and every action sits behind recent authentication in the route file. The reasoning is
- * not that these are dangerous in the usual sense — no key material passes through here and nothing
- * here can read a backup — but that adding a recipient is the single most consequential thing anybody
+ * not that these are dangerous in the usual sense - no key material passes through here and nothing
+ * here can read a backup - but that adding a recipient is the single most consequential thing anybody
  * can do to an organisation's backups, and a hijacked session should not be able to do it quietly.
  *
  * The one thing this controller must never grow is a "generate a key for me" action. A private key

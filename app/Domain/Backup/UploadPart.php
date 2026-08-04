@@ -14,7 +14,7 @@ namespace App\Domain\Backup;
  * **There is no host here either, and there must never be one.** That is the point of stating this as
  * its own class rather than as a loose array. A multipart upload is the first time an artifact travels
  * as more than one request, which makes it precisely the change during which a host, a bucket or a
- * fully-formed URL would arrive "for convenience" — and the connector's build check looks for those
+ * fully-formed URL would arrive "for convenience" - and the connector's build check looks for those
  * names on the classes it already knows about. It now has one more to look at.
  *
  * The query string is a bearer credential, exactly as on a whole grant. Anybody holding it can write

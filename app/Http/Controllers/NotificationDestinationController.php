@@ -22,7 +22,7 @@ use Illuminate\Validation\ValidationException;
  * Managing where notifications go.
  *
  * A webhook URL is validated by the same guard the transport uses, so a destination that would be
- * refused at send time is refused at the form instead — telling somebody now beats a silent failure
+ * refused at send time is refused at the form instead - telling somebody now beats a silent failure
  * later. The transport re-checks anyway, because DNS changes.
  */
 final class NotificationDestinationController
@@ -113,7 +113,7 @@ final class NotificationDestinationController
         return back()->with(
             'status',
             $destination->isWebhook()
-                ? 'Destination added. Its signing secret is shown once, below — save it now.'
+                ? 'Destination added. Its signing secret is shown once, below - save it now.'
                 : 'Destination added.',
         )->with('freshSigningSecret', $destination->isWebhook() ? $destination->signing_secret : null);
     }

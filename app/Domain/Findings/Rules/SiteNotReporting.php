@@ -39,7 +39,7 @@ final class SiteNotReporting implements Rule
     {
         $site = $snapshot->site;
 
-        // A site that has never connected is not "not reporting" — it is not set up. Saying so
+        // A site that has never connected is not "not reporting" - it is not set up. Saying so
         // properly is the Sites screen's job, and duplicating it here would be noise.
         if ($site->last_seen_at === null) {
             return null;

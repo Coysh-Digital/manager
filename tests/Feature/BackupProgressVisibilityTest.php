@@ -20,7 +20,7 @@ use coyshdigital\managerprotocol\Jobs;
  | What a person watching a backup can actually tell.
  |
  | Reported live: backups sat at "Collected by the site" for the best part of an hour with nothing
- | else on the screen. The stepper had no way to advance — the connector reports a phase once, when
+ | else on the screen. The stepper had no way to advance - the connector reports a phase once, when
  | the dump starts, and the only other events the platform read were ones nothing ever wrote. So a
  | backup that was busy uploading looked exactly like one that had stopped dead, and neither said
  | how long it had been that way.

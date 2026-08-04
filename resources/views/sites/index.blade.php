@@ -166,9 +166,9 @@
                          have been added yet", which states the obvious and withholds the next step. --}}
                     <p class="text-[13.5px] font-medium">Add your first site</p>
                     <p class="mx-auto mt-1.5 max-w-[52ch] text-[13px] text-text-2">
-                        Adding a site issues a single-use enrolment code. Run it on the site — through
+                        Adding a site issues a single-use enrolment code. Run it on the site - through
                         <strong>Utilities&nbsp;→&nbsp;Manager Connector</strong> in its control panel, or on
-                        the command line — and the connector pairs itself and starts reporting.
+                        the command line - and the connector pairs itself and starts reporting.
                     </p>
                 @else
                     <p class="text-[13px] text-text-2">No sites match these filters.</p>
@@ -179,7 +179,7 @@
                 Four of the seven columns are hidden below the large breakpoint.
 
                 A seven-column table on a phone is a table you read one column at a time by dragging,
-                and the version numbers are not what the fleet screen is for — "which of these needs
+                and the version numbers are not what the fleet screen is for - "which of these needs
                 me today" is answered by name, status and when it was last heard from. The versions
                 are still one tap away on the site itself.
             --}}
@@ -242,8 +242,8 @@
                                     };
                                 @endphp
                                 {{-- Status is stated once, by the badge. It used to be said three times
-                                     per row — group heading, a 3px coloured rail on this cell, and the
-                                     badge — which is three things to read and one fact to learn. The
+                                     per row - group heading, a 3px coloured rail on this cell, and the
+                                     badge - which is three things to read and one fact to learn. The
                                      rail went: it was the encoding that carried no words. --}}
                                 <tr class="border-b border-border hover:bg-row-hover">
                                     <td class="py-3 pl-3.5 pr-3 align-middle">

@@ -210,7 +210,7 @@ class BackupArtifact extends Model
      * them.
      *
      * Deliberately not expired or deleted artifacts. Those may well have held bytes, and their
-     * tombstone — the state, the reason, the destroyed key — is the record that they did. This is
+     * tombstone - the state, the reason, the destroyed key - is the record that they did. This is
      * for the ones where there is nothing to be the record of.
      */
     public function neverStored(): bool
@@ -280,7 +280,7 @@ class BackupArtifact extends Model
      * The first twelve characters of the plaintext checksum.
      *
      * Enough for a person to compare two artifacts at a glance, which is what the interface needs. The
-     * full value is available where it matters — the retrieval command verifies against all of it.
+     * full value is available where it matters - the retrieval command verifies against all of it.
      */
     public function shortChecksum(): string
     {

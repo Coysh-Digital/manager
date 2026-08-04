@@ -43,7 +43,7 @@ return new class extends Migration
 
             $table->text('body');
 
-            // Pinned notes lead the Overview. The rest are history, behind a disclosure — an
+            // Pinned notes lead the Overview. The rest are history, behind a disclosure - an
             // operational caveat somebody must read before touching the site is a different thing
             // from a record of what happened in March.
             $table->boolean('pinned')->default(false);

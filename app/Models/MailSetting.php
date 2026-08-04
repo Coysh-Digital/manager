@@ -12,7 +12,7 @@ use Illuminate\Support\Carbon;
 /**
  * How this installation sends mail, when somebody has said so from the interface.
  *
- * The single row of `mail_settings`, or nothing at all — in which case the `MAIL_*` environment
+ * The single row of `mail_settings`, or nothing at all - in which case the `MAIL_*` environment
  * variables stand, which is how every installation starts and how many will stay. See
  * {@see MailConfiguration} for when this is read and what it does to the live
  * configuration, and the migration for why there is no organisation column.
@@ -67,7 +67,7 @@ final class MailSetting extends Model
      *
      * Two of these ship with nothing behind them. `config/mail.php` has listed postmark and resend
      * as mailers since it was generated, so `MAIL_MAILER=postmark` has always been settable and has
-     * always died at send time with a class-not-found — a failure that reaches the reader as a 500
+     * always died at send time with a class-not-found - a failure that reaches the reader as a 500
      * from a password reset, hours later, if at all.
      *
      * A dropdown makes that worse by looking like an offer, so the screen asks first. Neither
@@ -119,7 +119,7 @@ final class MailSetting extends Model
 
         /*
          | The static analyser knows these two classes are absent from this checkout and reports the
-         | call as always false, which is exactly the state this method exists to detect — and which
+         | call as always false, which is exactly the state this method exists to detect - and which
          | stops being true the moment somebody requires either package. Silenced rather than worked
          | around, because every way of hiding the literal from the analyser also hides it from the
          | reader.
@@ -190,7 +190,7 @@ final class MailSetting extends Model
              | Laravel 11 dropped MAIL_ENCRYPTION in favour of a URL scheme, so the two words this
              | screen offers have to be translated rather than passed through.
              |
-             | 'smtps' is implicit TLS — the connection is encrypted before anything is said, which
+             | 'smtps' is implicit TLS - the connection is encrypted before anything is said, which
              | is what port 465 means. Plain 'smtp' negotiates STARTTLS when the relay advertises it,
              | which is what "TLS" has meant in every mail client for twenty years. Null lets the
              | port decide, which is the framework's own default and the right answer for somebody
@@ -215,7 +215,7 @@ final class MailSetting extends Model
      * What may be written to the audit log.
      *
      * Note what is absent, and note the name of the key that records the credential changing.
-     * App\Domain\Audit\SecretGuard refuses — by throwing, not by redacting — any payload with a key
+     * App\Domain\Audit\SecretGuard refuses - by throwing, not by redacting - any payload with a key
      * matching password|secret|credential|token and several more, so `password`, `password_changed`
      * and `credentials_replaced` would all fail the write outright. `login_replaced` carries the
      * same fact and passes.

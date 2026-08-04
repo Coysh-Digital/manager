@@ -13,7 +13,7 @@ use App\Models\Site;
  * The self-hosted answer: no.
  *
  * A self-hosted installation usually writes artifacts to a disk on the same machine, and there is
- * nothing to presign — no storage service to hold a signature, and no separate hop to remove. Sites
+ * nothing to presign - no storage service to hold a signature, and no separate hop to remove. Sites
  * upload through the application as they always have, which on one box is also the shortest path the
  * bytes could take.
  *

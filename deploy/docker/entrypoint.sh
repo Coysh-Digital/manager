@@ -43,7 +43,7 @@ require_config() {
 #
 # Installing starts with generating an APP_KEY, and the documented way to do that is to run this image
 # with `key:generate --show`. Refusing that for want of an APP_KEY makes the first step of the install
-# depend on having already completed it — which is precisely the state a first-time installer is in.
+# depend on having already completed it - which is precisely the state a first-time installer is in.
 #
 # An exact allowlist rather than a flag or an environment variable. These three commands print a fresh
 # random value to stdout and touch nothing: no database, no storage, no request served. Anything else,

@@ -27,7 +27,7 @@ use Illuminate\Support\Facades\Storage;
  * arrived intact from the site that was asked for it, the platform must never read a body it has not
  * authenticated, and a retry must not produce a second copy of a customer database.
  *
- * Everything below uses genuine libsodium — real keys, real sealed boxes, real chunked streams. A mock
+ * Everything below uses genuine libsodium - real keys, real sealed boxes, real chunked streams. A mock
  * here would let a broken format pass, and a broken artifact format is only discovered when somebody
  * needs a backup.
  */
@@ -45,7 +45,7 @@ beforeEach(function (): void {
     CapabilityGrant::factory()->for($this->site)->capability('backups:create')->create();
 
     // Generated here rather than read from the environment. A configured installation has a backup
-    // keypair, but a fresh checkout does not — and a suite that only passes on a machine where
+    // keypair, but a fresh checkout does not - and a suite that only passes on a machine where
     // somebody has run manager:keys:generate is a suite that stops running on CI.
     $backupKeypair = Sealing::generateBoxKeypair();
 
@@ -170,8 +170,8 @@ it('tells the connector nothing about where the artifact will be stored', functi
 
     $body = ($this->declare)($artifact['declaration'])->assertOk()->json();
 
-    // The connector uploads to the platform it is paired with. Handing it a storage location — even a
-    // harmless-looking one — would mean it could be handed a different one.
+    // The connector uploads to the platform it is paired with. Handing it a storage location - even a
+    // harmless-looking one - would mean it could be handed a different one.
     expect(array_keys($body))->toBe(['artifact', 'already_declared', 'chunk_bytes'])
         ->and(json_encode($body))->not->toContain('backups/')
         ->and(json_encode($body))->not->toContain('http');
@@ -305,7 +305,7 @@ it('refuses bytes that do not match the declared checksum', function (): void {
     $tampered = $artifact['bytes'];
     $tampered[100] = $tampered[100] === "\x00" ? "\x01" : "\x00";
 
-    // Signed over the promised hash, so the request authenticates — and is then rejected because the
+    // Signed over the promised hash, so the request authenticates - and is then rejected because the
     // bytes disagree with the promise. That division is the point: authentication says who sent it,
     // the checksum says whether it survived the journey.
     putSignedArtifact("/api/connector/v1/backups/{$id}/content", $tampered, $this->site, $this->keypair['secret'], [
@@ -366,7 +366,7 @@ it('refuses nothing on size when no ceiling is configured', function (): void {
      | This middleware runs before anything that knows what an artifact is, so an unconditional
      | comparison here is the one that produces a 413 with no explanation attached. A blank
      | environment line made the ceiling zero and every upload was refused this way on a live
-     | console — 2.1 MB included, for four nights. There is no longer a configuration that does it.
+     | console - 2.1 MB included, for four nights. There is no longer a configuration that does it.
     */
     config(['manager.backups.max_bytes' => null]);
 
@@ -384,7 +384,7 @@ it('still requires a declared length when there is no ceiling', function (): voi
      | Skipping the comparison must not skip the requirement.
      |
      | Content-Length is what makes refusing-before-reading possible at all, and it stays mandatory
-     | whether or not there is a number to compare it against — an edition with no ceiling today may
+     | whether or not there is a number to compare it against - an edition with no ceiling today may
      | have a quota tomorrow, and a route that accepts an undeclared length has no way to grow one.
     */
     config(['manager.backups.max_bytes' => null]);

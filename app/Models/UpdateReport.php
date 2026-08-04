@@ -15,7 +15,7 @@ use Illuminate\Support\Carbon;
  * One accepted update report.
  *
  * The payload passed the updates.v1 allowlist, which permits whether an update exists and whether it
- * is a security release — and not release notes or download URLs.
+ * is a security release - and not release notes or download URLs.
  *
  * @property int $id
  * @property int $site_id
@@ -84,7 +84,7 @@ class UpdateReport extends Model
     /**
      * Everything the update check knows about, keyed by handle.
      *
-     * For joining against the installed list from an inventory report — see
+     * For joining against the installed list from an inventory report - see
      * {@see PluginInventory}, which explains why the join runs that way round.
      *
      * @return array<string, array<string, mixed>>

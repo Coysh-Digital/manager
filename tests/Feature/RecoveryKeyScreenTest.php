@@ -49,7 +49,7 @@ it('shows the commands that make a key, and where to read more', function (): vo
 it('sends every "add one in Settings" link to the screen that adds one', function (): void {
     /*
      | This used to assert an `id="recovery-keys"` anchor, because several screens linked to
-     | settings#recovery-keys and for a long time there was no such id — so every one of them landed
+     | settings#recovery-keys and for a long time there was no such id - so every one of them landed
      | at the top of a long page and left the reader to find it.
      |
      | Recovery keys are a screen now, so the fragment is gone and the anchor with it. The claim the
@@ -305,7 +305,7 @@ it('never renders anything that could open a backup', function (): void {
 
     $html = (string) $this->actingAs($this->owner)->get('/settings/recovery-keys')->assertOk()->getContent();
 
-    // The challenge itself is on the screen, and has to be — it is what the operator pastes into the
+    // The challenge itself is on the screen, and has to be - it is what the operator pastes into the
     // tool. Everything else must not be: the secret half was never ours, and the expected answer would
     // let anybody complete the ceremony without holding a key at all.
     expect($html)->not->toContain($secret)

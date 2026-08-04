@@ -41,7 +41,7 @@
                         <p class="mb-1.5 text-[13px] font-medium">One recovery key</p>
                         <p class="max-w-[80ch] text-[12.5px] leading-relaxed text-text-2">
                             If it is lost, every backup encrypted to it becomes permanently unreadable.
-                            We cannot recover it — we have never held the other half, which is the whole
+                            We cannot recover it - we have never held the other half, which is the whole
                             point. Add a second key, kept somewhere the first is not. Every backup is
                             sealed to every active key, so a second one costs nothing.
                         </p>
@@ -81,7 +81,7 @@
                                         Proven {{ $key->last_proved_at?->diffForHumans() }}
                                         @if ($key->created_by_label) · added by {{ $key->created_by_label }}@endif
                                     @else
-                                        Added {{ $key->created_at?->diffForHumans() }} — not yet used for anything.
+                                        Added {{ $key->created_at?->diffForHumans() }} - not yet used for anything.
                                     @endif
                                 </span>
                             </div>
@@ -104,8 +104,8 @@
                         </div>
 
                         @if ($key->isAwaitingProof() && $membership->isOwner())
-                            {{-- The ceremony. Almost nothing can be checked about a public key — any 32
-                                 bytes is a valid one — so the only real test is whether somebody can
+                            {{-- The ceremony. Almost nothing can be checked about a public key - any 32
+                                 bytes is a valid one - so the only real test is whether somebody can
                                  decrypt with the other half. It doubles as a restore rehearsal. --}}
                             <div class="rounded-lg border border-border bg-surface-2 p-3">
                                 <p class="mb-2 text-[12.5px] text-text-2">
@@ -194,7 +194,7 @@ manager-restore keygen --label="Ops laptop" --out=~/keys/recovery</code></pre>
                             paste above. <code class="font-mono">recovery.secret</code> is the one that
                             matters: keep it somewhere other than the machine that made it, and never
                             here. If it is lost, every backup encrypted to it is permanently unreadable
-                            — we have never held the other half, so there is nobody to ask.
+                            - we have never held the other half, so there is nobody to ask.
                         </p>
                     </div>
 
@@ -202,7 +202,7 @@ manager-restore keygen --label="Ops laptop" --out=~/keys/recovery</code></pre>
                         We never see the secret half and have nowhere to put one. After activating the
                         key you will be asked to prove you hold it, and then to add its fingerprint to
                         <code class="font-mono">config/manager-connector.php</code> on each site,
-                        creating that file if the site does not have one — installing the connector
+                        creating that file if the site does not have one - installing the connector
                         does not. That pin lives on your server, and it is what
                         stops us handing your sites a key of our own.
                         <x-changelog-link href="https://managerforcraft.com/docs/recovery-keys" label="Full instructions" />

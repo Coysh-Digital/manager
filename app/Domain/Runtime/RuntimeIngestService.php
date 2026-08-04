@@ -15,8 +15,8 @@ use Illuminate\Support\Facades\DB;
  * Accepts a runtime report, or refuses it.
  *
  * Same allowlist discipline as everything else that arrives from a site: unknown keys are rejected
- * rather than stripped, so a connector that started sending a filesystem path — because somebody
- * added one in a hurry — is refused rather than quietly having it dropped and never noticing.
+ * rather than stripped, so a connector that started sending a filesystem path - because somebody
+ * added one in a hurry - is refused rather than quietly having it dropped and never noticing.
  */
 final class RuntimeIngestService
 {
@@ -53,12 +53,12 @@ final class RuntimeIngestService
          |
          | This used to pin `system.v1`, which made accepting a second version impossible without a
          | flag day: every site's plugin would have had to upgrade in step with the platform, and a
-         | site that upgraded first would have had its runtime reports silently refused — the report
+         | site that upgraded first would have had its runtime reports silently refused - the report
          | is fire-and-forget, so the only symptom is a Health screen that quietly stops moving.
          |
          | Unknown versions are refused by name rather than falling back to v1. Falling back would
          | validate a v3 payload against v1's allowlist, reject it for containing v3's fields, and
-         | report that as a schema violation — which is true and completely misleading.
+         | report that as a schema violation - which is true and completely misleading.
         */
         if (! is_string($declared) || ! in_array($declared, self::SCHEMAS, true)) {
             return [sprintf(

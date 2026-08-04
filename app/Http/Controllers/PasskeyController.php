@@ -24,7 +24,7 @@ use RuntimeException;
  * factor, and this system can read every installation it manages.
  *
  * It is offered alongside TOTP rather than instead of it, and counts as satisfying the same
- * requirement — a passkey is phishing-resistant and bound to this origin, which makes it at least as
+ * requirement - a passkey is phishing-resistant and bound to this origin, which makes it at least as
  * strong as a code read off a screen.
  *
  * Registration sits behind recent authentication. Adding a second factor is exactly the kind of thing

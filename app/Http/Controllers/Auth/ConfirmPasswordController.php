@@ -16,7 +16,7 @@ use Illuminate\Validation\ValidationException;
  * The recent-authentication gate.
  *
  * Reached when someone attempts a sensitive action without having proved their password lately.
- * The point is not to authenticate — they already are — but to establish that the person at the
+ * The point is not to authenticate - they already are - but to establish that the person at the
  * keyboard is still the account holder, and not somebody who found an unlocked machine.
  */
 final class ConfirmPasswordController
@@ -26,7 +26,7 @@ final class ConfirmPasswordController
         /*
          | Hold on to whatever the gate captured for one more request.
          |
-         | Flash data lives for exactly one request, and this screen is the one it lands on — so
+         | Flash data lives for exactly one request, and this screen is the one it lands on - so
          | without this it is gone by the time the password is submitted, and every restored form
          | this application claims to give back was in fact being dropped. The tests missed it by
          | going straight from the refused POST to the confirming POST, which is a sequence no
@@ -72,7 +72,7 @@ final class ConfirmPasswordController
          | Hand back whatever the gate interrupted.
          |
          | The captured return URL is preferred over `url.intended`, which for a POST holds the
-         | Referer rather than the action — and a Referrer-Policy is entitled to remove that
+         | Referer rather than the action - and a Referrer-Policy is entitled to remove that
          | header entirely, at which point `intended()` falls through to the fleet screen no matter
          | where the person actually was.
          |
@@ -87,7 +87,7 @@ final class ConfirmPasswordController
         }
 
         // Deliberately not `intended()`. For a POST, `url.intended` holds whatever the Referer said
-        // — the fleet screen, or nothing at all if a Referrer-Policy stripped it — and it would
+        // - the fleet screen, or nothing at all if a Referrer-Policy stripped it - and it would
         // therefore win over the address resolved from the route that was actually interrupted.
         $request->session()->forget('url.intended');
 
@@ -97,8 +97,8 @@ final class ConfirmPasswordController
             ->with('manager.resumed_form', $resumed['route'])
 
             // Said out loud on arrival. A form that quietly refilled itself still leaves somebody
-            // wondering whether the thing they pressed happened, and the answer — it did not, press
-            // it again — is the one fact this flow owes them.
-            ->with('status', 'Confirmed. What you had typed is still here, and nothing was done yet — press the button again to '.$resumed['label'].'.');
+            // wondering whether the thing they pressed happened, and the answer - it did not, press
+            // it again - is the one fact this flow owes them.
+            ->with('status', 'Confirmed. What you had typed is still here, and nothing was done yet - press the button again to '.$resumed['label'].'.');
     }
 }

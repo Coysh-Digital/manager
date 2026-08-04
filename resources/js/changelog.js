@@ -2,12 +2,12 @@
  * Release notes, loaded when somebody asks for them.
  *
  * Deliberately on open rather than on page load. Rendering the updates screen must not cause an
- * outbound request — an installation with no internet access is a supported way to run this, and a
+ * outbound request - an installation with no internet access is a supported way to run this, and a
  * screen that hangs for eight seconds on a timeout would be the visible symptom of a feature nobody
  * had opted into.
  *
  * The response is a server-rendered fragment, already sanitised against a fixed allowlist by
- * ReleaseNotesHtml — no media, no scripts, http(s) links only — so there is nothing to parse or
+ * ReleaseNotesHtml - no media, no scripts, http(s) links only - so there is nothing to parse or
  * sanitise here.
  */
 async function load(details) {

@@ -27,7 +27,7 @@ use Illuminate\Support\Facades\DB;
  * So three things happen here that would be easy to leave out:
  *
  *  - **A key is not usable until somebody has proven they hold the other half.** Structural validation
- *    of an X25519 public key establishes almost nothing — any 32 bytes is a valid one. The only
+ *    of an X25519 public key establishes almost nothing - any 32 bytes is a valid one. The only
  *    meaningful check is a decryption, and requiring it turns enrolment into a restore rehearsal, which
  *    is the one thing that reliably catches a key nobody can actually find.
  *
@@ -70,7 +70,7 @@ final class RecoveryKeyService
 
         if (! Sealing::isUsableBoxPublicKey($publicKey)) {
             // A small-order point. Anything sealed to one can be opened by anybody, and libsodium would
-            // refuse to seal to it anyway — but it would refuse on the night a site had already dumped
+            // refuse to seal to it anyway - but it would refuse on the night a site had already dumped
             // its database to disk, rather than here, next to the field it was pasted into.
             throw new RecoveryKeyRejectedException(
                 'That key cannot be used for encryption. It is a special value that would produce a '
@@ -200,7 +200,7 @@ final class RecoveryKeyService
          | Getting this wrong is easy and quiet: an exception thrown inside the transaction rolls back
          | the attempt counter along with everything else, so every wrong answer is the first wrong
          | answer and the attempt limit enforces nothing at all. The audit record of the failure would
-         | disappear with it, which matters more — repeated failed proofs against one key is exactly the
+         | disappear with it, which matters more - repeated failed proofs against one key is exactly the
          | signal somebody should be able to see.
          */
         [$key, $wasActive, $matched] = DB::transaction(

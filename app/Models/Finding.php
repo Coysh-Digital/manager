@@ -74,7 +74,7 @@ class Finding extends Model
     /**
      * Outstanding, whether or not somebody has acknowledged it.
      *
-     * Acknowledgement is not resolution. An acknowledged finding is still true — somebody has just
+     * Acknowledgement is not resolution. An acknowledged finding is still true - somebody has just
      * said they know. Counting it as closed would let a fleet look clean while every problem in it
      * has merely been read.
      */

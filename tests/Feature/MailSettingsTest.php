@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\Schema;
  |
  | For a long time the only place mail could be configured was MAIL_* in .env, which meant a shell on
  | the server. The environment is still the fallback and still the floor; what changed is that an
- | owner can override it without one — and that the one thing you cannot use to tell somebody their
+ | owner can override it without one - and that the one thing you cannot use to tell somebody their
  | mail is broken is email.
  */
 
@@ -57,7 +57,7 @@ it('wraps the framework own mail manager rather than being overwritten by it', f
      | The guard against the one failure in this design that has no symptom.
      |
      | MailServiceProvider is deferred, so binding singleton('mail.manager', ...) would be overwritten
-     | the moment the container loaded it — mail would go on quietly using the environment and every
+     | the moment the container loaded it - mail would go on quietly using the environment and every
      | test that does not send mail would stay green. See MailConfigurationServiceProvider.
      */
     expect(app('mail.manager'))->toBeInstanceOf(ConfiguredMailManager::class);
@@ -69,7 +69,7 @@ it('sends through the stored transport rather than the environment', function ()
 
     storeMail();
 
-    // Resolving a mailer is what applies it — not booting, and not a scheduled task.
+    // Resolving a mailer is what applies it - not booting, and not a scheduled task.
     app('mail.manager')->mailer();
 
     expect(config('mail.default'))->toBe('smtp')
@@ -95,7 +95,7 @@ it('does not leave a host standing behind an API transport', function (): void {
     // leave the last SMTP host somebody typed sitting invisibly behind it, ready to come back.
     //
     // Asserted against the configuration rather than by resolving a mailer, because building a
-    // Postmark transport needs a package this repository deliberately does not require — which is
+    // Postmark transport needs a package this repository deliberately does not require - which is
     // the subject of the two tests below.
     storeMail(['transport' => MailSetting::TRANSPORT_POSTMARK, 'password' => 'postmark-token']);
 
@@ -192,7 +192,7 @@ it('never renders the stored credential', function (): void {
     /*
      | The direct successor to the old "never puts mail configuration on the settings screen".
      |
-     | The host, the login and the From address are shown now — that is what the screen is for. The
+     | The host, the login and the From address are shown now - that is what the screen is for. The
      | credential is not, and never will be: it is not rendered into the form, so there is nothing in
      | the page source to give away and nothing for a shoulder to read.
      */

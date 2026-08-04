@@ -8,7 +8,7 @@ namespace App\Domain\Health;
  * The result of one diagnostic check.
  *
  * Three outcomes rather than two. A warning is for something an operator should know about but
- * which is not stopping the platform working — mail not yet verified, say. Collapsing warnings into
+ * which is not stopping the platform working - mail not yet verified, say. Collapsing warnings into
  * failures gets the whole report ignored; collapsing them into passes hides the thing that bites
  * later.
  */
@@ -20,7 +20,7 @@ final class Check
      * Almost every one of these is about the machine: APP_KEY, the database role, migrations, the
      * queue, the session cookie, the disk. On an installation somebody runs themselves that is the
      * reader; on a hosted one it is us, and a red row a customer cannot act on is alarming rather
-     * than informative — it invites a support ticket whose answer is "yes, we know, that is ours".
+     * than informative - it invites a support ticket whose answer is "yes, we know, that is ours".
      *
      * Operator is the default deliberately. A new check is about the platform until somebody
      * decides otherwise, so forgetting to think about this hides a row rather than leaking one.

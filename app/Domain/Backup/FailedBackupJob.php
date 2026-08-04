@@ -11,7 +11,7 @@ use Illuminate\Support\Carbon;
  * One backup that was asked for and did not happen, assembled for the screen.
  *
  * Read only, and carries the site's own words for why. The reason is a fixed message from the
- * connector or from the platform — never anything the site said about its contents — which is what
+ * connector or from the platform - never anything the site said about its contents - which is what
  * makes it safe to print.
  */
 final readonly class FailedBackupJob

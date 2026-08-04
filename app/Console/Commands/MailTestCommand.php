@@ -17,14 +17,14 @@ use Throwable;
  * works. The gap between those two matters more here than it looks: password resets and invitations
  * are the only way into a fresh installation that has no user yet, and the failure mode is silence.
  * Somebody invites a colleague, the colleague never receives anything, and nothing anywhere reports a
- * problem — which is why `manager:user:password` exists as a shell way in.
+ * problem - which is why `manager:user:password` exists as a shell way in.
  *
  * The exception message is printed in full, and that is a deliberate departure from
  * {@see EmailTransport}, which reduces a failure to a class name because a
  * mail exception can carry the transport configuration and its message ends up in a delivery log a
  * whole organisation can read. This is a command run from a shell on the server by somebody who
  * already has the .env open. Withholding the reason from them would protect nothing and cost the
- * entire point of the command — the reason is almost always the useful part ("535 authentication
+ * entire point of the command - the reason is almost always the useful part ("535 authentication
  * failed", "certificate verify failed"). The button on the Settings screen renders into a web page
  * and keeps the class name only.
  *
@@ -99,7 +99,7 @@ final class MailTestCommand extends Command
         return implode("\n", [
             'This is a test message from Manager.',
             '',
-            'If you are reading it, this installation can send email — which means password resets,',
+            'If you are reading it, this installation can send email - which means password resets,',
             'invitations and notification emails will reach people.',
             '',
             'Nothing else was sent, and no address was stored.',

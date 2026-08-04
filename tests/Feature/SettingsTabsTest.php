@@ -67,7 +67,7 @@ it('has no account page any more', function (): void {
 it('lights the Settings entry in the sidebar from every tab', function (string $route): void {
     /*
      | The entry used to match on settings.* alone, so the screens whose routes are named for what
-     | they act on — team.*, recovery-keys.*, notifications.*, account.*, passkeys.* — never lit it.
+     | they act on - team.*, recovery-keys.*, notifications.*, account.*, passkeys.* - never lit it.
      | Mostly invisible, because those are POSTs that redirect; visible at the confirm-password
      | interstitial, which is exactly when somebody wants to know where they still are.
      */

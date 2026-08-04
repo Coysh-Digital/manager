@@ -7,7 +7,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * What a plugin release changed — held against the release, and against nothing else.
+ * What a plugin release changed - held against the release, and against nothing else.
  *
  * The shape of this table is the whole of the privacy argument for the feature it serves, so it is
  * worth stating plainly rather than leaving to be inferred from the columns.

@@ -26,7 +26,7 @@ return [
 
     'licences:read' => [
         'title' => 'Read licence state',
-        'description' => 'Reports whether Craft and plugin licences are valid, on trial or expiring. Licence keys themselves are never transmitted — only the state calculated on the site.',
+        'description' => 'Reports whether Craft and plugin licences are valid, on trial or expiring. Licence keys themselves are never transmitted - only the state calculated on the site.',
     ],
 
     'security:read' => [
@@ -41,7 +41,7 @@ return [
 
     'runtime:read' => [
         'title' => 'Read disk usage and runtime limits',
-        'description' => 'Reports how much space each asset volume uses, how full the disk is, PHP\'s memory and upload limits, and how long the site takes to build its own pages. It reads file sizes, never file names, paths or contents — a byte count says how much is there and nothing about what. Response times are sampled from traffic the site was already serving; no visitor, address or URL is recorded, and this is server render time rather than the full time a visitor waits.',
+        'description' => 'Reports how much space each asset volume uses, how full the disk is, PHP\'s memory and upload limits, and how long the site takes to build its own pages. It reads file sizes, never file names, paths or contents - a byte count says how much is there and nothing about what. Response times are sampled from traffic the site was already serving; no visitor, address or URL is recorded, and this is server render time rather than the full time a visitor waits.',
     ],
 
     'logins:read' => [

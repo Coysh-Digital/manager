@@ -10,7 +10,7 @@ use App\Domain\Updates\ReleaseNotesHtml;
  *
  * Release notes are written by whoever publishes the plugin, travel over the network from a site's
  * connector, and are rendered inside an authenticated control-plane session. Until this change the
- * platform's answer was to discard all markup, which was safe and also discarded the notes — the
+ * platform's answer was to discard all markup, which was safe and also discarded the notes - the
  * panel showed version headings with nothing under them.
  *
  * Keeping the markup means constraining it, and this file is the constraint. Both entry points are
@@ -55,12 +55,12 @@ it('keeps a version heading a plugin author cannot forge', function (): void {
     // The heading is composed after sanitising, from text the platform built itself, so a note
     // claiming to be a different release cannot produce a second one that looks the same.
     $html = (string) ChangelogMarkdown::renderHtml([[
-        'heading' => '5.7.1 — 2026-07-22',
-        'body' => '<h2>9.9.9 — not a real release</h2><p>Body text.</p>',
+        'heading' => '5.7.1 - 2026-07-22',
+        'body' => '<h2>9.9.9 - not a real release</h2><p>Body text.</p>',
     ]]);
 
     expect(substr_count($html, '<h2>'))->toBe(2)
-        ->and($html)->toStartWith('<h2>5.7.1 — 2026-07-22</h2>')
+        ->and($html)->toStartWith('<h2>5.7.1 - 2026-07-22</h2>')
         ->and($html)->toContain('Body text.');
 });
 

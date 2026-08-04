@@ -22,7 +22,7 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * The account itself, across two of the Settings tabs: its details and time zone, and its own
- * security — second factor, recovery codes, passkeys and live sessions.
+ * security - second factor, recovery codes, passkeys and live sessions.
  *
  * Everything that changes state here sits behind a recent-authentication check, so a session left
  * open on an unlocked machine cannot be used to disable a second factor or read out fresh recovery
@@ -111,7 +111,7 @@ final class AccountController
         $secret = (string) $request->session()->get('totp.pending');
 
         if ($secret === '') {
-            return back()->with('warning', 'Start enrolment again — that setup expired.');
+            return back()->with('warning', 'Start enrolment again - that setup expired.');
         }
 
         if (! $this->totp->verify($secret, $validated['code'])) {
@@ -121,7 +121,7 @@ final class AccountController
         $user = $request->user();
 
         // Written only now. A secret generated but never proved must not satisfy a requirement for
-        // a second factor — otherwise abandoning enrolment halfway leaves an account looking
+        // a second factor - otherwise abandoning enrolment halfway leaves an account looking
         // protected when it is not.
         $user->forceFill([
             'totp_secret' => $secret,
@@ -140,7 +140,7 @@ final class AccountController
             targetId: $user->external_id,
         );
 
-        return back()->with('status', 'Two-factor authentication is on. Save your recovery codes now — they will not be shown again.');
+        return back()->with('status', 'Two-factor authentication is on. Save your recovery codes now - they will not be shown again.');
     }
 
     /**
@@ -184,7 +184,7 @@ final class AccountController
      *    carries. The gate proves somebody authenticated recently; this proves they know the secret
      *    they are replacing, which is what stops a borrowed unlocked laptop becoming a stolen
      *    account.
-     *  - **The same rules as a reset** — twelve characters, checked against known breaches. Two
+     *  - **The same rules as a reset** - twelve characters, checked against known breaches. Two
      *    different strength policies for the same secret is one policy and one loophole.
      *  - **Every other session ends.** If the change is happening because something felt wrong,
      *    leaving the other sessions signed in undoes the point of changing it.
@@ -246,7 +246,7 @@ final class AccountController
      *
      * The email address is deliberately not editable here, and that is a decision rather than an
      * omission. It identifies the account for sign-in, password resets, invitations and every audit
-     * row already written, so changing it is an account-recovery flow — proving the new address,
+     * row already written, so changing it is an account-recovery flow - proving the new address,
      * handling the window where neither is confirmed, deciding what happens to a pending invitation —
      * and none of that exists. A field that quietly moved sign-in to an unverified address would be
      * worse than no field.
@@ -287,7 +287,7 @@ final class AccountController
      * The zone this account reads dated times in.
      *
      * Its own action rather than a third field on updateProfile, which validates the name and
-     * nothing else — the hosted edition documents relying on precisely that, and widening it to
+     * nothing else - the hosted edition documents relying on precisely that, and widening it to
      * carry a display preference would put a security assumption behind a convenience.
      *
      * Blank is a real answer and stores null, meaning "use this installation's own clock". A

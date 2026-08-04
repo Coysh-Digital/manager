@@ -13,7 +13,7 @@ use App\Domain\Findings\Snapshot;
  * A plugin its author has marked abandoned.
  *
  * Worth its own finding rather than folding into "out of date". An abandoned plugin will never
- * receive a security fix, which makes it a permanent problem rather than a pending task — and one
+ * receive a security fix, which makes it a permanent problem rather than a pending task - and one
  * that needs a replacement decision rather than an update.
  */
 final class AbandonedPlugin implements Rule

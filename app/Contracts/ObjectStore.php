@@ -24,7 +24,7 @@ interface ObjectStore
     /**
      * Write a stream to a key, returning the number of bytes stored.
      *
-     * Overwrites. The caller is responsible for generating a key it does not mind overwriting — see
+     * Overwrites. The caller is responsible for generating a key it does not mind overwriting - see
      * how {@see BackupService} derives one from the artifact's own identifier.
      *
      * @param  resource  $stream
@@ -57,8 +57,8 @@ interface ObjectStore
      *
      * Null is an ordinary answer, not a failure: a local volume has no URL to give and never will.
      * Callers fall back to streaming the object through the application, which is correct but holds a
-     * worker for as long as the transfer takes. Where a store *can* answer — S3, and anything
-     * S3-compatible behind a Flysystem disk — the browser fetches the bytes itself, the transfer is
+     * worker for as long as the transfer takes. Where a store *can* answer - S3, and anything
+     * S3-compatible behind a Flysystem disk - the browser fetches the bytes itself, the transfer is
      * resumable, and no worker is involved at all. On a multi-gigabyte artifact that is the whole
      * difference between a download that works and one that works until a database gets big enough.
      *

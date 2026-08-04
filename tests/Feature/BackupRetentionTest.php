@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Storage;
  *
  * A backup kept indefinitely is personal data kept indefinitely. The interesting behaviour is the
  * interaction between expiry and the period policy, because either on its own gets it wrong in a
- * different direction — and because the rule this replaced, "always keep the most recent N", gets it
+ * different direction - and because the rule this replaced, "always keep the most recent N", gets it
  * wrong in the worst direction of all. See {@see RetentionPolicy}.
  *
  * These tests set the weekly and monthly windows to zero unless they are exercising them, so that
@@ -85,7 +85,7 @@ it('deletes an expired artifact and the key that opened it', function (): void {
 
 it('never leaves an organisation with nothing', function (): void {
     // The case a pure expiry rule gets wrong. A client whose site has been quiet for two months, with
-    // every window set to zero, would otherwise be left with no backup at all — and somebody whose
+    // every window set to zero, would otherwise be left with no backup at all - and somebody whose
     // backups stopped months ago is exactly the person who is going to need the one they still have.
     $artifacts = collect(range(1, 4))->map(fn (int $age) => ($this->artifact)([
         'taken_at' => now()->subDays(60 + $age),
@@ -139,7 +139,7 @@ it('thins older backups to one a week and then one a month', function (): void {
      |
      | Written without this, the test picked artifacts "18 and 20 days ago" and assumed they shared an
      | ISO week. Whether they do depends on what day of the week it is run, so it passed on a Thursday
-     | and failed on the Friday — which is the worst kind of failing test, because the first instinct
+     | and failed on the Friday - which is the worst kind of failing test, because the first instinct
      | is to distrust the policy rather than the test.
      |
      | Wednesday 2026-08-05 is the reference. Every offset below is measured from it.
@@ -205,7 +205,7 @@ it('writes off a declaration whose bytes never arrived', function (): void {
      |
      | This said four hours, which was comfortably stale while the window was one hour and became
      | comfortably fresh when the window grew to six. The number that decides is
-     | manager.backups.upload_window, so the test reads it — otherwise raising the window to suit a
+     | manager.backups.upload_window, so the test reads it - otherwise raising the window to suit a
      | twenty-gigabyte upload silently turns this assertion into one about nothing.
      */
     $window = (int) config('manager.backups.upload_window');

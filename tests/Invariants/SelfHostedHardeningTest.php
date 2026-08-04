@@ -111,8 +111,8 @@ it('states plainly when there is no backup ceiling, rather than reporting a numb
 
     $check = checkNamed('Backup size ceiling');
 
-    // A pass, not a warning. The size is still bounded — by quota, by disk, and by the upload path
-    // below — and an operator who has not asked for a ceiling has not misconfigured anything.
+    // A pass, not a warning. The size is still bounded - by quota, by disk, and by the upload path
+    // below - and an operator who has not asked for a ceiling has not misconfigured anything.
     expect($check->status)->toBe(Check::PASS)
         ->and($check->detail)->toContain('No ceiling');
 });
@@ -159,8 +159,8 @@ it('names PHP as the effective ceiling when this platform sets none', function (
 
     $check = checkNamed('Upload path ceiling');
 
-    // Whatever the runner's post_max_size is, this must not fail — an operator who set no ceiling
-    // has not misconfigured anything — and it must say what the real limit turned out to be.
+    // Whatever the runner's post_max_size is, this must not fail - an operator who set no ceiling
+    // has not misconfigured anything - and it must say what the real limit turned out to be.
     expect($check->failed())->toBeFalse()
         ->and($check->detail)->toContain(
             str_contains($check->detail, 'any size') ? 'any size' : 'effective backup ceiling'
@@ -181,7 +181,7 @@ it('serves readiness without authentication and without leaking configuration', 
 
     $response->assertOk()->assertJsonPath('ready', true);
 
-    // A load balancer has no credentials, so this is necessarily public — which means it must not
+    // A load balancer has no credentials, so this is necessarily public - which means it must not
     // become a way to read the environment.
     $body = $response->getContent();
 

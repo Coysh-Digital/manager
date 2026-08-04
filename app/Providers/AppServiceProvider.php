@@ -69,7 +69,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singletonIf(MailAdministration::class, SelfHostedMail::class);
 
         // Whether the reader can run a command on the machine serving the page. Self-hosted they
-        // can, and a command is often the honest answer — it streams an artifact without a request
+        // can, and a command is often the honest answer - it streams an artifact without a request
         // timing out underneath it. Hosted, "run this on the server" is an instruction for a
         // machine they have no account on.
         $this->app->singletonIf(ServerAccess::class, OwnServerAccess::class);
@@ -83,7 +83,7 @@ class AppServiceProvider extends ServiceProvider
 
         // Where to send somebody to manage what they pay. Nobody bills a self-hosted installation,
         // so this answers null and every part of the interface that would link to billing stays
-        // absent — not greyed out, not explaining why it does not apply.
+        // absent - not greyed out, not explaining why it does not apply.
         $this->app->singletonIf(BillingAdministration::class, SelfHostedBilling::class);
 
         // Whether a site's own maxBackupMegabytes stands. It does here: whoever runs this
@@ -101,7 +101,7 @@ class AppServiceProvider extends ServiceProvider
          | important line in this file.
          |
          | Among them is POST /passkeys/login, which signs somebody in on a passkey alone. That is
-         | the package's headline feature and a perfectly reasonable default — but it is the exact
+         | the package's headline feature and a perfectly reasonable default - but it is the exact
          | opposite of what this platform is for. A passkey here is a *second* factor: one on an
          | already-unlocked laptop is a single factor, and this system can read every installation it
          | manages.

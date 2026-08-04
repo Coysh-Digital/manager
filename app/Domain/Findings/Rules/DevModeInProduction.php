@@ -13,7 +13,7 @@ use App\Domain\Findings\Snapshot;
  * Dev mode left on in production.
  *
  * Checks the environment, as every configuration rule here does. Dev mode on a development site is
- * correct, and reporting it would train people to ignore the screen — which costs more than the
+ * correct, and reporting it would train people to ignore the screen - which costs more than the
  * finding is worth.
  */
 final class DevModeInProduction implements Rule

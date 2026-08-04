@@ -5,7 +5,7 @@
      | mail leaves.
      |
      | `also` exists because the writes on these screens are named for the thing they act on rather
-     | than for the screen — team.invite, recovery-keys.revoke, notifications.store, passkeys.store.
+     | than for the screen - team.invite, recovery-keys.revoke, notifications.store, passkeys.store.
      | Every one of them redirects, so in practice a tab is rarely rendered under those names; the
      | patterns are here so that stays true by construction rather than by luck, and so the
      | confirm-password interstitial does not lose its place.
@@ -31,7 +31,7 @@
      | Resolved here rather than passed in as a prop, the same way the sidebar resolves
      | BillingAdministration and the health card resolves ServerAccess: this component renders on
      | every settings screen, and a prop would have to be supplied by every controller or default to
-     | hiding the tab — which is the failure it exists to prevent.
+     | hiding the tab - which is the failure it exists to prevent.
      |
      | Owner-gated as well as edition-gated. The screen holds a relay's host and login, and whoever
      | can administer sites is not necessarily whoever holds those. MailSettingsController refuses on

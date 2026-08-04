@@ -33,7 +33,7 @@ CRON;
 --}}
 <details class="group/schedule" @if ($open) open @endif>
     <summary class="cursor-pointer list-none text-[13px] font-medium">
-        <span class="group-open/schedule:hidden">Scheduled tasks — optional, and what they change</span>
+        <span class="group-open/schedule:hidden">Scheduled tasks - optional, and what they change</span>
         <span class="hidden group-open/schedule:inline">Scheduled tasks</span>
     </summary>
 
@@ -51,7 +51,7 @@ CRON;
     </div>
 
     <p class="text-[12.5px] text-text-2">
-        <strong>With cron it is more predictable</strong> — it does not depend on the queue, and it does
+        <strong>With cron it is more predictable</strong> - it does not depend on the queue, and it does
         not go quiet when the site does. Add these six lines on
         <span class="font-mono text-[12px]">{{ $site->expected_domain }}</span>, replacing
         <span class="font-mono text-[12px]">/path/to/site</span> with the directory holding
@@ -86,7 +86,7 @@ CRON;
             <div class="flex flex-wrap gap-x-2">
                 <dt class="font-mono text-text">jobs</dt>
                 <dd class="text-text-2">
-                    Collects work queued here — including the Refresh button above. Without it, pressing
+                    Collects work queued here - including the Refresh button above. Without it, pressing
                     Refresh queues something the site never comes to collect.
                 </dd>
             </div>
@@ -114,7 +114,7 @@ CRON;
             <div class="flex flex-wrap gap-x-2">
                 <dt class="font-mono text-text">updates</dt>
                 <dd class="text-text-2">
-                    Checks for available updates. Daily is plenty — it asks a third party.
+                    Checks for available updates. Daily is plenty - it asks a third party.
                 </dd>
             </div>
         </dl>

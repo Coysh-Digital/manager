@@ -36,7 +36,7 @@ final class CapabilityService
      *
      * Invariant 6: monitoring access is read-only by default. Phase 1 registers `inventory:read`
      * only; the rest of the read set joins it as each is implemented. Nothing that writes to a
-     * site, and nothing that reads its content, ever appears here — those need a separate,
+     * site, and nothing that reads its content, ever appears here - those need a separate,
      * deliberate confirmation.
      *
      * @return list<string>
@@ -49,12 +49,12 @@ final class CapabilityService
     /**
      * Capabilities an administrator may grant with a single switch.
      *
-     * Read-only, every one, and every one implemented — offering a switch for something the connector
+     * Read-only, every one, and every one implemented - offering a switch for something the connector
      * cannot do would be a lie told by an interface.
      *
      * The inverse is a lie too, and a noisier one. `runtime:read` and `logins:read` were implemented
-     * on both sides — `SystemController` and `LoginsController` serve them, the connector schedules
-     * both tasks, and `runtime_reports` and `login_reports` were created for them — but this list was
+     * on both sides - `SystemController` and `LoginsController` serve them, the connector schedules
+     * both tasks, and `runtime_reports` and `login_reports` were created for them - but this list was
      * not extended when they landed. The screen therefore said "Not yet available" about a capability
      * that was available, no administrator could grant it, and the connector queued a task every
      * thirty minutes that could only ever fail. A site owner watching their own control panel saw a
@@ -82,7 +82,7 @@ final class CapabilityService
      * Capabilities that may be granted, but never with a switch.
      *
      * Invariant 7. These read or write something a read-only monitoring permission does not cover, so
-     * granting one takes its own route, its own confirmation and its own acknowledgement — see
+     * granting one takes its own route, its own confirmation and its own acknowledgement - see
      * {@see self::grantConfirmed()}.
      *
      * @return list<string>

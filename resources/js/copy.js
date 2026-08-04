@@ -4,7 +4,7 @@
  * Delegated from the document rather than bound per button, so it works for anything rendered later
  * without re-running a setup pass.
  *
- * The clipboard API needs a secure context, which Manager always is — it refuses to be useful over
+ * The clipboard API needs a secure context, which Manager always is - it refuses to be useful over
  * plain HTTP. If it is unavailable anyway the button says so rather than appearing to succeed: an
  * enrolment code shown once, with a copy button that silently did nothing, is the worst possible
  * combination.

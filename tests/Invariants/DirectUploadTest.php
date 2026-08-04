@@ -31,7 +31,7 @@ use Illuminate\Support\Str;
  *
  * The reason to build this is not speed. A gigabyte of ciphertext moving through a web server is a
  * gigabyte written to that server's temporary directory, held open by a PHP process and counted
- * against a request timeout — for no benefit, because the platform cannot read it either way. Removing
+ * against a request timeout - for no benefit, because the platform cannot read it either way. Removing
  * that leg removes a place the bytes exist.
  *
  * Two things then become true that were not true before, and both are what this file is about.
@@ -269,7 +269,7 @@ it('derives the object key from platform identifiers alone', function (): void {
     $row = BackupArtifact::query()->firstOrFail();
 
     // Nothing a connector sent reaches the key, which is why there is no path traversal to worry
-    // about here — there is no input to traverse with.
+    // about here - there is no input to traverse with.
     expect($row->storage_key)->toBe($this->fakeGrants->granted[0]['key'])
         ->and($row->storage_key)->toContain("org-{$this->organisation->id}/")
         ->and($row->upload_mode)->toBe('direct');
@@ -342,7 +342,7 @@ it('stores an artifact once storage confirms the checksum', function (): void {
         ->and($row->verified_at)->not->toBeNull()
         ->and($row->expires_at)->not->toBeNull();
 
-    // The confirmation is recorded as the platform's own observation, because it is — it came from
+    // The confirmation is recorded as the platform's own observation, because it is - it came from
     // storage, not from the site.
     $events = BackupEvent::query()->get();
 

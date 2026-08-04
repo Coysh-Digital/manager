@@ -50,7 +50,7 @@ final class SettingsController
             'checks' => $this->diagnostics->forReader(),
             'membership' => app(Membership::class),
 
-            // Where to manage payment, or null when nobody bills this installation — which is the
+            // Where to manage payment, or null when nobody bills this installation - which is the
             // answer here, and the reason the section below it renders nothing self-hosted.
             'billingUrl' => app(BillingAdministration::class)->url(),
 

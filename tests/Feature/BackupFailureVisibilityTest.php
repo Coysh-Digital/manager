@@ -151,8 +151,8 @@ it('clears every notice at once, and records that somebody did', function (): vo
         ->assertOk()
         ->assertDontSee('Did not complete');
 
-    // One entry for the lot. Silencing a panel is worth recording — it is how a fleet stops
-    // reporting a problem it still has — but three rows saying so is a log nobody reads.
+    // One entry for the lot. Silencing a panel is worth recording - it is how a fleet stops
+    // reporting a problem it still has - but three rows saying so is a log nobody reads.
     $event = AuditEvent::query()->where('action', 'backup.failures.dismissed')->get();
 
     expect($event)->toHaveCount(1)
@@ -251,8 +251,8 @@ it('settles a declared artifact when the backup job fails', function (): void {
     /*
      * Reported live: four backups sitting at "Uploading" hours apart, with nothing saying why.
      *
-     * The declaration had succeeded, so an artifact existed in `pending` — which the screen renders
-     * as "Uploading" — and then the upload failed and the job failed with it. The artifact stayed
+     * The declaration had succeeded, so an artifact existed in `pending` - which the screen renders
+     * as "Uploading" - and then the upload failed and the job failed with it. The artifact stayed
      * pending, so it went on claiming to be uploading, and FailedBackupJobs excluded the job because
      * an artifact existed. The reason was recorded twice and visible neither time until the nightly
      * prune swept it up.

@@ -17,7 +17,7 @@ use Illuminate\Http\Request;
  * Receives an update report. Requires `updates:read`.
  *
  * A payload that fails the allowlist is refused and audited by field path only. The payload itself is
- * never recorded — a report that failed validation is exactly where forbidden content would be.
+ * never recorded - a report that failed validation is exactly where forbidden content would be.
  */
 final class UpdatesController
 {

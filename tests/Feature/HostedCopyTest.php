@@ -29,7 +29,7 @@ use App\Models\User;
  * both repositories were green throughout.
  *
  * Every case here binds the hosted answer explicitly, because the default in this repository is the
- * self-hosted one and always will be — the Cloud implementation lives in the private overlay, so
+ * self-hosted one and always will be - the Cloud implementation lives in the private overlay, so
  * this file is the only place the core can see the other side of the seam at all.
  */
 beforeEach(function (): void {
@@ -176,7 +176,7 @@ it('leaves the command in place on a self-hosted installation', function (): voi
      * command is the better instruction: `manager:backups:fetch` streams, decrypts and verifies in
      * one pass with no request timing out underneath it, which no download button can promise.
      *
-     * No binding here — this is the default the repository ships with.
+     * No binding here - this is the default the repository ships with.
      */
     $this->actingAs($this->owner)->get('/backups')
         ->assertOk()
@@ -206,7 +206,7 @@ it('never hides an instruction for the customer\'s own Craft site', function ():
  |-------------------------------------------------------------------------------------------------
  |
  | Reported from use: most of the pass/fail list on Settings is not relevant to a customer of the
- | hosted edition. It is not — almost every check is about the machine, and a red row somebody
+ | hosted edition. It is not - almost every check is about the machine, and a red row somebody
  | cannot act on invites a support ticket whose answer is "yes, we know, that one is ours".
  */
 
@@ -247,7 +247,7 @@ it('leaves the whole panel in place for somebody who runs the thing', function (
 it('keeps every check for the operator, whatever the screen shows', function (): void {
     /*
      | The filter is on the reading, not on the checking. `manager:doctor` and the back-office are
-     | for the operator, who is exactly the person the hidden rows are for — a hosted deployment
+     | for the operator, who is exactly the person the hidden rows are for - a hosted deployment
      | that stopped reporting its own database role to us would be the filter doing real damage.
     */
     hosted();

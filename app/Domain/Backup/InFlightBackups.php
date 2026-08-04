@@ -17,7 +17,7 @@ use Illuminate\Support\Collection;
  *
  * Before this existed, pressing "Back up now" produced a flash message and then nothing: no row, no
  * state, no evidence the request had been made at all until an artifact appeared minutes later. The
- * data was already being recorded — `remote_jobs` has the request and `backup_events` has the
+ * data was already being recorded - `remote_jobs` has the request and `backup_events` has the
  * phases, and the migration that added the events table says explicitly that its artifact id is
  * nullable because "`requested` and `dump_started` both happen before an artifact row exists". It
  * simply had no reader.
@@ -53,7 +53,7 @@ final class InFlightBackups
      * How long a person should expect to wait before a site collects the request.
      *
      * Phrased as a window rather than a countdown. The connector runs its job task every five
-     * minutes, but on a site with no cron it runs off ordinary web traffic instead — so the honest
+     * minutes, but on a site with no cron it runs off ordinary web traffic instead - so the honest
      * answer is "about five minutes, once somebody visits", and a ticking clock would be a promise
      * this cannot keep.
      */
@@ -94,7 +94,7 @@ final class InFlightBackups
         /*
          | The latest phase each job reported, in one query rather than one per job.
          |
-         | Ordered by recorded_at — ours — rather than occurred_at, which is the site's own clock.
+         | Ordered by recorded_at - ours - rather than occurred_at, which is the site's own clock.
          | BackupTimeline keeps both for exactly this reason: a site with a wrong clock, or a
          | deliberately wrong one, must not be able to reorder its own timeline.
          */
@@ -106,7 +106,7 @@ final class InFlightBackups
              | The connector reports a phase once, when the dump starts, and its own comment explains
              | why: everything after that is derivable from the declaration, and a signed request with
              | a nonce and a rate-limit slot per phase is not worth spending on telemetry. That is
-             | right — but nothing was reading the declaration, so the stepper stopped at Dumping and
+             | right - but nothing was reading the declaration, so the stepper stopped at Dumping and
              | a backup that was busy uploading looked identical to one that had stopped dead.
              |
              | A declaration means the dump finished and the artifact is encrypted, because a site

@@ -7,7 +7,7 @@ namespace App\Contracts;
 /**
  * Whether this installation's mail relay belongs to whoever is reading Settings.
  *
- * Self-hosted, it does. The operator holds the relay, can change it, and can prove it works — which
+ * Self-hosted, it does. The operator holds the relay, can change it, and can prove it works - which
  * is what Settings → Mail and the test send are for, because "a transport is configured" and "mail
  * leaves this server" are genuinely different claims and only the second one matters when somebody
  * is waiting for a password reset.
@@ -16,7 +16,7 @@ namespace App\Contracts;
  * cannot change it, and a form for editing somebody else's infrastructure is worse than no form. So
  * the tab is not offered and every mail route answers 404.
  *
- * This used to be a narrower claim — that mail was `MAIL_*` in a `.env` file and therefore nothing
+ * This used to be a narrower claim - that mail was `MAIL_*` in a `.env` file and therefore nothing
  * about it belonged in the interface at all. The reasoning behind that was right and is kept: whoever
  * can reach Settings is not necessarily whoever holds the relay's credentials. The conclusion was
  * wrong, because the only alternative it left was a shell on the server, and on an installation whose

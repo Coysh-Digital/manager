@@ -23,7 +23,7 @@ use coyshdigital\managerprotocol\Protocol;
  * on a production website.
  *
  * So the tests here assert four separate things, because a single one of them failing would be enough
- * to make the permission accidental rather than explicit — it cannot arrive at pairing, it cannot
+ * to make the permission accidental rather than explicit - it cannot arrive at pairing, it cannot
  * arrive through the ordinary grant path, it cannot arrive without an acknowledgement and the site's
  * name, and it cannot arrive without leaving a record of who did it and what they were told.
  */

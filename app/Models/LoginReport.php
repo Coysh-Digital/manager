@@ -19,7 +19,7 @@ use Illuminate\Support\Carbon;
  * for collecting.
  *
  * The figures are a floor, not a total. Craft resets a user's failed-attempt counter on a successful
- * sign-in, so an attacker who eventually gets in erases their own tally — which is why every screen
+ * sign-in, so an attacker who eventually gets in erases their own tally - which is why every screen
  * showing these numbers says so beside them.
  *
  * @property int $id

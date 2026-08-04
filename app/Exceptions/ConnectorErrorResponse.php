@@ -17,7 +17,7 @@ use Throwable;
  * Every *handled* rejection on the connector API already carries one: the signature middleware, the
  * capability middleware and each connector controller put it in the body and in the
  * `Manager-Correlation-Id` header. An **unhandled** exception did not, because it never passes
- * through any of that code — Laravel renders it directly, and the connector received
+ * through any of that code - Laravel renders it directly, and the connector received
  * `{"message":"Server Error"}`.
  *
  * The visible cost, reported from a live site: a backup failing with
@@ -26,7 +26,7 @@ use Throwable;
  *
  * "unknown" is the connector saying the body had no identifier in it, which left nothing to search
  * the platform log for. The one failure that most needs tracing was the only one not traceable, and
- * that is backwards — an unhandled error is by definition the one nobody anticipated.
+ * that is backwards - an unhandled error is by definition the one nobody anticipated.
  *
  * Registered with `respond()` rather than `render()`. `respond()` receives the response Laravel has
  * already produced, so the status mapping and the JSON-versus-HTML decision are left exactly as they

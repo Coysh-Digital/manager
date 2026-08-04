@@ -321,7 +321,7 @@ it('renders only the plugin releases between the one installed and the one avail
 
 it('keeps the safe markup in a release note and refuses the rest', function (): void {
     /*
-     | Craft's update API hands over release notes as HTML, already rendered — its own screen injects
+     | Craft's update API hands over release notes as HTML, already rendered - its own screen injects
      | them with .html(). The connector forwards exactly that. The platform used to run them through
      | commonmark with html_input => 'strip', which returns an empty string for an HTML block, so
      | every body was discarded and the panel showed version headings with nothing underneath.
@@ -357,7 +357,7 @@ it('keeps the safe markup in a release note and refuses the rest', function (): 
         ->assertOk()
         ->getContent();
 
-    // The body survives at all — this is the assertion that fails on the old code.
+    // The body survives at all - this is the assertion that fails on the old code.
     expect($html)->toContain('Fixed')
         ->and($html)->toContain('<strong>')
         ->and($html)->toContain('<li>A list item</li>')

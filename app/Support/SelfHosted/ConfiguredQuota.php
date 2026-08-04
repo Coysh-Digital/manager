@@ -31,7 +31,7 @@ final class ConfiguredQuota implements StorageQuota
      * `$incomingBytes` is deliberately ignored.
      *
      * A configured limit is a fixed number an operator chose about a disk they own. Nothing here is
-     * bought, so there is no decision to make about how much room to open — the artifact either fits
+     * bought, so there is no decision to make about how much room to open - the artifact either fits
      * in what is left or it does not, and the caller compares the two.
      */
     public function remainingBytes(Organisation $organisation, int $incomingBytes = 0): ?int

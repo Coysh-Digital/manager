@@ -17,7 +17,7 @@ use Illuminate\Mail\MailManager;
  * queue workers and console commands without a single per-entry-point hook.
  *
  * Not final, unlike almost everything else here. `Mail::shouldReceive(...)` builds a partial mock of
- * whatever class is bound, and Mockery cannot replace a method on a final one — so marking this
+ * whatever class is bound, and Mockery cannot replace a method on a final one - so marking this
  * final would break every test that fakes a send, in a way whose message points at Mockery rather
  * than at the change that caused it.
  *
@@ -34,7 +34,7 @@ class ConfiguredMailManager extends MailManager
         /*
          | Before parent::mailer(), not after.
          |
-         | A Mailer is built from configuration exactly once and then cached by name — including the
+         | A Mailer is built from configuration exactly once and then cached by name - including the
          | global From address, which MailManager::resolve() sets on the instance rather than reading
          | per message. Anything already built predates whatever this pushes in, which is why
          | MailConfiguration forgets the cached mailers when it changes something.

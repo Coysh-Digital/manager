@@ -10,7 +10,7 @@ description = """
 Known test fixtures.
 
 Scoped to the literal values, deliberately not to paths. Allowlisting tests/ wholesale would be easier
-and would also mean a real credential pasted into a test file — which is exactly how they get committed —
+and would also mean a real credential pasted into a test file - which is exactly how they get committed —
 would never be flagged again.
 
 Add a value here only after establishing it is a fixture. If the list starts growing, that is a signal

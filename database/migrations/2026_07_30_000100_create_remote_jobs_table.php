@@ -30,7 +30,7 @@ return new class extends Migration
             $table->string('schema_version');
 
             // Validated against the definition's parameter schema, which sets additionalProperties
-            // false — so an unknown parameter never reaches here.
+            // false - so an unknown parameter never reaches here.
             $table->jsonb('parameters');
 
             // queued | claimed | succeeded | failed | cancelled | expired

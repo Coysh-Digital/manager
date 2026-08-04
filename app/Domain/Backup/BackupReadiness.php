@@ -15,13 +15,13 @@ use coyshdigital\managerprotocol\Jobs;
  *
  * This exists because the answer was previously spread across four places, none of which was the
  * screen with the button on it. `JobService::enqueue()` refuses a site with no connector,
- * `JobService::claimFor()` cancels a job for an organisation with no recovery key — *when the site
- * next checks in*, which may be five minutes later — the connector refuses again before dumping, and
+ * `JobService::claimFor()` cancels a job for an organisation with no recovery key - *when the site
+ * next checks in*, which may be five minutes later - the connector refuses again before dumping, and
  * `ScheduleBackupsCommand` checks all of it before queueing anything nightly.
  *
  * The backups screen checked none of it. It rendered "Back up now" whenever the viewer could
  * administer, and pressing it on an organisation with no recovery key produced "Backup requested. It
- * will run when the site next checks in", a REQUESTED row on the timeline, and then silence — the job
+ * will run when the site next checks in", a REQUESTED row on the timeline, and then silence - the job
  * was cancelled minutes later by a rule stated nowhere on that screen. The most alarming version of
  * that is a site whose owner believes it is being backed up and is not.
  *
@@ -34,13 +34,13 @@ use coyshdigital\managerprotocol\Jobs;
  *
  * At floor v2 a missing key was already a hard block: a v2 artifact is encrypted to recovery keys
  * and to nothing else, so there is genuinely nothing to encrypt to. At v1 a backup was still taken,
- * because a v1 artifact is sealed to *this platform's* key — which is precisely the arrangement the
+ * because a v1 artifact is sealed to *this platform's* key - which is precisely the arrangement the
  * v2 format exists to end. The floor only ratchets to v2 on the first key activation, so the
  * organisations still on v1 were exactly the ones that had never added a key: every new organisation
  * could take a backup this platform could read, having been told nowhere that it could.
  *
  * Meanwhile `ScheduleBackupsCommand` refused those same organisations outright, and the settings
- * screen told them "No backups can be taken yet" — which was untrue for them and had been for as
+ * screen told them "No backups can be taken yet" - which was untrue for them and had been for as
  * long as both had existed. Three components, two rules, and the strictest one was the one nobody
  * could see.
  *

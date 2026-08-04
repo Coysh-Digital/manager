@@ -20,7 +20,7 @@
         The trail, not just the leaf.
 
         It was one static segment, so a site's screens gave no way back to the fleet except the
-        sidebar — which on a phone is behind the drawer. Each level is now a link, and the host is
+        sidebar - which on a phone is behind the drawer. Each level is now a link, and the host is
         dropped below the small breakpoint: it is the least useful segment and the widest.
     --}}
     <nav aria-label="Breadcrumb" class="flex min-w-0 flex-1 items-center overflow-hidden">
@@ -34,8 +34,8 @@
                 // Views yield a JSON trail when they have one; anything that has not been converted
                 // still yields a plain string, and reads as a single unlinked segment.
                 //
-                // Decoded first because `@section('crumb', $value)` puts the value through e() — the
-                // inline-value form of the directive escapes, unlike the block form — so the JSON
+                // Decoded first because `@section('crumb', $value)` puts the value through e() - the
+                // inline-value form of the directive escapes, unlike the block form - so the JSON
                 // arrives here with its quotes as entities. Labels are re-escaped on output below.
                 $raw = html_entity_decode(trim($__env->yieldContent('crumb', 'Sites')), ENT_QUOTES);
                 $trail = json_decode($raw, true);
@@ -92,8 +92,8 @@
             The palette, with its shortcut printed on it.
 
             A keyboard shortcut nobody is told about is a feature for the person who wrote it. This
-            is a real button — it works by clicking, which is the only way it exists at all on a
-            phone — and the ⌘K badge is there to teach the faster route to anybody who uses this
+            is a real button - it works by clicking, which is the only way it exists at all on a
+            phone - and the ⌘K badge is there to teach the faster route to anybody who uses this
             screen daily.
         --}}
         <button type="button" data-palette-open

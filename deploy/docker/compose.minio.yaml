@@ -3,7 +3,7 @@
 #   docker compose -f compose.yaml -f compose.minio.yaml up -d
 #
 # Needed from Phase 3, when backups land. Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY in .env
-# first — MinIO would otherwise start on its own well-known defaults.
+# first - MinIO would otherwise start on its own well-known defaults.
 services:
   minio:
     image: minio/minio:latest

@@ -11,7 +11,7 @@ use Illuminate\Support\Collection;
 /**
  * Which backups to keep.
  *
- * The obvious policy — keep the most recent N — is the one to avoid, and it is worth being explicit
+ * The obvious policy - keep the most recent N - is the one to avoid, and it is worth being explicit
  * about why, because it is what this replaces.
  *
  * A site that starts producing bad backups produces them on a schedule. Keep-the-latest-N answers that
@@ -22,8 +22,8 @@ use Illuminate\Support\Collection;
  *
  * So retention is by *period*, in the grandfather-father-son shape backup systems have used for
  * decades: some number of days, then one per week, then one per month. The last backup of each period
- * survives, which means the oldest surviving copy is genuinely old — from before whatever started
- * going wrong — rather than merely being the oldest of a recent batch.
+ * survives, which means the oldest surviving copy is genuinely old - from before whatever started
+ * going wrong - rather than merely being the oldest of a recent batch.
  *
  * Two rules make it safe:
  *
@@ -31,8 +31,8 @@ use Illuminate\Support\Collection;
  *    one once that day falls out of the daily window; until then all five are inside it and all five
  *    are kept. Retention answers "how far back", not "how many".
  *
- *  - **A site is never left with nothing.** If every period is empty — a site that stopped reporting
- *    six months ago — the single newest artifact is kept regardless. Somebody who has not taken a
+ *  - **A site is never left with nothing.** If every period is empty - a site that stopped reporting
+ *    six months ago - the single newest artifact is kept regardless. Somebody who has not taken a
  *    backup in a long time is precisely the person who will need the one they have.
  */
 final class RetentionPolicy

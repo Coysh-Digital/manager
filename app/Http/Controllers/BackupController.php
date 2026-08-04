@@ -31,7 +31,7 @@ use Illuminate\Http\Request;
  *
  * Shows artifacts, what they cost in storage, and when each will be deleted.
  *
- *  - **Download.** Ciphertext only, and it goes through {@see BackupDownloadController} — on Cloud as
+ *  - **Download.** Ciphertext only, and it goes through {@see BackupDownloadController} - on Cloud as
  *    a redirect to the store, so the bytes never pass through a worker. This screen used to say there
  *    was deliberately no download button, and the argument given was that decrypting a multi-gigabyte
  *    artifact inside a web request holds a worker against a timeout it will lose. That is still true,
@@ -85,7 +85,7 @@ final class BackupController
             ->get();
 
         // The same readiness the site screen uses, per row. A fleet where none of these buttons can
-        // do anything is worth seeing as a fleet rather than one site at a time — the usual cause is
+        // do anything is worth seeing as a fleet rather than one site at a time - the usual cause is
         // one organisation-wide setting.
         $readiness = $permitted->mapWithKeys(
             fn (Site $site): array => [$site->id => $this->readiness->for($site)],
@@ -141,7 +141,7 @@ final class BackupController
     /**
      * Ask a site for a backup now.
      *
-     * Queues the job; the connector claims it on its next run. Nothing here reaches into a site — the
+     * Queues the job; the connector claims it on its next run. Nothing here reaches into a site - the
      * platform never calls out, which is why a site behind NAT works at all.
      */
     public function store(Request $request, Site $site, Organisation $organisation): RedirectResponse
@@ -169,7 +169,7 @@ final class BackupController
          | Attributed, and idempotent, neither of which it was.
          |
          | Without a key, JobService::outstandingFor() returns immediately and two presses queue two
-         | backups of the same database — and the second is not free: it is another full dump on a
+         | backups of the same database - and the second is not free: it is another full dump on a
          | production site. The Refresh button has always passed one. Without an actor, the audit row
          | for a job that reads an entire database says only that the system asked for it.
         */
@@ -213,7 +213,7 @@ final class BackupController
      * Stop waiting for a backup that was asked for.
      *
      * Reported from use: a backup sitting at "Collected by site" with no way to call it off. Until
-     * the expiry sweep runs — seven hours later — the screen keeps saying it is coming, the
+     * the expiry sweep runs - seven hours later - the screen keeps saying it is coming, the
      * idempotency key stays outstanding so a fresh one cannot be requested, and whatever eventually
      * arrives is stored and billed.
      *
@@ -224,7 +224,7 @@ final class BackupController
      * endpoint, which already requires a claimed job. The copy on the screen says this and no more.
      *
      * Administrators, and deliberately outside the recent-authentication group. Stopping something
-     * is the one action here that is not an escalation — it grants nothing, it destroys no stored
+     * is the one action here that is not an escalation - it grants nothing, it destroys no stored
      * backup, and its whole value is being available at the moment somebody realises they did not
      * want this. A gate here would be a gate on the brake pedal.
      */
@@ -246,14 +246,14 @@ final class BackupController
             $this->jobs->cancel($job, $request->user(), 'Cancelled from the backups screen');
         } catch (JobRejectedException) {
             // Already finished. Two people pressing the same button, or a site reporting in while
-            // somebody was deciding — neither is an error worth a red banner.
+            // somebody was deciding - neither is an error worth a red banner.
             return back()->with('status', 'That backup had already finished.');
         }
 
         /*
          | Settle the artifact, if the site got as far as declaring one.
          |
-         | Without this the row stays `pending`, which the screen renders as "Uploading" — so
+         | Without this the row stays `pending`, which the screen renders as "Uploading" - so
          | cancelling would clear the in-flight notice and leave a different row a few inches away
          | still saying the backup was on its way. Nothing was stored, so nothing is lost.
          |
@@ -306,8 +306,8 @@ final class BackupController
      * Stop showing one "Did not complete" notice.
      *
      * Administrators rather than owners, matching "Back up now" above: this is the same person
-     * dealing with the same failure. Nothing is destroyed — the job, its reason and the audit row
-     * for the failure all survive — which is also why it sits outside the recent-authentication
+     * dealing with the same failure. Nothing is destroyed - the job, its reason and the audit row
+     * for the failure all survive - which is also why it sits outside the recent-authentication
      * group that deleting a backup sits inside.
      */
     public function dismissFailure(Request $request, Organisation $organisation): RedirectResponse
@@ -356,7 +356,7 @@ final class BackupController
      * The audit row and the sentence, for either of the two above.
      *
      * One entry for however many notices went, rather than one each. Silencing a panel is worth
-     * recording — it is how a fleet stops reporting a problem it still has — but forty rows saying
+     * recording - it is how a fleet stops reporting a problem it still has - but forty rows saying
      * so is a log nobody reads.
      */
     private function reportDismissal(int $cleared, Request $request, Organisation $organisation, ?Site $site): RedirectResponse

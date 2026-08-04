@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Hash;
  *
  * The gate itself was never the problem: it fires when it should and refuses what it should. What it
  * did was throw the form away. Somebody filled in "Add a site", pressed the button, was asked for
- * their password, proved it — and arrived back at an empty, collapsed panel with no sign that
+ * their password, proved it - and arrived back at an empty, collapsed panel with no sign that
  * anything had been typed. The reported behaviour was "I have to add the site again".
  *
  * Nothing is replayed. The input comes back and the person presses the button; see ResumableInput
@@ -33,7 +33,7 @@ beforeEach(function (): void {
      |
      | This used to skip the GET, and skipping it is what let a broken feature pass. Flash data lives
      | one request, so the payload the gate stashed was read and discarded by the screen nobody was
-     | asking it to survive — and by the POST below there was nothing left to restore. Three
+     | asking it to survive - and by the POST below there was nothing left to restore. Three
      | requests, not two.
     */
     $this->confirm = function () {
@@ -95,7 +95,7 @@ it('honours the configured recent-authentication window', function (): void {
      | config('auth.password_timeout'). A subclass is autowired instead, so it never sees that
      | binding and the parent constructor falls back to a hard-coded 10800 seconds. Overriding the
      | alias without reading the config in the constructor would quietly turn a fifteen-minute
-     | window into a three-hour one — a weakened control with nothing on screen to show for it.
+     | window into a three-hour one - a weakened control with nothing on screen to show for it.
     */
     $window = (int) config('auth.password_timeout');
 
@@ -140,7 +140,7 @@ it('answers a JSON caller with 423 rather than a redirect', function (): void {
 it('says what was interrupted, rather than that something was', function (): void {
     // "You are about to do something that changes what Manager may do" is true of every
     // interruption and helps with none of them. Reported as frustrating, and the frustration is not
-    // the gate — it is not knowing whether what you typed still exists.
+    // the gate - it is not knowing whether what you typed still exists.
     $this->actingAs($this->owner)
         ->post('/sites', ['name' => 'Example Client', 'expected_domain' => 'example.org', 'environment' => 'production'])
         ->assertRedirect(route('password.confirm'));
@@ -168,7 +168,7 @@ it('says on arrival that nothing was done, and what to press', function (): void
 it('gives back the environment as well, which it used to drop in silence', function (): void {
     /*
      | The worst shape this bug takes. `environment` was missing from the allowlist, and the field
-     | falls back to old('environment', $site->environment) — so a change to it came back looking
+     | falls back to old('environment', $site->environment) - so a change to it came back looking
      | exactly like the value already saved. Somebody set staging, proved their password, and was
      | shown production with nothing to suggest anything had been lost.
     */
@@ -196,7 +196,7 @@ it('gives back the environment as well, which it used to drop in silence', funct
 
 it('gives back a backup schedule it interrupted', function (): void {
     // The schedule moved to the Backups screen and kept its gate, so it had to be given a way back
-    // as well — a control that loses what you set it to is one people stop trusting.
+    // as well - a control that loses what you set it to is one people stop trusting.
     $site = Site::factory()->for($this->organisation)->connected()->create(['backup_schedule' => 'off']);
 
     $this->actingAs($this->owner)

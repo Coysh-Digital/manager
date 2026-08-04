@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Schema;
  * Security and operational findings.
  *
  * Findings are *derived*, not stored facts: the platform holds the rules, and each report is
- * re-evaluated. So this table is a reconciliation target rather than a log — a finding opens when a
+ * re-evaluated. So this table is a reconciliation target rather than a log - a finding opens when a
  * rule first matches, updates while it keeps matching, and resolves itself when it stops.
  *
  * The unique key on (site_id, rule) is what makes that work. Without it, every report would insert a
@@ -39,7 +39,7 @@ return new class extends Migration
             $table->string('title');
             $table->text('detail');
 
-            // What the rule saw. Booleans, versions and counts only — the same discipline as the
+            // What the rule saw. Booleans, versions and counts only - the same discipline as the
             // reports it is derived from.
             $table->jsonb('evidence')->nullable();
 

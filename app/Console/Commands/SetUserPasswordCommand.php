@@ -16,7 +16,7 @@ use Illuminate\Support\Str;
  * Sets a user's password from the command line.
  *
  * This exists because a self-hosted installation can otherwise lock its owner out permanently. The
- * setup route closes as soon as an account exists, and the password reset flow needs working mail — so
+ * setup route closes as soon as an account exists, and the password reset flow needs working mail - so
  * an operator who loses the only owner password on an installation without SMTP configured has no way
  * back in at all. That is not an acceptable state for software somebody runs themselves.
  *
@@ -127,7 +127,7 @@ final class SetUserPasswordCommand extends Command
 
         if ($clearing) {
             $this->components->warn(
-                'The second factor was removed. Enrol a new one immediately — until you do, this '
+                'The second factor was removed. Enrol a new one immediately - until you do, this '
                 .'account is protected by a password alone.'
             );
         } elseif ($hadSecondFactor) {

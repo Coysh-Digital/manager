@@ -67,7 +67,7 @@ final class JobClaimController
                  | Never inside a job envelope. A `backup.create` job carries one optional parameter,
                  | `max_megabytes`, and that is the whole of what belongs there: a size can only ever
                  | cause a site to do less work. A recipient, a schema version or a destination cannot
-                 | travel that way — the first two because a job claimed before a change and run after
+                 | travel that way - the first two because a job claimed before a change and run after
                  | it would instruct the wrong answer, and the third because it must not exist at all.
                  |
                  | (This paragraph used to say the job carried no parameters at all. That stopped
@@ -87,14 +87,14 @@ final class JobClaimController
                      | Which declaration schemas this build can read, most preferred first.
                      |
                      | A connector picks the newest it also implements and falls back to backup.v2
-                     | when it recognises none — which is what a connector older than v3 does with a
+                     | when it recognises none - which is what a connector older than v3 does with a
                      | key it has never seen. That is what lets the ceiling move without a cutover:
                      | neither side has to be upgraded before the other, and no backup is lost while
                      | a fleet catches up.
                      |
                      | Distinct from `format` above, which is the one-way commitment about who can
                      | read an artifact. This is about how large one may be, and the two must not be
-                     | run together — a size question riding on a security ratchet would make lifting
+                     | run together - a size question riding on a security ratchet would make lifting
                      | a ceiling irreversible.
                      */
                     'declarations' => BackupService::ACCEPTED_DECLARATIONS,
@@ -110,7 +110,7 @@ final class JobClaimController
                      | A size, never a destination. It can only ever cause a connector to do less.
                      |
                      | Zero is the wire's way of saying there is no ceiling, and the connector reads
-                     | it as one — it skips the check on zero exactly as it does on an absent field.
+                     | it as one - it skips the check on zero exactly as it does on an absent field.
                      | The field is still sent rather than omitted, because omitting it is how an
                      | older platform says "I have no opinion", and this platform has one.
                      */
@@ -140,7 +140,7 @@ final class JobClaimController
                 //
                 // Withheld the moment an organisation has recovery keys. A connector too old to use
                 // them then finds nothing to seal to and refuses outright, rather than quietly
-                // producing a backup this platform could read — and its existing message, "the
+                // producing a backup this platform could read - and its existing message, "the
                 // platform has no artifact encryption key configured", is exactly right for that.
                 'backup_public_key' => ! $zeroKnowledge && $backups->isConfigured()
                     ? $backups->publicKey()

@@ -12,7 +12,7 @@
 #     performance quirk.
 #   - Runs as a non-root user.
 #   - No Node in the final image. Assets are built and committed, so a deployment needs no
-#     toolchain — and the image carries no npm dependency tree to audit.
+#     toolchain - and the image carries no npm dependency tree to audit.
 #   - Nothing outside this repository is needed to build it. Everything comes from the clone and
 #     from Packagist, so `git clone && docker compose build` works for anybody.
 
@@ -22,7 +22,7 @@ FROM php:8.4-fpm-alpine AS base
 #
 # The base image is rebuilt on its own schedule, so between rebuilds it carries whatever was current
 # when it was cut. Taking the upgrade here means a fix lands the next time this image is built rather
-# than the next time upstream gets round to it — which is how CVE-2026-33630 in c-ares was blocking the
+# than the next time upstream gets round to it - which is how CVE-2026-33630 in c-ares was blocking the
 # build with a fix available two patch versions ahead.
 #
 # It does mean two builds of the same commit on different days can contain different package versions.

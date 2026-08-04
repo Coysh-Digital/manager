@@ -63,7 +63,7 @@ final class FindingController
      * Acknowledge a finding.
      *
      * A reason is required. "Acknowledged by Tim, three weeks ago" with no explanation is barely more
-     * useful than an unread finding — the next person still has to work out whether it was a decision
+     * useful than an unread finding - the next person still has to work out whether it was a decision
      * or a shrug.
      */
     public function acknowledge(Request $request, Finding $finding): RedirectResponse

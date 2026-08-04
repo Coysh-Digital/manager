@@ -52,7 +52,7 @@ final class EmailTransport
      * The message body.
      *
      * Says what happened, which site, and where to look. No links with tokens in them, and no detail
-     * about the vulnerability itself — an email sits in a mailbox for years.
+     * about the vulnerability itself - an email sits in a mailbox for years.
      *
      * Public so it can be asserted on directly. Mail::raw does not produce a Mailable, so there is
      * nothing for the mail fake to inspect, and testing the wording through the transport would mean

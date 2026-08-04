@@ -17,13 +17,13 @@ use App\Domain\Findings\Snapshot;
  * Every Craft site on the public internet gets failed sign-ins. Bots find `/admin`, try `admin` with
  * a handful of passwords, and move on. A rule that fired on that would fire on every site in every
  * fleet forever, and a findings list where one entry is always present is a findings list people
- * stop reading — which costs them the entries that matter.
+ * stop reading - which costs them the entries that matter.
  *
  * So: fifty attempts in a day, or any attempt against an administrator account. The second condition
  * is the useful one. Bots spray; somebody who knows which of your accounts is an administrator has
  * done homework, and that is worth interrupting a person for at a much lower count.
  *
- * The number is a floor, not a total — Craft resets an account's counter on a successful sign-in, so
+ * The number is a floor, not a total - Craft resets an account's counter on a successful sign-in, so
  * the one attacker who got in contributes nothing to it. The detail says so, because a rule that
  * quietly implies "under fifty means safe" would be worse than no rule.
  */

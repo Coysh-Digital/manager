@@ -19,7 +19,7 @@ use Illuminate\Http\Request;
  * from being easy enough that people actually do it. Restricting it to administrators would mean the
  * person who found the thing worth writing down often could not.
  *
- * Deleting is narrower — an owner, or whoever wrote it. Notes are the record of why a site is the way
+ * Deleting is narrower - an owner, or whoever wrote it. Notes are the record of why a site is the way
  * it is, and quietly removable institutional memory is worse than none.
  */
 final class SiteNoteController
@@ -46,7 +46,7 @@ final class SiteNoteController
 
         // The note itself is not recorded in the audit log, only that one was written. The log is
         // append-only and hash-chained, so anything put in it is there permanently and cannot be
-        // corrected — and free text somebody typed in a hurry is the last thing that should be.
+        // corrected - and free text somebody typed in a hurry is the last thing that should be.
         $this->audit->record(
             action: 'site.note.added',
             site: $site,

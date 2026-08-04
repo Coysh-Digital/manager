@@ -28,7 +28,7 @@ final class JobRejectedException extends RuntimeException
      * A backup was asked for by an organisation holding no recovery key.
      *
      * Refused at the point of asking rather than cancelled at claim time, which is where it used to
-     * happen — minutes later, on a screen nobody was watching.
+     * happen - minutes later, on a screen nobody was watching.
      */
     public const NO_RECOVERY_KEY = 'no_recovery_key';
 

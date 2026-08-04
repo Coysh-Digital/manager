@@ -28,7 +28,7 @@ final class TeamController
     public function __construct(private readonly TeamService $team) {}
 
     /*
-     | Readable by any member, writable only by an owner — which is what this was when it was a
+     | Readable by any member, writable only by an owner - which is what this was when it was a
      | section of the one settings screen, and moving it to a route of its own is not a reason to
      | change it. "Who else can reach this installation" is a question an administrator should be
      | able to answer without asking somebody; acting on the answer is the owner's call, and each
@@ -51,7 +51,7 @@ final class TeamController
             'assignableRoles' => TeamService::assignableRoles(),
 
             // Addresses with an unused password link outstanding. The broker deletes the row when a
-            // link is used, so its presence means somebody has a live invitation — or asked for a
+            // link is used, so its presence means somebody has a live invitation - or asked for a
             // reset and has not finished it. The screen says the former, because it cannot tell them
             // apart and offering to resend is the right answer to both.
             'awaitingPassword' => DB::table('password_reset_tokens')->pluck('email')->all(),
@@ -92,7 +92,7 @@ final class TeamController
         $sent = $this->team->sendInvitationLink($membership->user);
 
         return back()->with($sent ? 'status' : 'warning', $sent
-            ? "Invited {$validated['email']}. They have been emailed a link to set their own password — no password passes through you."
+            ? "Invited {$validated['email']}. They have been emailed a link to set their own password - no password passes through you."
             : "Access granted to {$validated['email']}, but the invitation email could not be sent. "
               .'Check the mail configuration, then use Resend below.');
     }

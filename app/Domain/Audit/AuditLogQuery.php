@@ -12,8 +12,8 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 /**
  * Reading the audit log.
  *
- * Two screens want the same rows filtered slightly differently — the organisation's whole log, and
- * one site's — and both must be ordered by `seq` rather than by time. Sequence is the chain's own
+ * Two screens want the same rows filtered slightly differently - the organisation's whole log, and
+ * one site's - and both must be ordered by `seq` rather than by time. Sequence is the chain's own
  * order and the only one that cannot disagree with it: two events written in the same second sort
  * arbitrarily by timestamp, and an audit log whose order is arbitrary is not much of a chain.
  *

@@ -13,7 +13,7 @@ use App\Models\Site;
  *
  * The fifth edition seam, and the one with the narrowest surface. Self-hosted binds an implementation
  * that always returns null, which means artifacts keep streaming through the application exactly as
- * they always have — an operator running Manager on one box with a local disk has nothing to presign
+ * they always have - an operator running Manager on one box with a local disk has nothing to presign
  * and nothing to gain.
  *
  * The hosted edition binds one that issues presigned S3 requests, and the reason is not performance.
@@ -34,7 +34,7 @@ interface DirectUploadGrants
      * should return a grant carrying {@see UploadPart}s instead. `$expectedCrc32c` is what makes that
      * possible, and it is worth being exact about what it costs.
      *
-     * On the single-request path the store enforces `$expectedSha256Base64` — a cryptographic hash the
+     * On the single-request path the store enforces `$expectedSha256Base64` - a cryptographic hash the
      * connector signed. On the multipart path it cannot: a store can only confirm a whole-object
      * checksum across an assembly when the algorithm linearises, and SHA-256 does not. CRC-32C does,
      * so that is what the store checks, and **a CRC is forgeable where a SHA is not.**
@@ -66,7 +66,7 @@ interface DirectUploadGrants
      * nothing is called `stored` until something other than the connector agrees.
      *
      * `$reference` is the store's own handle for a multipart upload still in progress. Given one, an
-     * implementation completes the upload before asking about it — which is where the store validates
+     * implementation completes the upload before asking about it - which is where the store validates
      * the assembled whole and refuses it if the parts do not add up to what was promised. It is the
      * platform that completes it, never the connector, so nothing here is taken on a site's word.
      */

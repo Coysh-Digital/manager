@@ -70,7 +70,7 @@ it('gives each site its own numbers rather than the first site\'s', function ():
     // Two sites on two different servers. Their disk readings are facts about different machines,
     // and there is no arrangement of them under which one stands for the other. The grouped layout
     // printed $group->first()->detail as the description for the whole rule, so both rows carried
-    // the first server's percentage — reported from a live fleet, where it read as one site
+    // the first server's percentage - reported from a live fleet, where it read as one site
     // borrowing another's disk.
     $second = Site::factory()->for($this->organisation)->connected()->create(['name' => 'Second Site']);
 
@@ -191,7 +191,7 @@ it('says an empty list is only as complete as what was granted', function (): vo
     $this->actingAs($this->owner)
         ->get('/findings')
         ->assertOk()
-        // A rule is skipped, not passed, when its capability is missing — so "no findings" needs that
+        // A rule is skipped, not passed, when its capability is missing - so "no findings" needs that
         // caveat attached or it reads as a clean bill of health.
         ->assertSee('skipped, not passed');
 });
@@ -347,7 +347,7 @@ it('hides the irreversible actions from a non-owner', function (): void {
 
 it('sends a test message to the owner and nobody else', function (): void {
     // Asserted against the callback rather than through Mail::fake(). Mail::raw() builds no Mailable,
-    // so there is nothing for assertSent() to inspect — the same limitation EmailTransport documents,
+    // so there is nothing for assertSent() to inspect - the same limitation EmailTransport documents,
     // and the reason its body is a public method.
     $addressed = null;
 
@@ -378,7 +378,7 @@ it('keeps mail configuration off the general settings screen', function (): void
      | This used to assert that mail configuration appeared nowhere in the interface at all, on the
      | reasoning that whoever can reach Settings is not necessarily whoever holds the relay's
      | credentials. That reasoning was right; the conclusion was not, because the alternative it left
-     | was a shell on the server — and the one thing that cannot be used to tell somebody their mail
+     | was a shell on the server - and the one thing that cannot be used to tell somebody their mail
      | is broken is email.
      |
      | So the rule became a permission rather than an absence: there is a Mail screen, it is
@@ -506,7 +506,7 @@ it('refuses every mail route as well as hiding the tab', function (): void {
  | It was reachable from a couple of emails and from nowhere inside the application, so somebody who
  | wanted to sort out payment before a trial ran out had to know the URL. The fix is a link, and a
  | link is the kind of thing that gets moved, wrapped in the wrong condition, or quietly dropped in
- | a refactor — so it gets tests rather than a comment.
+ | a refactor - so it gets tests rather than a comment.
  */
 
 /** A hosted edition's answer: somewhere to go. */
@@ -558,8 +558,8 @@ it('keeps billing away from everybody who is not an owner', function (): void {
 
     $html = $this->actingAs($member)->get(route('settings.show'))->assertOk()->getContent();
 
-    // The sidebar entry is not owner-gated — it is the way to a page that decides for itself who may
-    // see what — but the Settings block, which sits among this screen's owner-only controls, is.
+    // The sidebar entry is not owner-gated - it is the way to a page that decides for itself who may
+    // see what - but the Settings block, which sits among this screen's owner-only controls, is.
     expect($html)->not->toContain('Manage billing');
 });
 
@@ -569,7 +569,7 @@ it('offers no billing at all on an installation nobody bills', function (): void
      |
      | Nothing is bound here, so the seam answers null exactly as it does on a real self-hosted
      | install. There is no subscription, no card and no allowance to buy more of, so there is
-     | nothing to link to — and the link disappears rather than becoming a page that explains why it
+     | nothing to link to - and the link disappears rather than becoming a page that explains why it
      | does not apply.
      |
      | This is the one that catches somebody dropping the condition around a link that is already

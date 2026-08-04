@@ -18,7 +18,7 @@ use coyshdigital\managerprotocol\Nonce;
 /**
  * Adding a site and issuing the code that pairs it.
  *
- * This was missing entirely — the fleet screen said "Add one, then pair its connector" and there was
+ * This was missing entirely - the fleet screen said "Add one, then pair its connector" and there was
  * no route that would. Every site in the test suite had been created through a factory, which is how a
  * gap in the primary flow stayed invisible.
  *
@@ -145,7 +145,7 @@ it('invalidates the previous code when a new one is issued', function (): void {
         ->assertRedirect();
 
     // Two live codes would mean a leaked one stayed usable after somebody reissued in response to the
-    // leak — which is usually why they reissued.
+    // leak - which is usually why they reissued.
     expect($first->fresh()->isConsumed())->toBeTrue()
         ->and(EnrolmentCode::query()->whereNull('consumed_at')->count())->toBe(1);
 });
@@ -260,7 +260,7 @@ it('checks every read capability in the form by default', function (): void {
 
     // Counted rather than eyeballed: one checkbox per grantable capability, and every one checked.
     // Derived from the list rather than a literal, so adding a capability changes this test's
-    // subject rather than breaking it — the claim is "all of them", not "five of them".
+    // subject rather than breaking it - the claim is "all of them", not "five of them".
     $expected = count(CapabilityService::grantableFromInterface());
 
     expect(substr_count($html, 'name="capabilities[]"'))->toBe($expected)
@@ -272,7 +272,7 @@ it('never offers backups as a checkbox, and refuses it if asked', function (): v
 
     expect($html)->not->toContain('value="backups:create"');
 
-    // Refused by the validation rule, not merely absent from the form — invariant 7 is not a matter of
+    // Refused by the validation rule, not merely absent from the form - invariant 7 is not a matter of
     // which inputs happen to be rendered.
     $this->actingAs($this->owner)->withSession($this->recentAuth)->post('/sites', [
         'name' => 'Sneaky',
@@ -292,7 +292,7 @@ it('grants nothing when every box is unchecked', function (): void {
     ])->assertRedirect();
 
     // A site can be added now and permitted later. Pairing will still grant inventory:read, because
-    // that is what pairing does — but nothing here presumes.
+    // that is what pairing does - but nothing here presumes.
     expect(Site::query()->sole()->grantedCapabilities())->toBe([]);
 });
 

@@ -47,7 +47,7 @@ jobs:
           # application's own tree audits clean.
           cache-dependency-path: docs/package-lock.json
 
-      # The application's dependencies are not needed here — this builds markdown, not the app.
+      # The application's dependencies are not needed here - this builds markdown, not the app.
       - run: npm ci
         working-directory: docs
 

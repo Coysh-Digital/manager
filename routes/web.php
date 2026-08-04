@@ -46,8 +46,8 @@ use Illuminate\Support\Facades\Route;
 
 /*
  | Readiness, for orchestrators. Liveness is Laravel's own /up, which answers "is PHP running";
- | this answers "can this instance serve a request". Unauthenticated by necessity — a load balancer
- | has no credentials — so it names which check failed and nothing else.
+ | this answers "can this instance serve a request". Unauthenticated by necessity - a load balancer
+ | has no credentials - so it names which check failed and nothing else.
  */
 Route::get('ready', [HealthController::class, 'ready'])->name('health.ready');
 
@@ -83,7 +83,7 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
     Route::redirect('/', '/sites');
 
     // What the command palette can jump to. Read-only, scoped to the organisation, and fetched once
-    // per page rather than per keystroke — a fleet is small enough to filter in the browser, and a
+    // per page rather than per keystroke - a fleet is small enough to filter in the browser, and a
     // search-as-you-type endpoint would put what somebody typed into the access log.
     Route::get('palette', PaletteController::class)->name('palette');
 
@@ -120,7 +120,7 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
         Route::get('sites/{site}/backups', [SiteBackupController::class, 'show'])->name('sites.backups');
 
         // Read-only, and the same tenant scoping as the screen it serves. It carries a job
-        // identifier and a phase name — nothing the page rendering it cannot already see.
+        // identifier and a phase name - nothing the page rendering it cannot already see.
         Route::get('sites/{site}/backups/status', [SiteBackupController::class, 'status'])
             ->name('sites.backups.status');
 
@@ -146,7 +146,7 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
      |
      | Outside the recent-authentication group deliberately, and for the same reason notes are: this
      | destroys nothing. The job row, its failure reason and the audit entry for the failure all
-     | survive — only the panel stops leading with it. Administrators, matching the button that asks
+     | survive - only the panel stops leading with it. Administrators, matching the button that asks
      | for a backup in the first place.
      */
     /*
@@ -154,7 +154,7 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
      |
      | Outside the recent-authentication group with the notices below, and for a reason worth
      | stating: this is the brake rather than the accelerator. It grants nothing, destroys no stored
-     | backup, and is worth having at the moment somebody realises they did not want it — which is
+     | backup, and is worth having at the moment somebody realises they did not want it - which is
      | usually the moment they are least willing to go and find their password.
      */
     Route::post('backups/cancel', [BackupController::class, 'cancel'])->name('backups.cancel');
@@ -167,7 +167,7 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
     /*
      | Notes.
      |
-     | Any member may write one — it changes nothing about the site, and the value comes entirely
+     | Any member may write one - it changes nothing about the site, and the value comes entirely
      | from being easy enough that people actually do it. Outside the recent-authentication group for
      | the same reason: a note is not a privileged action, and making somebody re-enter their password
      | to record "the client wants PHP left alone" is how a feature goes unused.
@@ -197,7 +197,7 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
      | only what it shows, where the single screen ran every query on every visit.
      |
      | The GETs sit outside the recent-authentication group below, as the one settings screen always
-     | has. None of them renders a secret — including Mail, whose stored password is write-only.
+     | has. None of them renders a secret - including Mail, whose stored password is write-only.
      |
      | The write routes keep the names they have always had: team.*, recovery-keys.*, notifications.*
      | and account.* are the audit log's own vocabulary, and renaming them would be churn for no
@@ -213,7 +213,7 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
         ->name('settings.recovery-keys');
 
     // Self-hosted only, and owner-only. The controller refuses on both counts rather than relying on
-    // the tab being absent — see MailSettingsController::authorise().
+    // the tab being absent - see MailSettingsController::authorise().
     Route::get('settings/mail', [MailSettingsController::class, 'show'])->name('settings.mail');
 
     // GET /account is gone rather than redirected. It was one of two settings destinations, and the
@@ -251,7 +251,7 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
          |
          | Behind recent authentication with the other two, and for the same reason: this hands over a
          | complete copy of a customer's database, encrypted, and a session left open on an unlocked
-         | machine must not be enough. It decrypts nothing — see the controller for why that
+         | machine must not be enough. It decrypts nothing - see the controller for why that
          | distinction is the whole design, and why this route can exist when a plaintext one still
          | should not.
         */
@@ -279,7 +279,7 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
                 ->name('sites.backups.schedule');
 
             // How far back this site's backups are kept. Owner-level rather than administrator,
-            // because shortening it decides how far back this site can be recovered from — which is
+            // because shortening it decides how far back this site can be recovered from - which is
             // a different kind of decision from asking for a backup.
             Route::post('sites/{site}/backups/retention', [SiteBackupController::class, 'updateRetention'])
                 ->name('sites.backups.retention');

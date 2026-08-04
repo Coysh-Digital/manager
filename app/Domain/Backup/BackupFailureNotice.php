@@ -13,8 +13,8 @@ use App\Models\Site;
  * One place, because a backup can fail in two quite different ways and both have to read like the
  * same event to whoever gets the message.
  *
- * A site can refuse the job outright — too large for what the connector is configured to take,
- * nothing to encrypt to, a dump that produced no file — and that happens before an artifact row
+ * A site can refuse the job outright - too large for what the connector is configured to take,
+ * nothing to encrypt to, a dump that produced no file - and that happens before an artifact row
  * exists at all. Or an artifact is declared and then never arrives, or arrives and fails its
  * checksum, which happens after. The first is reported by the site through the job result; the
  * second is found by the platform. Different code paths, same sentence.

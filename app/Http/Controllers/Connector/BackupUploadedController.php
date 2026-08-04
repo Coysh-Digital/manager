@@ -19,7 +19,7 @@ use Illuminate\Http\Request;
  * A site reporting that it finished writing an artifact straight to storage.
  *
  * Only reachable on the direct path. When bytes stream through the platform there is nothing to report
- * — they were hashed on the way past and the artifact was stored and verified in the same instant.
+ * - they were hashed on the way past and the artifact was stored and verified in the same instant.
  *
  * The important thing about this endpoint is how little it is trusted. It does not carry a checksum, a
  * size, or anything else the platform could act on; a connector saying "done" only causes the platform

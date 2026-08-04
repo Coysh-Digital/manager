@@ -28,7 +28,7 @@
                 <p class="mb-2 text-[13.5px] font-medium text-text">Save these recovery codes now</p>
                 <p class="mb-3 text-[13px] text-text-2">
                     Each works once, and they are the only way back in if you lose your authenticator.
-                    They will not be shown again — generating a new set replaces them.
+                    They will not be shown again - generating a new set replaces them.
                 </p>
                 <div class="grid grid-cols-2 gap-1.5 rounded-lg border border-amber-line bg-surface p-3 font-mono text-[13px] tracking-[0.05em] sm:grid-cols-3">
                     @foreach ($freshRecoveryCodes as $code)
@@ -132,7 +132,7 @@
             <div class="p-4">
                 <p class="mb-3 text-[13px] text-text-2">
                     A passkey is bound to this site's address, so it cannot be used on a convincing
-                    copy of it — which a typed code can. It counts as your second factor.
+                    copy of it - which a typed code can. It counts as your second factor.
                 </p>
 
                 @forelse ($passkeys as $passkey)

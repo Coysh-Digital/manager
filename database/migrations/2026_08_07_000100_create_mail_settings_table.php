@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Schema;
  * Where a self-hosted installation's mail relay is configured.
  *
  * Until now the only answer was the `MAIL_*` variables in `.env`, which meant a shell on the server
- * and a redeploy — and on an installation whose mail has never worked, the one thing that cannot be
+ * and a redeploy - and on an installation whose mail has never worked, the one thing that cannot be
  * used to tell somebody how to fix it is email. The environment is still the fallback and still the
  * floor: nothing here is written unless somebody saves this screen, and discarding it puts the
  * environment straight back.
@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\Schema;
  * App\Contracts\MailAdministration answers false and this table is never read at all.
  *
  * On the `password` column and tests/Invariants/NoStoredCredentialsTest.php: that test refuses any
- * column naming a *managed site's* credential — admin_password, db_password, ssh_password and so on.
+ * column naming a *managed site's* credential - admin_password, db_password, ssh_password and so on.
  * This is not one of those. It is this installation's own credential for its own relay, held the way
  * it already holds a TOTP secret and a webhook signing secret, and it is why the fragment list there
  * names the specific kinds rather than the bare word.
@@ -42,7 +42,7 @@ return new class extends Migration
             $table->string('transport', 32);
 
             // SMTP only. Null under an API transport rather than left holding the last SMTP host
-            // somebody typed — see MailSetting::toConfig(), which writes every key it touches.
+            // somebody typed - see MailSetting::toConfig(), which writes every key it touches.
             $table->string('host')->nullable();
             $table->unsignedSmallInteger('port')->nullable();
             $table->string('encryption', 16)->nullable();
@@ -54,7 +54,7 @@ return new class extends Migration
              |
              | Encrypted at rest with the same cast as NotificationDestination::signing_secret and
              | User::totp_secret. A database dump alone must not hand somebody the ability to send
-             | mail as this installation — which is the ability to send a convincing password-reset
+             | mail as this installation - which is the ability to send a convincing password-reset
              | email to every one of its users.
              |
              | text rather than string: a Laravel encrypted payload is base64-encoded JSON and

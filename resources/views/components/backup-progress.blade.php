@@ -30,7 +30,7 @@
         @endif
 
         @if ($backup->looksStalled())
-            {{-- Not an error. The job has not expired and the site may still be working — but it has
+            {{-- Not an error. The job has not expired and the site may still be working - but it has
                  been quiet for long enough that "large database" has stopped being the likeliest
                  explanation, and somebody watching a stepper that has not moved deserves to be told
                  that rather than left to guess. --}}
@@ -49,7 +49,7 @@
              one, and a button labelled "Cancel" with nothing beside it would imply otherwise. --}}
         @if ($canCancel)
             <form method="POST" action="{{ route('backups.cancel') }}"
-                  onsubmit="return confirm('Stop waiting for this backup? It will be refused if it arrives. The site may still finish its own copy — nothing here can reach it to stop that.');">
+                  onsubmit="return confirm('Stop waiting for this backup? It will be refused if it arrives. The site may still finish its own copy - nothing here can reach it to stop that.');">
                 @csrf
                 <input type="hidden" name="job" value="{{ $backup->jobId }}">
                 <button type="submit" class="text-[11.5px] text-text-3 hover:text-danger">Cancel</button>

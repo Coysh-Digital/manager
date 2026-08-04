@@ -24,7 +24,7 @@ use Illuminate\Support\Facades\DB;
  *
  * Appends are serialised per organisation with a transaction-scoped advisory lock. Without it two
  * concurrent writers would read the same predecessor, compute the same sequence number, and one
- * would lose to the unique index — or worse, both would chain from the same point and leave a fork
+ * would lose to the unique index - or worse, both would chain from the same point and leave a fork
  * that verification could not distinguish from tampering.
  */
 final class AuditRecorder
@@ -70,7 +70,7 @@ final class AuditRecorder
         // caller, so an event cannot be filed against the wrong tenant.
         //
         // Read as a foreign key rather than through the relation: the relation would lazy-load, which
-        // is an N+1 when recording an event per site in a loop — and exactly that turned up when
+        // is an N+1 when recording an event per site in a loop - and exactly that turned up when
         // revoking every connector in an organisation.
         $organisationId = $organisation !== null
             ? $organisation->id

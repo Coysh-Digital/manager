@@ -33,14 +33,14 @@ use Illuminate\Support\Facades\File;
  * and holds things that are nobody else's business: Stripe billing, the managed key service, the
  * per-organisation storage implementations, provisioning, suspension and purge.
  *
- * The seam between them is deliberate and works well — the core defines interfaces in `app/Contracts`
+ * The seam between them is deliberate and works well - the core defines interfaces in `app/Contracts`
  * and the overlay binds implementations to them. A self-hosted installation sees the interface and a
  * self-hosted implementation, which is exactly right: `DirectUploadGrants` is a public contract and
  * `S3UploadGrants` is not.
  *
  * What this test guards is the accident, not the design. During development the overlay is mounted at
  * `/var/www/overlay` and installed from a path repository, but somebody working on both at once will
- * eventually end up with a copy sitting inside this checkout — and at that point two things happen by
+ * eventually end up with a copy sitting inside this checkout - and at that point two things happen by
  * default rather than by decision:
  *
  *  - `git add -A` stages it, and a push to a public repository cannot be undone. A force-push removes
@@ -87,7 +87,7 @@ it('has no Cloud implementation anywhere it could be committed or shipped', func
      | Directories that would be committed or copied into an image.
      |
      | `vendor/` is excluded because the overlay is legitimately installed there on a Cloud
-     | deployment — that is how it is meant to arrive — and it is excluded from both the image build
+     | deployment - that is how it is meant to arrive - and it is excluded from both the image build
      | and the git index already.
      */
     $offenders = [];
@@ -108,7 +108,7 @@ it('has no Cloud implementation anywhere it could be committed or shipped', func
 
             // The overlay's own namespace. A file in the core declaring or importing it is either a
             // copy of overlay code or a core file that has grown a hard dependency on the private
-            // edition — and both are the same problem for somebody self-hosting.
+            // edition - and both are the same problem for somebody self-hosting.
             if (preg_match('~^\s*(namespace|use)\s+Cloud\\\\~m', $contents) === 1) {
                 $offenders[] = str_replace($root.'/', '', $file->getRealPath());
             }

@@ -10,7 +10,7 @@ use Illuminate\Support\Collection;
 /**
  * Walks an organisation's audit chain and reports where it stops adding up.
  *
- * The chain does not prevent tampering — the database trigger and table privileges do that. What
+ * The chain does not prevent tampering - the database trigger and table privileges do that. What
  * it provides is detection: anyone who does get around both still cannot alter history without
  * leaving a break that this finds.
  */

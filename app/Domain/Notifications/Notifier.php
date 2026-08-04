@@ -13,7 +13,7 @@ use Illuminate\Support\Collection;
  * Works out who wants to hear about an event, and queues the deliveries.
  *
  * Queued rather than sent inline. A notification is triggered while handling a connector's report, and
- * a slow or hanging destination must not be able to make a site's report time out — which would turn a
+ * a slow or hanging destination must not be able to make a site's report time out - which would turn a
  * misconfigured webhook into a site that appears to have stopped reporting.
  */
 final class Notifier

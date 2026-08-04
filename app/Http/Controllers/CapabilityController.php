@@ -19,11 +19,11 @@ use Illuminate\Http\Request;
 /**
  * Changing what Manager is permitted to do on a site.
  *
- * Actions only — the screen these post from is the Capabilities section of Settings, assembled by
+ * Actions only - the screen these post from is the Capabilities section of Settings, assembled by
  * {@see CapabilityPanel}. They all return to it with `back()`.
  *
  * Only read-only capabilities can be granted here. Anything that modifies a site, or reads its
- * content, needs its own confirmation flow — `backups:create` reads the full database including user
+ * content, needs its own confirmation flow - `backups:create` reads the full database including user
  * records, and a toggle alongside the read switches would understate that considerably.
  */
 final class CapabilityController
@@ -90,7 +90,7 @@ final class CapabilityController
      * Grant a capability that needs more than a switch.
      *
      * Invariant 7. Separate from {@see self::grant()} in every respect that matters: its own route, its
-     * own validation, its own service method, and three things the ordinary path does not ask for — the
+     * own validation, its own service method, and three things the ordinary path does not ask for - the
      * site's name typed out, the acknowledgement ticked, and a reason recorded.
      *
      * The site name is not security theatre here. The failure being designed out is an administrator

@@ -207,7 +207,7 @@ actual date rather than claiming it happened immediately.
   It used to default to 2 GB, inherited from the wire contract: until `manager-protocol` 1.5.0
   `backup.v2` carried its own 2 GB maximum, so this setting could only refuse more, never permit it.
   When the protocol stopped enforcing a maximum the default stayed, and it went on refusing real
-  backups on sites whose databases had simply grown — a wall nobody had chosen and few people knew
+  backups on sites whose databases had simply grown - a wall nobody had chosen and few people knew
   was there. A limit you set is a policy; a limit you inherited is an accident.
 
   With no ceiling set, the real limit is whatever your reverse proxy and PHP will carry. That is
@@ -229,7 +229,7 @@ actual date rather than claiming it happened immediately.
 From connector 1.11.0 the per-artifact ceiling is sent to sites on the signed claim response, so a
 site whose database is larger than it will refuse **before** taking a dump rather than after dumping,
 encrypting and offering one. With no ceiling set the platform sends zero, which sites read as "no
-limit" and skip the check — the same as an older platform that sends nothing at all.
+limit" and skip the check - the same as an older platform that sends nothing at all.
 
 ## What Manager for Craft is never told
 

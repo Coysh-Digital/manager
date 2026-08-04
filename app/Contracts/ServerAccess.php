@@ -14,7 +14,7 @@ namespace App\Contracts;
  *
  * On a hosted edition they cannot. The console is a service, the shell belongs to whoever runs it,
  * and a paragraph that ends "run this on the server" is instructions for a machine the reader has
- * no account on — worse than saying nothing, because it reads as the answer and there is no way to
+ * no account on - worse than saying nothing, because it reads as the answer and there is no way to
  * follow it. {@see MailAdministration} exists because exactly this happened once already: paying
  * customers were told to edit `MAIL_*` in a `.env` file they cannot reach.
  *
@@ -24,7 +24,7 @@ namespace App\Contracts;
  * rather than a second reading of that one.
  *
  * It says nothing about the *managed sites*. A hosted customer still owns those, still has a shell
- * on them, and `php craft manager-connector/pair` is still the right instruction — this is only
+ * on them, and `php craft manager-connector/pair` is still the right instruction - this is only
  * about the machine Manager itself runs on.
  */
 interface ServerAccess

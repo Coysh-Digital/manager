@@ -14,7 +14,7 @@ use App\Domain\Findings\Snapshot;
  *
  * Low severity, and it stays low deliberately. Nothing is unsafe, nothing is going to break, and a
  * site with opcache off has been working fine for however long it has been off. It is simply paying
- * several times over for work it could do once — which is worth telling somebody about the next time
+ * several times over for work it could do once - which is worth telling somebody about the next time
  * they are in the server, and is not worth an amber badge on a fleet screen.
  *
  * Production only. A development container without opcache is a development container behaving
@@ -40,7 +40,7 @@ final class OpcacheDisabledInProduction implements Rule
 
         $enabled = $snapshot->runtimeValue('php.opcache_enabled');
 
-        // Null means the connector could not read it — an older connector, or a PHP build without
+        // Null means the connector could not read it - an older connector, or a PHP build without
         // the extension compiled in at all. Not reported as disabled: "we could not tell" and "it is
         // off" are different answers.
         if ($enabled === null || $enabled === true) {
@@ -52,7 +52,7 @@ final class OpcacheDisabledInProduction implements Rule
             title: 'PHP opcache is off in production',
             detail: 'Every request recompiles every PHP file this site touches, which is several '
                 .'times the work it needs to do and shows up as slower pages under load. Nothing is '
-                .'unsafe and nothing will break — this is worth fixing the next time somebody is in '
+                .'unsafe and nothing will break - this is worth fixing the next time somebody is in '
                 .'the server configuration, not tonight.',
             evidence: ['opcache_enabled' => false, 'environment' => $snapshot->site->environment],
         );

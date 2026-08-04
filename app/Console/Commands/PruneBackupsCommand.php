@@ -17,7 +17,7 @@ use Illuminate\Support\Carbon;
  * A backup kept indefinitely is personal data kept indefinitely, so retention is not optional and the
  * default is not "forever".
  *
- * Retention is by period rather than by count — see {@see RetentionPolicy} for why that distinction is
+ * Retention is by period rather than by count - see {@see RetentionPolicy} for why that distinction is
  * the whole point. An artifact goes when its own expiry has passed *and* the policy does not want it as
  * the representative of a week or a month. Whichever rule keeps it alive wins.
  *
@@ -49,7 +49,7 @@ final class PruneBackupsCommand extends Command
          | Retention keeps the last backup of each period, so the set it reasons over decides which
          | backups compete with each other. Grouped by organisation, a busy site taking one every
          | night would satisfy every period on its own and a quiet site's monthly copy could be the
-         | one discarded — a site losing its history because a different site was healthy.
+         | one discarded - a site losing its history because a different site was healthy.
         */
         foreach (Site::query()->cursor() as $site) {
             $artifacts = BackupArtifact::query()
@@ -90,7 +90,7 @@ final class PruneBackupsCommand extends Command
         }
 
         // Declared but never delivered. The window is generous, because a large dump on a slow
-        // connection is not a failure — but it is not indefinite either.
+        // connection is not a failure - but it is not indefinite either.
         $cutoff = Carbon::now()->subSeconds((int) config('manager.backups.upload_window'));
 
         $stale = BackupArtifact::query()

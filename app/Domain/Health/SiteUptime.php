@@ -12,8 +12,8 @@ use Illuminate\Support\Carbon;
 /**
  * How reliably a site has been checking in.
  *
- * Read entirely from heartbeats that arrived. The platform never calls out to a site — that is what
- * lets a connector work from behind NAT with no inbound port — so there is no probe to read and
+ * Read entirely from heartbeats that arrived. The platform never calls out to a site - that is what
+ * lets a connector work from behind NAT with no inbound port - so there is no probe to read and
  * nothing here is a measurement of whether the website answered a visitor. It measures whether the
  * connector spoke to us, which is a different claim, and the screen makes that claim rather than the
  * one people expect from the word "uptime".
@@ -58,7 +58,7 @@ final class SiteUptime
 
         // Availability is time covered, not check-ins received. A site that reports twice as often as
         // expected is not 200% available, and one that misses a single beat in a quiet hour has not
-        // had an outage — the tolerance above is what decides that.
+        // had an outage - the tolerance above is what decides that.
         $silent = array_sum(array_map(static fn (Outage $outage): int => $outage->seconds(), $outages));
         $span = max(1, $to->getTimestamp() - $from->getTimestamp());
         $availability = max(0.0, min(100.0, (1 - $silent / $span) * 100));
@@ -77,7 +77,7 @@ final class SiteUptime
          |
          | Beats one interval apart across a span of S seconds number floor(S / interval) + 1, not
          | floor(S / interval): a site paired 35 minutes ago that has reported every five minutes
-         | since has checked in at 0, 5, 10, 15, 20, 25, 30 and 35 — eight times over seven
+         | since has checked in at 0, 5, 10, 15, 20, 25, 30 and 35 - eight times over seven
          | intervals. Reporting the interval count as the expectation meant every well-behaved site
          | showed one more than it should have, permanently, which reads as a bug in the counter
          | rather than as a site doing exactly what it was asked.
@@ -87,7 +87,7 @@ final class SiteUptime
          |
          | What this still cannot do is predict the count exactly, and the tilde is load-bearing.
          | `expected` models a single producer beating on a fixed interval, where a connector has two
-         | that throttle independently — the cron task and the web trigger — so a site running both
+         | that throttle independently - the cron task and the web trigger - so a site running both
          | reports somewhat more often than asked. The screen says so rather than clamping the count,
          | because the raw figure is the one worth having when a week reads thin.
          */
@@ -114,7 +114,7 @@ final class SiteUptime
      * count as uptime. The figure was flattering, stable and meaningless.
      *
      * Never later than the first heartbeat on record, though. A report that arrived before the row's
-     * `created_at` — a restored database, a corrected clock, a site seeded by a fixture — is evidence
+     * `created_at` - a restored database, a corrected clock, a site seeded by a fixture - is evidence
      * the site was alive, and evidence beats a timestamp.
      *
      * @param  list<Carbon>  $beats
@@ -237,7 +237,7 @@ final class SiteUptime
 
                 // The same figure the bar is drawn from. It used to be a whole bucket's worth
                 // regardless, so the hour in progress drew correctly and then described itself as
-                // "3 of 12" — or, once it filled up, "13 of 12".
+                // "3 of 12" - or, once it filled up, "13 of 12".
                 'expected' => $due,
             ];
         }

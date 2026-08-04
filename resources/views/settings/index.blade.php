@@ -44,12 +44,12 @@
 
             @unless (app(App\Contracts\ServerAccess::class)->reachable())
                 {{-- Said once, rather than leaving somebody to wonder what happened to the rest.
-                     The checks that are missing are about the machine — the database role, the
-                     queue, the disk, the session cookie — and a red row a customer cannot act on
+                     The checks that are missing are about the machine - the database role, the
+                     queue, the disk, the session cookie - and a red row a customer cannot act on
                      invites a support ticket whose answer is "yes, we know, that one is ours". --}}
                 <p class="border-b border-border bg-surface-2 px-4 py-2.5 text-[12px] leading-relaxed text-text-3">
-                    Checks about the servers themselves — the database, the queue, the disk, the keys
-                    — are ours to watch and are not shown here. These are the ones about your data.
+                    Checks about the servers themselves - the database, the queue, the disk, the keys
+                    - are ours to watch and are not shown here. These are the ones about your data.
                 </p>
             @endunless
 
@@ -74,13 +74,13 @@
             </div>
 
             {{--
-                Mail configuration is not on this screen, and nothing about it is shown here — not
+                Mail configuration is not on this screen, and nothing about it is shown here - not
                 the host, not the port, not the sender address. The check above already answers the
                 only question this screen needs to: will a password reset arrive.
 
                 It has a screen of its own now, and it is not this one. The Mail tab holds the
                 relay's host and login, is offered only to an owner, and exists only on an edition
-                that administers its own mail — which is the same reasoning that used to keep mail
+                that administers its own mail - which is the same reasoning that used to keep mail
                 off every screen, kept as a permission instead of as an absence.
                 See App\Contracts\MailAdministration and MailSettingsController.
             --}}

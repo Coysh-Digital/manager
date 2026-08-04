@@ -32,7 +32,7 @@ use Throwable;
  * That second gate is the old rule kept rather than dropped. There used to be no mail screen at all,
  * on the reasoning that whoever can reach Settings is not necessarily whoever holds the credentials.
  * That reasoning was right; what was wrong was the conclusion, because the alternative it left was a
- * shell on the server — and on an installation whose mail has never worked, the one thing that
+ * shell on the server - and on an installation whose mail has never worked, the one thing that
  * cannot be used to tell somebody how to fix it is email. So the rule became a permission.
  *
  * The stored password is write-only. It is never rendered back into the form, an untouched password
@@ -90,7 +90,7 @@ final class MailSettingsController
         $rules = [
             /*
              | Only what this installation could actually send through. config/mail.php has listed
-             | postmark and resend since it was generated, and neither package is required — so a
+             | postmark and resend since it was generated, and neither package is required - so a
              | posted transport must be checked rather than trusted, or the form would accept a
              | setting that fails at send time with a class-not-found hours later.
              */
@@ -139,7 +139,7 @@ final class MailSettingsController
         ]);
 
         // Write-only. A browser sends an untouched password input as an empty string, so blank means
-        // "keep what is stored" — there is nothing to render back into the form and nothing to leave
+        // "keep what is stored" - there is nothing to render back into the form and nothing to leave
         // in the HTML. Clearing one is a separate, explicit act.
         if ($request->boolean('clear_password')) {
             $settings->password = null;
@@ -157,7 +157,7 @@ final class MailSettingsController
         $settings->updated_by = $request->user()->id;
         $settings->save();
 
-        // So the rest of this request — including the test send sitting beside the save button —
+        // So the rest of this request - including the test send sitting beside the save button —
         // uses what was just saved rather than what it replaced.
         $this->configuration->markStale();
 
@@ -173,7 +173,7 @@ final class MailSettingsController
 
         return back()->with(
             'status',
-            'Saved. Send a test to prove it works — a configuration that validates is not the same as '
+            'Saved. Send a test to prove it works - a configuration that validates is not the same as '
                 .'mail arriving.',
         );
     }
@@ -182,7 +182,7 @@ final class MailSettingsController
      * Discard the stored configuration and go back to the environment.
      *
      * The complete undo, and the reason this feature stores an override rather than editing `.env`.
-     * Nothing about signing in depends on mail, so a live session can always reach this — which is
+     * Nothing about signing in depends on mail, so a live session can always reach this - which is
      * what makes a saved-but-broken relay recoverable by somebody with no shell.
      */
     public function forget(Request $request, Organisation $organisation): RedirectResponse
@@ -237,7 +237,7 @@ final class MailSettingsController
         try {
             Mail::raw(
                 "This is a test message from Manager.\n\n"
-                    .'If you are reading it, this installation can send email — which means password '
+                    .'If you are reading it, this installation can send email - which means password '
                     .'resets, invitations and notification emails will reach people.',
                 static fn (Message $message) => $message->to($user->email)->subject('Manager test message'),
             );
@@ -254,7 +254,7 @@ final class MailSettingsController
 
             $message = sprintf('The message was not sent (%s). ', class_basename($e))
                 .($this->configuration->stored() !== null
-                    ? 'Check the settings above — "Use the environment configuration" puts back whatever the server\'s .env holds.'
+                    ? 'Check the settings above - "Use the environment configuration" puts back whatever the server\'s .env holds.'
                     : 'Check the MAIL_* variables in the environment, or configure a relay above.');
 
             // Only offered to a reader who has a shell to run it in. See App\Contracts\ServerAccess.
@@ -275,7 +275,7 @@ final class MailSettingsController
 
         return back()->with(
             'status',
-            "Sent to {$user->email}. The transport accepted it, which is not the same as it arriving — check your inbox.",
+            "Sent to {$user->email}. The transport accepted it, which is not the same as it arriving - check your inbox.",
         );
     }
 
@@ -298,7 +298,7 @@ final class MailSettingsController
     {
         /*
          | 404 before 403, deliberately. On a hosted edition this screen does not exist, and it must
-         | not answer differently for an owner than for anybody else — a 403 would confirm there is
+         | not answer differently for an owner than for anybody else - a 403 would confirm there is
          | something there to be forbidden from.
          |
          | Refused rather than merely hidden, for the reason the test send has carried since it was

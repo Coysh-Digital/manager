@@ -36,7 +36,7 @@
 
                 <p class="max-w-[80ch] text-[12px] leading-relaxed text-text-3">
                     Your name appears beside everything this account does in the audit log, so it is
-                    worth keeping current. The email address cannot be changed here — it is how you
+                    worth keeping current. The email address cannot be changed here - it is how you
                     sign in, how a password reset reaches you, and what every audit entry already
                     written is filed against, so moving it is an account recovery process rather than a
                     field. An owner can invite a new account and revoke this one.
@@ -87,8 +87,8 @@
 
                 <p class="max-w-[80ch] text-[12px] leading-relaxed text-text-3">
                     This is yours alone and changes nothing anybody else sees. It decides how dated
-                    times are printed — audit entries, when a backup was taken, when a site fell
-                    silent — and nothing about when anything runs: a backup schedule reads the
+                    times are printed - audit entries, when a backup was taken, when a site fell
+                    silent - and nothing about when anything runs: a backup schedule reads the
                     zone set on that site, so moving this will not move the hour any site is backed
                     up at.
                 </p>
@@ -146,7 +146,7 @@
 
                 {{-- Said before it happens rather than discovered after. --}}
                 <p class="max-w-[80ch] text-[12px] leading-relaxed text-text-3">
-                    At least twelve characters, and checked against known breach corpora — the same
+                    At least twelve characters, and checked against known breach corpora - the same
                     rule a password reset applies, because two policies for one secret is one policy
                     and one loophole. Changing it signs out every other session on this account, which
                     is the point if you are changing it because something felt wrong.

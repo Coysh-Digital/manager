@@ -19,7 +19,7 @@ use Illuminate\Http\Request;
  * Requires `inventory:read`, checked by middleware before this runs.
  *
  * A payload that fails the allowlist is refused and audited, but the payload itself is never
- * recorded anywhere — a report that failed validation is exactly where forbidden data would be if
+ * recorded anywhere - a report that failed validation is exactly where forbidden data would be if
  * a connector were misbehaving, so writing it to the log to help debugging would defeat the point
  * of rejecting it. The field paths are enough to fix a connector; the values are not needed.
  */

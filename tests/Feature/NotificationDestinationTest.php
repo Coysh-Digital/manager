@@ -80,7 +80,7 @@ it('generates a signing secret for a webhook and shows it once', function (): vo
 
     $response->assertSessionHas('freshSigningSecret', $secret);
 
-    // Once, on the screen the creation redirects to — a receiver needs it in order to verify
+    // Once, on the screen the creation redirects to - a receiver needs it in order to verify
     // deliveries...
     $this->actingAs($this->owner)->get('/settings/notifications')->assertOk()->assertSee($secret);
 

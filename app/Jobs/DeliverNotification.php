@@ -17,7 +17,7 @@ use Illuminate\Support\Carbon;
 /**
  * Delivers one notification to one destination.
  *
- * Queued so a slow destination cannot delay whatever triggered it — a hanging webhook must not make a
+ * Queued so a slow destination cannot delay whatever triggered it - a hanging webhook must not make a
  * connector's report time out, because that would turn a misconfigured destination into a site that
  * appears to have stopped reporting.
  *

@@ -23,7 +23,7 @@ final class MailConfigurationServiceProvider extends ServiceProvider
          | extend(), not singleton('mail.manager', ...), and the distinction is load-bearing.
          |
          | MailServiceProvider is deferred. The container still lists 'mail.manager' among its
-         | deferred services, so the first make() loads that provider — and its own
+         | deferred services, so the first make() loads that provider - and its own
          | singleton('mail.manager', ...) would land after anything bound here and silently win.
          |
          | The symptom would be no symptom at all: mail would quietly go on using the environment,

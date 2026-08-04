@@ -73,7 +73,7 @@ final class GenerateBackupKeysCommand extends Command
         }
 
         // As above: saying nothing was saved matters more here than anywhere. A lost backup key does
-        // not announce itself — every backup still appears to succeed, and none of them can be opened.
+        // not announce itself - every backup still appears to succeed, and none of them can be opened.
         $this->line('  Nothing was written: there is no writable .env here, which is normal in a');
         $this->line('  container. Add both lines to the environment Manager starts with, then restart it.');
         $this->newLine();

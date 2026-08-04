@@ -20,7 +20,7 @@ use Throwable;
  * `add()` also keeps this portable across phpredis and predis, so the deployment's choice of
  * extension is not something replay protection depends on.
  *
- * If the store is unreachable this **fails closed** — see {@see self::claim()}. That is invariant
+ * If the store is unreachable this **fails closed** - see {@see self::claim()}. That is invariant
  * 15, and it is the one place in the system where availability deliberately loses to correctness.
  */
 final class NonceStore
@@ -70,7 +70,7 @@ final class NonceStore
      * The configured store.
      *
      * It must be shared and atomic. An in-process store such as "array", or a non-atomic one such
-     * as "file", would let a replay through on a second worker — `manager:doctor` checks for this.
+     * as "file", would let a replay through on a second worker - `manager:doctor` checks for this.
      */
     private function store(): Repository
     {
