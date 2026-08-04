@@ -10,6 +10,7 @@ use App\Contracts\DirectUploadGrants;
 use App\Contracts\KeyService;
 use App\Contracts\MailAdministration;
 use App\Contracts\ObjectStore;
+use App\Contracts\PairingAddress;
 use App\Contracts\ProductLabel;
 use App\Contracts\Provisioner;
 use App\Contracts\ServerAccess;
@@ -23,6 +24,7 @@ use App\Support\SelfHosted\ConfiguredQuota;
 use App\Support\SelfHosted\DerivedKeyService;
 use App\Support\SelfHosted\DiskObjectStore;
 use App\Support\SelfHosted\NoDirectUploads;
+use App\Support\SelfHosted\NoPublishedAddress;
 use App\Support\SelfHosted\NullProvisioner;
 use App\Support\SelfHosted\OwnServerAccess;
 use App\Support\SelfHosted\SelfHostedBilling;
@@ -71,6 +73,13 @@ class AppServiceProvider extends ServiceProvider
         // timing out underneath it. Hosted, "run this on the server" is an instruction for a
         // machine they have no account on.
         $this->app->singletonIf(ServerAccess::class, OwnServerAccess::class);
+
+        // The address a managed site should pair against. Self-hosted this answers null: the
+        // operator chose it, and APP_URL is what this application generates links with rather than a
+        // promise about what a Craft site elsewhere can reach. A hosted edition knows, because it
+        // published the name — and has to say so when it serves connector traffic somewhere other
+        // than the address the reader is looking at.
+        $this->app->singletonIf(PairingAddress::class, NoPublishedAddress::class);
 
         // Where to send somebody to manage what they pay. Nobody bills a self-hosted installation,
         // so this answers null and every part of the interface that would link to billing stays

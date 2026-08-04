@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Contracts\MailAdministration;
+use App\Contracts\PairingAddress;
 use App\Contracts\ServerAccess;
 use App\Domain\Health\Check;
 use App\Domain\Health\Diagnostics;
@@ -68,6 +69,71 @@ it('does not tell a hosted customer to run a command on a server they have no ac
     ['/settings', 'manager:doctor'],
     ['/activity', 'manager:audit:verify'],
 ]);
+
+/*
+ | Which address a site is told to pair against.
+ |
+ | The third case of the same shape, and the most expensive one so far. A hosted edition does not
+ | necessarily serve connector traffic on the hostname the reader is looking at — a backup is one
+ | request carrying an entire encrypted database, and the address a browser reaches a control panel
+ | on is usually the one behind a proxy that caps a request body. A site paired against it reports
+ | normally and then fails every backup, refused in front of the platform, with no correlation
+ | identifier and nothing in the log.
+ |
+ | Self-hosted the honest answer is silence. The operator chose the address; APP_URL is what this
+ | application generates links with, not a promise about what a Craft site elsewhere can reach, and a
+ | wrong address on this panel would be read as instruction and followed.
+ */
+function publishes(string $url): void
+{
+    app()->instance(PairingAddress::class, new class($url) implements PairingAddress
+    {
+        public function __construct(private readonly string $url) {}
+
+        public function url(): ?string
+        {
+            return $this->url;
+        }
+    });
+}
+
+it('names the address to pair against when one has been published', function (): void {
+    publishes('https://api.example.test');
+
+    $this->actingAs($this->owner)
+        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
+        ->post('/sites', [
+            'name' => 'Example Client',
+            'expected_domain' => 'example.org',
+            'environment' => 'production',
+        ]);
+
+    $this->actingAs($this->owner)->get(route('sites.show', Site::query()->where('name', 'Example Client')->sole()))
+        ->assertOk()
+        ->assertSee('https://api.example.test')
+        // And on the command, or the two doors disagree about where the same site pairs.
+        ->assertSee('--platform-url=https://api.example.test', false);
+});
+
+it('says nothing about an address on a self-hosted installation', function (): void {
+    // The default binding, left alone deliberately — this is the case that must render with the
+    // sentence absent rather than with a guess in it.
+    expect(app(PairingAddress::class)->url())->toBeNull();
+
+    $this->actingAs($this->owner)
+        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
+        ->post('/sites', [
+            'name' => 'Example Client',
+            'expected_domain' => 'example.org',
+            'environment' => 'production',
+        ]);
+
+    $this->actingAs($this->owner)->get(route('sites.show', Site::query()->where('name', 'Example Client')->sole()))
+        ->assertOk()
+        ->assertSee('manager-connector/pair')
+        ->assertDontSee('Pair against')
+        ->assertDontSee('--platform-url');
+});
 
 it('does not tell a hosted customer to run a command on a site screen either', function (
     string $suffix,

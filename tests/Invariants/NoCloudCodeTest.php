@@ -8,6 +8,7 @@ use App\Contracts\DirectUploadGrants;
 use App\Contracts\KeyService;
 use App\Contracts\MailAdministration;
 use App\Contracts\ObjectStore;
+use App\Contracts\PairingAddress;
 use App\Contracts\ProductLabel;
 use App\Contracts\Provisioner;
 use App\Contracts\ServerAccess;
@@ -16,6 +17,7 @@ use App\Support\SelfHosted\ConfiguredQuota;
 use App\Support\SelfHosted\DerivedKeyService;
 use App\Support\SelfHosted\DiskObjectStore;
 use App\Support\SelfHosted\NoDirectUploads;
+use App\Support\SelfHosted\NoPublishedAddress;
 use App\Support\SelfHosted\NullProvisioner;
 use App\Support\SelfHosted\OwnServerAccess;
 use App\Support\SelfHosted\SelfHostedBilling;
@@ -181,6 +183,7 @@ it('keeps the edition seams as contracts rather than as dependencies', function 
         BillingAdministration::class => SelfHostedBilling::class,
         BackupSizeLimit::class => SiteDecidesBackupSize::class,
         ServerAccess::class => OwnServerAccess::class,
+        PairingAddress::class => NoPublishedAddress::class,
     ];
 
     foreach ($seams as $contract => $implementation) {
