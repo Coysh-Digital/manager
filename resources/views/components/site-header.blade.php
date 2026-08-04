@@ -47,6 +47,18 @@
 {{-- Shown once, on the request that issued it. Only the hash is stored, so there is no route
      that will show it again — which is exactly why it is safe to show here. --}}
 @if (session('enrolmentCode'))
+    @php
+        // Null on a self-hosted installation, where the operator chose the address and this
+        // application cannot know it. Non-null only where somebody published a name for connector
+        // traffic — see App\Contracts\PairingAddress.
+        $pairingAddress = app(\App\Contracts\PairingAddress::class)->url();
+
+        // Built once and used for both the visible command and the copy button. They were two
+        // separate literals, which is the arrangement where one of them quietly stops matching.
+        $pairCommand = 'php craft manager-connector/pair '.session('enrolmentCode')
+            .($pairingAddress !== null ? ' --platform-url='.$pairingAddress : '');
+    @endphp
+
     <div class="mb-5 rounded-[10px] border border-primary bg-pale p-4">
         <p class="mb-1.5 text-[13.5px] font-medium">Enrolment code — shown once</p>
         <p class="mb-3 text-[12.5px] text-text-2">
@@ -70,6 +82,19 @@
             </button>
         </div>
 
+        {{-- Only where an address was published. Self-hosted this is absent rather than guessed:
+             APP_URL is what this application generates links with, not a promise about what a Craft
+             site somewhere else can reach, and a wrong address here would be read as instruction. --}}
+        @if ($pairingAddress !== null)
+            <p class="mb-3 text-[12.5px] text-text-2">
+                Pair against
+                <code class="rounded bg-surface-2 px-1.5 py-0.5 font-mono text-[12px]">{{ $pairingAddress }}</code>
+                — enter that as the Manager platform address on the site. It is deliberately not the
+                address of this page: a backup is a single request carrying the whole database, and
+                connector traffic is served separately so that it can carry one.
+            </p>
+        @endif
+
         <details class="group">
             <summary class="cursor-pointer list-none text-[12.5px] text-text-2 hover:text-text">
                 <span class="group-open:hidden">Show the command to run on the site</span>
@@ -86,10 +111,10 @@
 
                 <div class="flex flex-wrap items-center gap-2">
                     <code id="enrolment-command"
-                          class="flex-1 overflow-x-auto rounded-lg bg-surface-2 px-3 py-2 font-mono text-[12px] whitespace-nowrap">php craft manager-connector/pair {{ session('enrolmentCode') }}</code>
+                          class="flex-1 overflow-x-auto rounded-lg bg-surface-2 px-3 py-2 font-mono text-[12px] whitespace-nowrap">{{ $pairCommand }}</code>
 
                     <button type="button"
-                            data-copy="php craft manager-connector/pair {{ session('enrolmentCode') }}"
+                            data-copy="{{ $pairCommand }}"
                             data-copy-from="enrolment-command"
                             class="h-8 flex-none rounded-[7px] border border-border-2 bg-surface px-3 text-[12.5px] text-text hover:bg-row-hover">
                         <span data-copy-label>Copy</span>
