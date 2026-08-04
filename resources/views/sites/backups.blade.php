@@ -448,11 +448,28 @@
                         </table>
                     </div>
 
+                    {{--
+                        This paragraph used to end "this platform holds the key that opens them, so it
+                        is not end-to-end encryption". That was written for the v1 format and was left
+                        in place when v2 arrived, so it went on contradicting the rows directly above
+                        it, each of which names the recovery keys its artifact is sealed to.
+
+                        It is not a nuance. `BackupService` writes `wrapped_key => null` for a v2
+                        artifact, and its decrypt path refuses one outright: "This platform cannot
+                        decrypt that artifact." A screen asserting the opposite of what the code does
+                        is worse than a screen saying nothing, because somebody reasons from it.
+
+                        The pre-recovery-key case has not been dropped, it has moved to where it can
+                        be said precisely: those artifacts are labelled on their own rows, and the
+                        retrieval panel below has a section for them.
+                    --}}
                     <div class="bg-surface-2 px-3.5 py-2.5 text-[12px] leading-relaxed text-text-3">
                         Each artifact is encrypted on the site with its own key before it is uploaded,
-                        and stored to <span class="font-mono">{{ $storage }}</span>. This platform holds
-                        the key that opens them, so it is not end-to-end encryption and is not described
-                        as such — treat the backup store as being as sensitive as the site itself.
+                        and stored to <span class="font-mono">{{ $storage }}</span>. That key is sealed
+                        to this organisation's recovery keys, which exist only where you put them, so
+                        an artifact opens with one of those and with nothing held here. A backup is
+                        still a complete copy of the database — treat the store as being as sensitive
+                        as the site itself.
                     </div>
                 </div>
 

@@ -74,7 +74,15 @@ final class BackupReadiness
             $blockers[] = 'This site has no active connector, so there is nothing to ask.';
         }
 
-        $organisation = $site->organisation;
+        // Loaded explicitly rather than read off the relation, because reading it implicitly is a
+        // lazy load and `AppServiceProvider` prevents those outside production. That made both
+        // backups screens throw a 500 on every non-production environment while production got away
+        // with a silent query per row — the worst pairing, since the environment that would have
+        // shown somebody the problem is the one nobody screenshots.
+        //
+        // `loadMissing` is a no-op where the caller has already eager-loaded it, which
+        // `BackupController::index` now does so the fleet screen stays at one query.
+        $organisation = $site->loadMissing('organisation')->organisation;
         $activeKeys = $organisation === null ? 0 : count($this->keys->recipientsFor($organisation));
 
         if ($activeKeys === 0) {

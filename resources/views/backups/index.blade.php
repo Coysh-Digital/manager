@@ -56,15 +56,31 @@
             </div>
         @endif
 
-        {{-- Said once, at the top, rather than implied by the word "encrypted". The specification is
-             explicit that end-to-end encryption must not be claimed unless it is true, and here it is
-             not: this platform holds the key. --}}
+        {{--
+            Said once, at the top, rather than implied by the word "encrypted".
+
+            The second half of this used to read "but this platform can decrypt them, so this is not
+            end-to-end encryption". True of the v1 format, and left standing when v2 replaced it — so
+            the screen went on saying it above a table where every row names the recovery keys its
+            artifact is sealed to.
+
+            `BackupService` writes `wrapped_key => null` for a v2 artifact and its decrypt path
+            refuses one with "This platform cannot decrypt that artifact", so the sentence was the
+            opposite of what the code does. The specification's rule is that end-to-end encryption
+            must not be *claimed* unless it is true; it does not ask for a disclaimer that is false in
+            the other direction, and a security notice nobody can rely on teaches people to skip the
+            notices.
+
+            What has not changed is the first half. The sensitivity of a database dump does not depend
+            on who can decrypt it: whoever reaches the storage still holds every customer's data in
+            ciphertext, and the retention, deletion and audit rules exist for that.
+        --}}
         <div class="mb-3.5 rounded-[10px] border border-border bg-surface-2 px-4 py-3 text-[12.5px] text-text-2">
             A backup is a complete copy of a site's database, including user accounts, password hashes
             and any personal information the site holds. Each one is encrypted on the site with its own
-            key before it is uploaded, which protects it in storage and in transit — but this platform
-            can decrypt them, so this is not end-to-end encryption. Treat the backup store as being as
-            sensitive as the sites themselves.
+            key before it is uploaded, and that key is sealed to this organisation's recovery keys —
+            which exist only where you put them — so an artifact opens with one of those and with
+            nothing held here. Treat the backup store as being as sensitive as the sites themselves.
         </div>
 
         {{-- Requested and not yet arrived. Above the stored artifacts, because it is the thing

@@ -49,18 +49,34 @@ it('says nothing has permission when nothing does', function (): void {
         ->assertSee('never offered as a switch');
 });
 
-it('never claims end-to-end encryption', function (): void {
+it('says who holds the key, and does not claim to hold one it does not', function (): void {
     CapabilityGrant::factory()->for($this->site)->capability('backups:create')->create();
 
     $html = $this->actingAs($this->owner)->get('/backups')->assertOk()->getContent();
 
-    // The specification is explicit: do not claim end-to-end encryption unless the platform genuinely
-    // cannot decrypt. It can, so the screen has to say so.
-    // Asserted as short phrases rather than a sentence, because the sentence wraps in the template and
-    // a whitespace-sensitive assertion would break on reformatting rather than on a real change.
-    expect($html)->toContain('not end-to-end encryption')
-        ->and($html)->toContain('can decrypt them')
-        ->and($html)->toContain('password hashes');
+    /*
+     | This assertion used to be the other way round. It required the screen to say "not end-to-end
+     | encryption" and "can decrypt them", and its comment explained that the platform can decrypt,
+     | "so the screen has to say so".
+     |
+     | That was written for the v1 format and stopped being true when v2 replaced it. `BackupService`
+     | writes `wrapped_key => null` for a v2 artifact and its decrypt path refuses one outright with
+     | "This platform cannot decrypt that artifact", so the test was holding the screen to a claim the
+     | code contradicts, above a table where every row names the recovery keys its artifact is sealed
+     | to.
+     |
+     | The rule the specification actually sets is one-directional: never claim end-to-end encryption
+     | unless it is true. It does not ask for a disclaimer that is false in the other direction. So
+     | this now asserts the honest description, and asserts the old claim has not crept back.
+     |
+     | Short phrases rather than a sentence, because the copy wraps in the template and a
+     | whitespace-sensitive assertion would break on reformatting rather than on a real change.
+     */
+    expect($html)->toContain('sealed to this organisation')
+        ->and($html)->toContain('nothing held here')
+        // The sensitivity of a dump does not depend on who can decrypt it, so this half stays.
+        ->and($html)->toContain('password hashes')
+        ->and($html)->not->toContain('can decrypt them');
 });
 
 it('lists artifacts with their checksum and retention date', function (): void {
