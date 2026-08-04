@@ -198,3 +198,33 @@ it('remembers a nonce for at least as long as its timestamp stays acceptable', f
     expect(app(NonceStore::class)->ttl())
         ->toBeGreaterThanOrEqual(2 * (int) config('manager.connector.timestamp_tolerance'));
 });
+
+it('records the version a connector is running, not the one it paired on', function (): void {
+    // This was recorded at pairing and never again, so a site that upgraded its plugin went on
+    // being described by the release it had left behind — on the fleet screens and on every
+    // activity line, which is where somebody looks first when deciding whether a version is
+    // implicated in a failure.
+    $this->connector->forceFill(['connector_version' => '1.8.0'])->save();
+
+    postSignedConnectorRequest($this->path, [], $this->site, $this->keypair['secret'], [
+        'connector_version' => '1.12.0',
+    ])->assertOk();
+
+    expect($this->connector->fresh()->connector_version)->toBe('1.12.0')
+        // The heartbeat row reads through the connector, so it carries the new version too rather
+        // than preserving the stale one alongside a fresh timestamp.
+        ->and(Heartbeat::query()->latest('id')->first()?->connector_version)->toBe('1.12.0');
+});
+
+it('will not record a version from a request that failed to verify', function (): void {
+    $this->connector->forceFill(['connector_version' => '1.8.0'])->save();
+
+    // A version is only worth storing because it is signed. Take the signature away and it is an
+    // unauthenticated string in a header, which must not reach the column the screens read.
+    postSignedConnectorRequest($this->path, [], $this->site, $this->keypair['secret'], [
+        'connector_version' => '9.9.9',
+        'signature' => 'bogus',
+    ])->assertUnauthorized();
+
+    expect($this->connector->fresh()->connector_version)->toBe('1.8.0');
+});
