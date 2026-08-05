@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Domain\Notifications\EmailCopy;
 use App\Models\User;
 use App\Notifications\TeamInvitation;
 use Illuminate\Support\Facades\File;
@@ -57,6 +58,30 @@ it('keeps the email theme in step with the interface palette', function (string 
     ['--border', '#e5e1db'],
     ['--pale', '#fcebe6'],
 ]);
+
+it('escapes markup an operator types into an override', function (): void {
+    /*
+     | Operator-entered copy is rendered through Laravel's markdown pipeline, which is configured to
+     | escape raw HTML and to strip unsafe link schemes. Both are defaults, and both are one line in
+     | config/mail.php away from not being — so this asserts the behaviour rather than the setting.
+     |
+     | The threat is not really an operator attacking their own customers. It is that this is the one
+     | screen where free text typed into a back-office ends up rendered in somebody else's inbox, and
+     | a pasted fragment carrying a script tag or a javascript: link should fail closed.
+     */
+    app(EmailCopy::class)->put(
+        TeamInvitation::COPY_KEY,
+        subject: null,
+        body: "<script>alert(1)</script>\n\n[Click here](javascript:alert(1))",
+    );
+
+    $rendered = (string) (new TeamInvitation('token', 'Coysh Digital', 'Tim'))
+        ->toMail(new User(['name' => 'Invitee', 'email' => 'invitee@example.org']))
+        ->render();
+
+    expect($rendered)->not->toContain('<script>')
+        ->and($rendered)->not->toContain('javascript:');
+});
 
 it('leaves the findings alerts as plain text', function (): void {
     /*

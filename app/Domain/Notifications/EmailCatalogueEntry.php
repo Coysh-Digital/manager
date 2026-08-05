@@ -33,6 +33,7 @@ final class EmailCatalogueEntry
         public readonly string $recipients,
         public readonly string $edition,
         public readonly ?string $notification,
+        public readonly ?EmailCopyTemplate $copy = null,
     ) {}
 
     /**
@@ -41,14 +42,18 @@ final class EmailCatalogueEntry
      * @param  string|null  $notification  the class, where there is one — several of the core's
      *                                     emails are Mail::raw or come from the framework, and a
      *                                     made-up class name would be worse than an honest null
+     * @param  EmailCopyTemplate|null  $copy  the shipped wording, where an operator is allowed to
+     *                                        change it. Its presence is what makes an entry
+     *                                        editable — see {@see self::editable()}
      */
     public static function core(
         string $name,
         string $trigger,
         string $recipients,
         ?string $notification = null,
+        ?EmailCopyTemplate $copy = null,
     ): self {
-        return new self($name, $trigger, $recipients, self::CORE, $notification);
+        return new self($name, $trigger, $recipients, self::CORE, $notification, $copy);
     }
 
     public static function hosted(
@@ -56,8 +61,9 @@ final class EmailCatalogueEntry
         string $trigger,
         string $recipients,
         ?string $notification = null,
+        ?EmailCopyTemplate $copy = null,
     ): self {
-        return new self($name, $trigger, $recipients, self::HOSTED, $notification);
+        return new self($name, $trigger, $recipients, self::HOSTED, $notification, $copy);
     }
 
     /**
@@ -78,6 +84,29 @@ final class EmailCatalogueEntry
         }
 
         return is_a($this->notification, ShouldQueue::class, true);
+    }
+
+    /**
+     * May an operator change what this one says?
+     *
+     * Derived from whether there is wording to change, rather than declared beside it, for the same
+     * reason {@see self::queued()} is derived: two fields that have to agree eventually do not. An
+     * entry marked editable with no template would offer an empty editor, and one carrying a
+     * template but marked uneditable would be wording nothing can reach.
+     *
+     * The emails that deliberately have no template: the monitoring alerts, which go out through
+     * Mail::raw as plain text because an HTML mail about a security finding is a phishing template
+     * somebody has been trained to click; and the password reset, which is the framework's and not
+     * ours to reword.
+     */
+    public function editable(): bool
+    {
+        return $this->copy !== null;
+    }
+
+    public function key(): ?string
+    {
+        return $this->copy?->key;
     }
 
     public function isHosted(): bool
