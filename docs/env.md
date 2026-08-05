@@ -97,8 +97,8 @@ while this is unconfigured, and `manager:user:password` exists as the way in whe
 ### Overriding them from the interface
 
 An **owner** of a self-hosted installation can configure a relay under **Settings → Mail** without a
-shell. It is owner-only, and it does not exist on Manager Cloud, where the relay belongs to us rather
-than to the reader.
+shell. It is owner-only, and it is absent on a hosted installation, where the relay belongs to
+whoever runs the service rather than to the reader.
 
 - The override lives in the `mail_settings` table, one row, with the credential encrypted under
   `APP_KEY` - the same way a TOTP secret and a webhook signing secret are held. It is write-only:
