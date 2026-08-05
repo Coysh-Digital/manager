@@ -1,11 +1,12 @@
 @php
     /*
-     | Eight screens, in the order somebody works through them: what this installation is, who they
-     | are, how they get in, who else can, what gets told about it, what this installation will ever
-     | send, what can open a backup, and how mail leaves.
+     | Seven screens, in the order somebody works through them: what this installation is, who they
+     | are, how they get in, who else can, what gets told about it, what can open a backup, and how
+     | mail leaves.
      |
      | The count in that first sentence is load-bearing prose and goes stale the moment somebody adds
-     | a tab without reading it. If you are adding one, this line is the second edit.
+     | a tab without reading it. If you are adding one, this line is the second edit — and so is the
+     | count in the comment above the nav below, which says the same thing about a different number.
      |
      | `also` exists because the writes on these screens are named for the thing they act on rather
      | than for the screen - team.invite, recovery-keys.revoke, notifications.store, passkeys.store.
@@ -25,10 +26,6 @@
             'also' => ['account.totp.*', 'account.recovery-codes', 'account.sessions.*', 'passkeys.*']],
         ['route' => 'settings.people', 'label' => 'People', 'also' => ['team.*']],
         ['route' => 'settings.notifications', 'label' => 'Notifications', 'also' => ['notifications.*']],
-
-        // Beside Notifications, which says where mail goes, because this says what is sent. Neither
-        // is much use without the other.
-        ['route' => 'settings.emails', 'label' => 'Emails'],
 
         ['route' => 'settings.recovery-keys', 'label' => 'Recovery keys', 'also' => ['recovery-keys.*']],
     ];
@@ -51,7 +48,7 @@
 @endphp
 
 {{-- Scrolls sideways rather than wrapping to two rows on a phone, for the same reason the site tabs
-     do: seven tabs wrapped is a block of navigation taller than the content under it.
+     do: six tabs wrapped is a block of navigation taller than the content under it.
 
      `relative` is load-bearing. An sr-only element inside an unpositioned overflow-x-auto container
      resolves its absolute position against the page and extends the document sideways —

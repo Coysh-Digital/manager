@@ -25,6 +25,16 @@ use App\Notifications\TeamInvitation;
  * A hosting layer appends to this from its service provider's `boot()` — not `register()`, because a
  * package provider registers before the application's own and this singleton may not exist yet.
  * Nothing in this repository knows or cares whether anything does.
+ *
+ * **Nothing in this repository renders it any more.** The screen this fed was on the customer's
+ * settings tabs, where it answered an operator's question — what can this installation send, and
+ * what causes it — for an audience that had not asked it. That is now the hosting layer's
+ * back-office, which is also the only place the wording can be edited from.
+ *
+ * The registry earns its place regardless, and would even with no reader at all. It is what
+ * `tests/Invariants/EmailCatalogueTest.php` asserts completeness against: a notification class added
+ * without an entry here fails the build, which is the property that makes any screen built on it
+ * trustworthy. A list nobody checks is what this exists to avoid being.
  */
 final class EmailCatalogue
 {
