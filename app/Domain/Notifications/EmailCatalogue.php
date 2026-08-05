@@ -69,6 +69,34 @@ final class EmailCatalogue
     }
 
     /**
+     * Everything whose wording an operator may change.
+     *
+     * @return list<EmailCatalogueEntry>
+     */
+    public function editable(): array
+    {
+        return array_values(array_filter($this->all(), static fn (EmailCatalogueEntry $e): bool => $e->editable()));
+    }
+
+    /**
+     * One entry, by its copy key.
+     *
+     * Only editable entries have a key, so this is also the check an editing screen needs: a key
+     * that resolves to nothing is either unknown or names an email nobody may reword, and both
+     * deserve the same answer.
+     */
+    public function find(string $key): ?EmailCatalogueEntry
+    {
+        foreach ($this->entries as $entry) {
+            if ($entry->key() === $key) {
+                return $entry;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * What the core itself sends.
      *
      * The monitoring alerts are derived from {@see NotificationEvent::catalogue()} rather than listed
@@ -98,6 +126,10 @@ final class EmailCatalogue
                 trigger: 'An owner or administrator invites somebody in Settings → People, or resends an invitation.',
                 recipients: 'The person being invited.',
                 notification: TeamInvitation::class,
+
+                // Taken from the class rather than restated, so the wording advertised here and the
+                // wording that sends cannot come apart.
+                copy: TeamInvitation::copy(),
             ),
             EmailCatalogueEntry::core(
                 name: 'Test message',
