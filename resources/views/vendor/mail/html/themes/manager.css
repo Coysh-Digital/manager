@@ -1,0 +1,332 @@
+/*
+ * The Manager email theme.
+ *
+ * Applies to every MailMessage this installation sends: password resets, invitations, and — where a
+ * hosting layer is installed — everything about a subscription. Without it those arrive in Laravel's
+ * stock styling, which is recognisably a framework default rather than a product, and a
+ * password-reset email that looks generic is the one people are most right to distrust.
+ *
+ * Not out of scope, and worth saying which: App\Domain\Notifications\EmailTransport sends the
+ * monitoring and findings alerts as plain text through Mail::raw, deliberately, and none of this
+ * reaches them. Its docblock has the argument — an HTML mail about a security finding is a phishing
+ * template somebody has been trained to click.
+ *
+ * ==================================================================================================
+ * Why these are literal hex values and not var(--token)
+ * ==================================================================================================
+ *
+ * Two independent reasons, and either alone would be enough.
+ *
+ * The medium: email clients have no usable support for custom properties. Outlook's Word engine
+ * ignores them outright, and a var() that does not resolve leaves an element with no colour at all —
+ * so a theme built on tokens degrades to unstyled rather than to plain.
+ *
+ * The repository: resources/css/app.css is parsed by DesignTokenParityTest, which lives in the
+ * *marketing* repository and compares every custom property in a :root block against its own copy of
+ * the palette. A token added here for an email would turn that suite red in a repository nobody
+ * editing this file is looking at.
+ *
+ * So each value below is copied from app.css's light :root and names the token it came from. That
+ * comment is the only link between the two, which is a real cost — but a comment that has gone stale
+ * is a cosmetic problem in an email, and the alternatives are a failing build somewhere else or a
+ * second palette with nothing comparing them.
+ *
+ * Light values only. There is no prefers-color-scheme here: support is patchy and inconsistent
+ * across clients, and an email that renders half-dark is worse than one that renders light in a dark
+ * client. Both are legible.
+ */
+
+body,
+body *:not(html):not(style):not(br):not(tr):not(code) {
+    box-sizing: border-box;
+    font-family: -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    position: relative;
+}
+
+body {
+    -webkit-text-size-adjust: none;
+    background-color: #f7f5f2; /* --bg */
+    color: #1c1917; /* --text */
+    height: 100%;
+    line-height: 1.5;
+    margin: 0;
+    padding: 0;
+    width: 100% !important;
+}
+
+p,
+ul,
+ol,
+blockquote {
+    line-height: 1.6;
+    text-align: left;
+}
+
+a {
+    color: #c9331c; /* --primary */
+}
+
+a img {
+    border: none;
+}
+
+/* Typography */
+
+h1 {
+    color: #1c1917; /* --text */
+    font-size: 18px;
+    font-weight: 600;
+    margin-top: 0;
+    text-align: left;
+}
+
+h2 {
+    font-size: 16px;
+    font-weight: 600;
+    margin-top: 0;
+    text-align: left;
+}
+
+h3 {
+    font-size: 14px;
+    font-weight: 600;
+    margin-top: 0;
+    text-align: left;
+}
+
+p {
+    font-size: 15px;
+    line-height: 1.6;
+    margin-top: 0;
+    text-align: left;
+}
+
+p.sub {
+    font-size: 12px;
+}
+
+img {
+    max-width: 100%;
+}
+
+/* Layout */
+
+.wrapper {
+    -premailer-cellpadding: 0;
+    -premailer-cellspacing: 0;
+    -premailer-width: 100%;
+    background-color: #f7f5f2; /* --bg */
+    margin: 0;
+    padding: 0;
+    width: 100%;
+}
+
+.content {
+    -premailer-cellpadding: 0;
+    -premailer-cellspacing: 0;
+    -premailer-width: 100%;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+}
+
+/* Header */
+
+.header {
+    padding: 25px 0;
+    text-align: center;
+}
+
+.header a {
+    color: #1c1917; /* --text */
+    font-size: 18px;
+    font-weight: 600;
+    text-decoration: none;
+
+    /* Matches the wordmark's tracking in the interface, which is set tight at display sizes. */
+    letter-spacing: -0.015em;
+}
+
+/* Body */
+
+.body {
+    -premailer-cellpadding: 0;
+    -premailer-cellspacing: 0;
+    -premailer-width: 100%;
+    background-color: #f7f5f2; /* --bg */
+    border-bottom: 1px solid #e5e1db; /* --border */
+    border-top: 1px solid #e5e1db; /* --border */
+    margin: 0;
+    padding: 0;
+    width: 100%;
+}
+
+.inner-body {
+    -premailer-cellpadding: 0;
+    -premailer-cellspacing: 0;
+    -premailer-width: 570px;
+    background-color: #ffffff; /* --surface */
+    border: 1px solid #e5e1db; /* --border */
+    border-radius: 10px;
+    margin: 0 auto;
+    padding: 0;
+    width: 570px;
+}
+
+/* Subcopy */
+
+.subcopy {
+    border-top: 1px solid #e5e1db; /* --border */
+    margin-top: 25px;
+    padding-top: 25px;
+}
+
+.subcopy p {
+    font-size: 13px;
+    color: #5d5854; /* --text-2 */
+}
+
+/* Footer */
+
+.footer {
+    -premailer-cellpadding: 0;
+    -premailer-cellspacing: 0;
+    -premailer-width: 570px;
+    margin: 0 auto;
+    padding: 0;
+    text-align: center;
+    width: 570px;
+}
+
+.footer p {
+    color: #8a847f; /* --text-3 */
+    font-size: 12px;
+    text-align: center;
+}
+
+.footer a {
+    color: #8a847f; /* --text-3 */
+    text-decoration: underline;
+}
+
+/* Tables */
+
+.table table {
+    -premailer-cellpadding: 0;
+    -premailer-cellspacing: 0;
+    -premailer-width: 100%;
+    margin: 30px auto;
+    width: 100%;
+}
+
+.table th {
+    border-bottom: 1px solid #e5e1db; /* --border */
+    margin: 0;
+    padding-bottom: 8px;
+}
+
+.table td {
+    color: #1c1917; /* --text */
+    font-size: 15px;
+    line-height: 18px;
+    margin: 0;
+    padding: 10px 0;
+}
+
+.content-cell {
+    max-width: 100vw;
+    padding: 32px;
+}
+
+/* Buttons */
+
+.action {
+    -premailer-cellpadding: 0;
+    -premailer-cellspacing: 0;
+    -premailer-width: 100%;
+    margin: 30px auto;
+    padding: 0;
+    text-align: center;
+    width: 100%;
+}
+
+.button {
+    -webkit-text-size-adjust: none;
+    border-radius: 8px;
+    color: #ffffff; /* --primary-fg */
+    display: inline-block;
+    overflow: hidden;
+    text-decoration: none;
+    font-size: 15px;
+    font-weight: 500;
+    padding: 11px 20px;
+}
+
+/*
+ * One button colour, not three.
+ *
+ * Laravel's default theme gives -primary, -success and -error separate colours, and a MailMessage
+ * picks one with ->success() or ->error(). Every button in this product is the same thing — the one
+ * action the message is asking for — and a red "error" button on an email reporting a failed payment
+ * would read as the danger rather than as the way out of it. The accent is already red; a second
+ * red would mean nothing.
+ */
+.button-blue,
+.button-primary,
+.button-green,
+.button-success,
+.button-red,
+.button-error {
+    background-color: #c9331c; /* --primary */
+    border-bottom: 8px solid #c9331c;
+    border-left: 18px solid #c9331c;
+    border-right: 18px solid #c9331c;
+    border-top: 8px solid #c9331c;
+}
+
+/* Panels */
+
+.panel {
+    border-left: 3px solid #c9331c; /* --primary */
+    margin: 21px 0;
+}
+
+.panel-content {
+    background-color: #fcebe6; /* --pale */
+    color: #1c1917; /* --text */
+    padding: 16px;
+}
+
+.panel-content p {
+    color: #1c1917; /* --text */
+}
+
+.panel-item {
+    padding: 0;
+}
+
+.panel-item p:last-of-type {
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+/* Promotions */
+
+.promotion {
+    background-color: #ffffff; /* --surface */
+    border: 2px dashed #d2cdc6; /* --border-2 */
+    margin: 0;
+    margin-bottom: 25px;
+    margin-top: 25px;
+    padding: 24px;
+    width: 100%;
+}
+
+.promotion h1 {
+    text-align: center;
+}
+
+.promotion p {
+    font-size: 15px;
+    text-align: center;
+}

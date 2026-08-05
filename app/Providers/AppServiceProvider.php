@@ -15,6 +15,7 @@ use App\Contracts\ProductLabel;
 use App\Contracts\Provisioner;
 use App\Contracts\ServerAccess;
 use App\Contracts\StorageQuota;
+use App\Domain\Notifications\EmailCatalogue;
 use App\Models\Finding;
 use App\Models\Organisation;
 use App\Models\Site;
@@ -95,6 +96,19 @@ class AppServiceProvider extends ServiceProvider
         // decides nothing: an installation should say which one it is because of what is wired into
         // it, not because of a string somebody set.
         $this->app->singletonIf(ProductLabel::class, SelfHostedLabel::class);
+
+        /*
+         | Every email this installation can send, and what triggers each one.
+         |
+         | A plain singleton, and deliberately not a contract in app/Contracts. The seams there each
+         | answer one question with one answer per installation; this is the union of what every
+         | installed layer can send, so a hosting layer appends to it rather than replacing it. Using
+         | singletonIf here would be wrong for the same reason: a second implementation is not what is
+         | wanted, an extra call to add() is.
+         |
+         | See App\Domain\Notifications\EmailCatalogue.
+         */
+        $this->app->singleton(EmailCatalogue::class);
 
         /*
          | None of the passkey package's own routes are registered, and this is the single most

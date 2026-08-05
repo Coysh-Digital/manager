@@ -8,9 +8,11 @@ use App\Domain\Audit\AuditRecorder;
 use App\Models\Membership;
 use App\Models\Organisation;
 use App\Models\User;
+use App\Notifications\TeamInvitation;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
+use Throwable;
 
 /**
  * Who has access to this installation, and how they get it.
@@ -98,10 +100,34 @@ final class TeamService
      * Outside the transaction on purpose: a mail server that is slow, or down, must not roll back an
      * invitation that was otherwise valid. The interface reports which of the two happened, and the
      * link can be sent again.
+     *
+     * This used to be `Password::sendResetLink()` and nothing else, which sent the framework's reset
+     * notification: "You are receiving this email because we received a password reset request for
+     * your account", to somebody who has never had an account, about a product they have never used.
+     * The correct response to that email is to delete it as phishing.
+     *
+     * The mechanism is deliberately unchanged. The token still comes from the same broker — single
+     * use, expiring, stored hashed, never seen by the administrator who issued it — because that part
+     * was right. Only the message it arrives in is ours, so `createToken` is called directly and the
+     * notification dispatched with it rather than going through `sendResetLink`, which owns both.
      */
-    public function sendInvitationLink(User $user): bool
+    public function sendInvitationLink(User $user, Organisation $organisation, User $invitedBy): bool
     {
-        return Password::sendResetLink(['email' => $user->email]) === Password::RESET_LINK_SENT;
+        try {
+            $token = Password::broker()->createToken($user);
+        } catch (Throwable) {
+            // Same contract as before: false means nothing was sent and Resend is the way out. The
+            // membership is already committed, so there is nothing to unwind.
+            return false;
+        }
+
+        try {
+            $user->notify(new TeamInvitation($token, $organisation->name, $invitedBy->name));
+        } catch (Throwable) {
+            return false;
+        }
+
+        return true;
     }
 
     /**

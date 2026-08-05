@@ -8,27 +8,48 @@ Node is not required there: compiled assets are committed.
 Back up the database. [backup.md](backup.md) covers this. An upgrade that goes wrong is recoverable
 from a backup and not much else.
 
-Read the release notes. Anything needing manual action is called out there.
+Read the release notes. Anything needing manual action is called out there, and
+[CHANGELOG.md](https://github.com/Coysh-Digital/manager/blob/main/CHANGELOG.md) has the same content
+under **Before you upgrade**.
 
 ## Upgrade
+
+Replace `v1.0.0` below with the version you are moving to.
 
 ```bash
 cd /opt/manager
 git fetch --tags
 
-# Signed tags. Verify before you deploy: this is what stops a tampered release being deployed as a
-# genuine one.
-git verify-tag v1.1.0
-
-git checkout v1.1.0
+git checkout v1.0.0
 cd deploy/docker
 
-docker compose pull
+# Record which release this is, so the interface can say so rather than "unreleased build".
+sed -i 's/^MANAGER_VERSION=.*/MANAGER_VERSION=1.0.0/' .env
+
 docker compose up -d --build
 
 docker compose exec app php artisan manager:doctor
 docker compose exec app php artisan manager:audit:verify
 ```
+
+### Checking what you downloaded
+
+Releases carry a `SHA256SUMS` manifest covering every artifact. If you installed from the tarball
+rather than from a clone, verify it before unpacking:
+
+```bash
+sha256sum -c SHA256SUMS
+```
+
+The tarball is built reproducibly — `git archive` takes its timestamps from the commit and gzip is
+told not to stamp its header — so building the same tag yourself produces byte-identical output. That
+is what lets somebody other than us confirm a published artifact came from the published source.
+
+**Releases are not signed, and nothing here verifies a signature.** This page used to say the
+opposite and told you to run `git verify-tag`, which fails on every release there has ever been: tag
+signing was removed deliberately, there is no `allowed_signers` file, and the release workflow checks
+nothing. The manifest above proves a download is intact. It does not prove who produced it, and
+neither did the instruction it replaced.
 
 Migrations run automatically when the web container starts, under `--isolated`, so only one replica
 applies them however many are running.

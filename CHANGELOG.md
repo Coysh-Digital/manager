@@ -6,9 +6,18 @@ Entries are written for somebody about to upgrade a running installation. Anythi
 action is under **Before you upgrade** - that section is the one to read, and `docs/upgrade.md` points
 here for exactly that reason.
 
-## Unreleased
+## 1.0.0 — 2026-08-05
 
-Nothing is tagged yet. When the first release is cut this section becomes its version.
+The first release.
+
+If you are installing Manager for the first time, there is nothing here you need to act on: the
+**Before you upgrade** notes below describe moving an installation from an earlier state, and a fresh
+install starts in the later one. Follow [docs/install.md](docs/install.md) and skip to **Requires** at
+the end for the versions to pair against.
+
+They do apply to anyone who has been running from a clone of `main` before this tag. That is a real
+installation with real data, and the recovery-key change below will stop its backups until a key is
+registered.
 
 ### Backups are now encrypted to keys you hold, and this platform cannot read them
 
@@ -162,10 +171,14 @@ the one that would need attention, since artifacts taken after the upgrade refer
 
 ### Requires
 
-- **Manager Connector 1.7.0** on managed sites, for the new backup format. Older connectors keep
-  working for everything else and refuse backups rather than producing readable ones.
-- **`manager-protocol` 1.2.0.**
-- **`manager-restore` 1.0.0** on the machine where you keep your recovery key.
+- **PHP 8.3 or later**, PostgreSQL 15+ and Redis 7+. The Docker image ships PHP 8.4.
+- **Manager Connector 1.12.1** on managed sites, for the backup format described above. Older
+  connectors keep working for everything else and refuse backups rather than producing readable ones.
+- **`manager-protocol` ^1.6**, which is what `composer.json` requires and what the connector requires
+  too — both sides of the wire resolve against the same package.
+- **`manager-restore` 1.1.0** on the machine where you keep your recovery key. It is the only thing
+  that can open a backup, and it is installed separately on purpose: it must keep working if this
+  platform does not.
 
 ---
 

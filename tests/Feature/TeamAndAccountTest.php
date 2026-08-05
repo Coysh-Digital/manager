@@ -6,6 +6,7 @@ use App\Models\AuditEvent;
 use App\Models\Membership;
 use App\Models\Organisation;
 use App\Models\User;
+use App\Notifications\TeamInvitation;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -112,8 +113,17 @@ it('invites somebody without ever handling their password', function (): void {
         ->and($invited->memberships()->where('organisation_id', $this->organisation->id)->value('role'))
         ->toBe(Membership::ROLE_MEMBER);
 
-    // They set their own, through the ordinary single-use expiring link.
-    Notification::assertSentTo($invited, ResetPassword::class);
+    /*
+     | They set their own, through the ordinary single-use expiring link.
+     |
+     | The token still comes from the framework's password broker, which is the part that was always
+     | right. What changed is the message carrying it: this used to send ResetPassword, so somebody
+     | who had never had an account was told "we received a password reset request for your account"
+     | by a product they had never used. The correct response to that email is to delete it as
+     | phishing.
+     */
+    Notification::assertSentTo($invited, TeamInvitation::class);
+    Notification::assertNotSentTo($invited, ResetPassword::class);
 
     expect(AuditEvent::query()->where('action', 'member.invited')->exists())->toBeTrue();
 });

@@ -125,7 +125,21 @@ it('contains only what the tag contains', function (): void {
     // developer's uncommitted edit is not built from the tag it claims.
     expect($files)->toContain("manager-{$version}/app/")
         ->and($files)->toContain("manager-{$version}/composer.lock")
-        ->and($files)->not->toContain('/vendor/')
+
+        /*
+         | Installed dependencies, which means the directory Composer writes at the root.
+         |
+         | This was `not->toContain('/vendor/')`, matching the substring at any depth — so it also
+         | caught `resources/views/vendor/`, which is Laravel's own location for overriding a
+         | package's views and is source rather than an installed dependency. It has to ship: the
+         | email theme lives there, and without it every MailMessage renders in stock framework
+         | styling.
+         |
+         | Anchored to the archive root instead, which is what the rule was always about. A tarball
+         | carrying `vendor/` still fails, and that is the thing that would actually be wrong —
+         | dependencies resolved on a build machine rather than by the operator installing it.
+         */
+        ->and($files)->not->toContain("manager-{$version}/vendor/")
         ->and($files)->not->toContain('/node_modules/')
         ->and($files)->not->toContain('/.git/');
 
