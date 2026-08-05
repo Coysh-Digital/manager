@@ -32,7 +32,6 @@ it('renders every tab', function (string $route): void {
     'settings.security',
     'settings.people',
     'settings.notifications',
-    'settings.emails',
     'settings.recovery-keys',
 ]);
 
@@ -56,7 +55,6 @@ it('marks exactly one tab as the current screen', function (string $route): void
     'settings.security',
     'settings.people',
     'settings.notifications',
-    'settings.emails',
     'settings.recovery-keys',
 ]);
 
@@ -92,7 +90,7 @@ it('keeps the settings screens readable by a member who cannot change them', fun
     // What each of these was as a section of the one screen: readable by any member, with every
     // control inside gated on ownership. Moving a section to a route is not a reason to change that.
     $this->actingAs($this->member)->get(route($route))->assertOk();
-})->with(['settings.show', 'settings.people', 'settings.notifications', 'settings.recovery-keys', 'settings.emails']);
+})->with(['settings.show', 'settings.people', 'settings.notifications', 'settings.recovery-keys']);
 
 it('sends somebody who has not enrolled a second factor to the screen that enrols one', function (): void {
     $this->organisation->forceFill(['mfa_required' => true])->save();
