@@ -27,17 +27,10 @@ holding the keys to your clients' databases:
 That is an afternoon to install and an ongoing responsibility to run. Plenty of people want exactly
 that, and this documentation is written for them.
 
-### Or let us run it
-
-**[Manager Cloud](https://managerforcraft.com)** is the same core, hosted, maintained, patched and
-backed up by Coysh Digital. Same connector, same protocol, same security boundaries - the difference
-is that the server, the keys, the storage and the on-call rota are ours.
-
-It is the right answer if you would rather spend your time on client sites than on this one. You can
-move between the two: the connector is identical, so migrating means re-pairing your sites, not
-rebuilding anything.
-
-The rest of this document assumes you are self-hosting.
+If you would rather not take it on, a hosted option exists at
+[managerforcraft.com](https://managerforcraft.com) — same code, same boundaries, with the server and
+the on-call rota ours rather than yours. Nothing on this page is affected either way, and moving
+between the two means re-pairing sites rather than rebuilding anything.
 
 ## Requirements
 

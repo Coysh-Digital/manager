@@ -7,7 +7,7 @@ backups. Answers the question we asked ourselves a lot - "what version is it, is
 
 Installation, configuration, pairing, backups and the security model all live in the docs.
 
-Free software under the **AGPL-3.0-or-later**. If you want to check it out on a hosted site check out [managerforcraft.com](https://managerforcraft.com/)
+Free software under the **AGPL-3.0-or-later**.
 
 Requires PHP 8.3+, PostgreSQL 15+ and Redis 7+. The Docker image ships PHP 8.4.
 
@@ -34,20 +34,20 @@ sits and why.
 **Sites come to it.** Every exchange starts at the Craft site and goes outbound. Nothing listens,
 nothing is pushed, and a site behind NAT needs no inbound firewall rule.
 
-## Self-hosted or hosted by us
+## What running it involves
 
-This repository **is** Manager Self-Hosted, and it is feature-complete. There is no reduced edition
-and nothing held back: every monitoring, findings, jobs and backup feature is here, free to run for
-your own and your clients' sites.
+This repository **is** Manager, and it is feature-complete. There is no reduced edition and nothing
+held back: every monitoring, findings, jobs and backup feature is here, free to run for your own and
+your clients' sites.
 
 Running it means running a security-sensitive service: a patched server, Postgres and Redis, TLS, a
 signing keypair backed up separately from the database, and a backup store holding a copy of every
-managed site's database - as ciphertext, but still. The
-[installation guide](https://managerforcraft.com/docs/install.html) gives a good overview
+managed site's database — as ciphertext, but still. The
+[installation guide](https://managerforcraft.com/docs/install.html) sets out what that takes.
 
-If you would rather not self-host, **[Manager for Craft](https://managerforcraft.com)** is the same core hosted by us: same connector, same protocol, same security boundaries, with the server, the storage
-and the on-call rota ours rather than yours. The connector is identical, so moving between the two
-means re-pairing sites rather than rebuilding anything.
+A hosted option exists at [managerforcraft.com](https://managerforcraft.com) if you would rather not
+run it yourself. It is the same code with the same boundaries; the connector is identical either way,
+so nothing here is a trial of it and nothing is withheld to make it more attractive.
 
 ## Quick start
 
@@ -151,8 +151,8 @@ triggers nothing.
 The connector, the protocol package and the restore tool are MIT, because they run inside somebody
 else's codebase or on somebody else's machine.
 
-This repository is the whole product. Manager Cloud adds no monitoring, findings, jobs or backup
-features that are missing here; it adds the fact that somebody else runs it.
+This repository is the whole product. The hosted option adds no monitoring, findings, jobs or backup
+feature that is missing here; it adds the fact that somebody else runs it.
 
 ## Contributing
 

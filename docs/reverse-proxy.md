@@ -196,9 +196,3 @@ using `cert.pem` where `fullchain.pem` was needed - a browser will accept it and
 not, because it verifies properly. A site that will not pair while the dashboard loads fine in a
 browser is almost always an incomplete chain.
 
-## If you would rather not do any of this
-
-TLS, certificate renewal, body limits, proxy headers and trusted ranges are all part of running a
-security-sensitive service yourself. [Manager Cloud](https://managerforcraft.com) is the same core
-with that already done. Same connector, same protocol - the difference is whose problem the
-certificate renewal is.

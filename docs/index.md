@@ -30,17 +30,15 @@ rule at all.
 nothing else. Everything past that is granted per site, and taking a backup needs its own deliberate
 confirmation. See [Permissions](/capabilities).
 
-## Two editions, same code
+## Nothing is held back
 
-**Manager Self-Hosted** is this repository. Free, complete, and yours to run. Everything is here:
-there is no reduced edition and nothing held back for a paid tier.
+This repository is the whole product. Every monitoring, findings, jobs and backup feature is here,
+free to run for your own and your clients' sites — there is no reduced edition and nothing reserved
+for a paid tier.
 
-**[Manager Cloud](https://managerforcraft.com)** is the same core, run by us. Same connector, same
-protocol, same security boundaries. What you are paying for is that the server, the storage and the
-on-call rota are somebody else's problem.
-
-You can move between them. The connector is identical, so migrating means re-pairing your sites
-rather than rebuilding anything.
+A hosted option exists at [managerforcraft.com](https://managerforcraft.com) for people who would
+rather not run a security-sensitive service themselves. It is the same code, and the connector is
+identical, so moving between the two means re-pairing sites rather than rebuilding anything.
 
 These docs are for self-hosting.
 
