@@ -4,7 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Domain\Backup\FailedBackupJob;
+use App\Domain\Backup\FailedBackupJobs;
 use App\Domain\Capability\CapabilityService;
+use App\Domain\Health\SiteUptime;
+use App\Domain\Health\UptimeWindow;
 use App\Domain\Job\JobRejectedException;
 use App\Domain\Job\JobService;
 use App\Domain\Pairing\EnrolmentService;
@@ -36,6 +40,20 @@ final class SiteController
 {
     use ResolvesSiteContext;
 
+    /**
+     * The window the fleet's Reporting column covers.
+     *
+     * Seven days rather than the thirty the site's own Health tab offers, and the trade is
+     * deliberate. A day is too jumpy to trust on a list — one twenty-minute gap overnight reads as
+     * 98.6% and is gone by tomorrow — and a month is roughly 8,600 heartbeats per site to pull back
+     * for a single percentage. A week is stable enough to act on and about 2,000 rows.
+     *
+     * It is one of the windows SiteUptime::WINDOWS already offers, so the figure here and the figure
+     * on the site's own screen are the same measurement over the same span rather than two numbers
+     * that nearly agree.
+     */
+    public const REPORTING_WINDOW_HOURS = 168;
+
     public function __construct(private readonly CapabilityService $capabilities) {}
 
     public function index(Request $request, Organisation $organisation): View
@@ -53,6 +71,10 @@ final class SiteController
         // figures the fleet table shows - a month of reports is a lot of jsonb to drag back for a
         // disk percentage.
         $runtime = $this->latestRuntimeFor($sites);
+
+        // Both of these are one query for the whole page, for the reason latestRuntimeFor() gives.
+        $backups = $this->latestBackupFor($sites);
+        $reporting = app(SiteUptime::class)->forMany($sites, self::REPORTING_WINDOW_HOURS);
 
         /*
          | Grouped by what needs doing, not alphabetically. The whole point of the screen is to
@@ -72,7 +94,7 @@ final class SiteController
 
         if (self::sortable()[$sort] ?? false) {
             $groups = array_map(
-                fn (Collection $group): Collection => $this->sortGroup($group, $sort, $runtime),
+                fn (Collection $group): Collection => $this->sortGroup($group, $sort, $runtime, $backups, $reporting),
                 $groups,
             );
         }
@@ -83,6 +105,8 @@ final class SiteController
             'sort' => $sort,
             'sortable' => self::sortable(),
             'runtime' => $runtime,
+            'backups' => $backups,
+            'reporting' => $reporting,
             'membership' => app(Membership::class),
             'grantableCapabilities' => CapabilityService::grantableFromInterface(),
             'reopenAddSite' => ResumableInput::wasRestoredFor('sites.store'),
@@ -345,7 +369,9 @@ final class SiteController
             'seen' => 'Last seen',
             'craft' => 'Craft',
             'disk' => 'Disk',
+            'backup' => 'Backup',
             'response' => 'Response',
+            'reporting' => 'Reporting',
         ];
     }
 
@@ -388,6 +414,58 @@ final class SiteController
     }
 
     /**
+     * The most recent stored backup per site, and whether the last attempt failed.
+     *
+     * One query for the whole page, like the runtime figures above.
+     *
+     * **Two states, not one, and the second is why this is not simply "the latest stored artifact".**
+     * A backup that was refused before it declared an artifact leaves no `backup_artifacts` row at
+     * all — the record is a `remote_jobs` failure, which is what FailedBackupJobs exists to surface.
+     * So a site can have a healthy "3 hours ago" *and* a failure since, and a column showing only
+     * the first would report a fleet as fine on the morning it stopped backing up.
+     *
+     * The date shown is still the last *stored* one, because "when could I last restore from" is the
+     * question the column answers. The failure rides alongside it rather than replacing it.
+     *
+     * @param  Collection<int, Site>  $sites
+     * @return array<int, array{at: Carbon|null, failed: bool}>
+     */
+    private function latestBackupFor(Collection $sites): array
+    {
+        if ($sites->isEmpty()) {
+            return [];
+        }
+
+        $ids = $sites->pluck('id');
+
+        // Grouped in the database rather than pulled back and reduced in PHP: unlike the runtime
+        // reports, nothing here needs a whole row — one timestamp per site is the entire answer.
+        $stored = BackupArtifact::query()
+            ->whereIn('site_id', $ids)
+            ->where('state', BackupArtifact::STATE_STORED)
+            ->groupBy('site_id')
+            ->selectRaw('site_id, max(taken_at) as last_taken_at')
+            ->pluck('last_taken_at', 'site_id');
+
+        $failed = app(FailedBackupJobs::class)
+            ->forOrganisation((int) $sites->first()->organisation_id)
+            ->keyBy(fn (FailedBackupJob $job): int => $job->site->id);
+
+        $figures = [];
+
+        foreach ($sites as $site) {
+            $at = $stored->get($site->id);
+
+            $figures[$site->id] = [
+                'at' => $at === null ? null : Carbon::parse($at),
+                'failed' => $failed->has($site->id),
+            ];
+        }
+
+        return $figures;
+    }
+
+    /**
      * Order one group.
      *
      * Sites with nothing to sort on sink to the bottom rather than sorting as zero. A site that has
@@ -396,18 +474,43 @@ final class SiteController
      *
      * @param  Collection<int, Site>  $group
      * @param  array<int, array{disk: float|null, p95: int|null, at: Carbon|null}>  $runtime
+     * @param  array<int, array{at: Carbon|null, failed: bool}>  $backups
+     * @param  array<int, UptimeWindow>  $reporting
      * @return Collection<int, Site>
      */
-    private function sortGroup(Collection $group, string $sort, array $runtime): Collection
+    private function sortGroup(Collection $group, string $sort, array $runtime, array $backups, array $reporting): Collection
     {
         return $group
-            ->sortBy(function (Site $site) use ($sort, $runtime): array {
+            ->sortBy(function (Site $site) use ($sort, $runtime, $backups, $reporting): array {
                 $figures = $runtime[$site->id] ?? ['disk' => null, 'p95' => null];
+                $backup = $backups[$site->id] ?? ['at' => null, 'failed' => false];
+                $window = $reporting[$site->id] ?? null;
 
                 return match ($sort) {
                     // Descending, by negating: the interesting end of each of these is the top.
                     'disk' => [$figures['disk'] === null ? 1 : 0, -($figures['disk'] ?? 0)],
                     'response' => [$figures['p95'] === null ? 1 : 0, -($figures['p95'] ?? 0)],
+
+                    /*
+                     | Failures first, then oldest backup first. Both halves are the same question -
+                     | "which of these can I least rely on restoring" - and a failure outranks any
+                     | date, because a site that failed this morning is a worse position than one
+                     | whose last good copy is a fortnight old and still succeeding.
+                     |
+                     | A site that has never stored one sorts with the failures rather than at the
+                     | bottom: never having backed up is not a neutral absence on this column.
+                     */
+                    'backup' => [
+                        $backup['failed'] ? 0 : 1,
+                        $backup['at'] === null ? 0 : $backup['at']->getTimestamp(),
+                    ],
+
+                    // Worst first, and sites with too little evidence to judge sink rather than
+                    // sorting as zero - the same rule the disk column follows.
+                    'reporting' => [
+                        $window === null || ! $window->hasEvidence() ? 1 : 0,
+                        $window === null ? 0.0 : $window->availability,
+                    ],
 
                     // Oldest first: "who have we not heard from" is the question being asked.
                     'seen' => [$site->last_seen_at === null ? 1 : 0, $site->last_seen_at?->getTimestamp() ?? 0],

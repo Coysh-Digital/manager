@@ -35,24 +35,79 @@ final class SiteUptime
 
     public function for(Site $site, int $windowHours): UptimeWindow
     {
-        $to = Carbon::now();
-        $from = $to->copy()->subHours($windowHours);
+        return $this->forMany([$site], $windowHours)[$site->id];
+    }
 
+    /**
+     * The same figure for a whole fleet, in one query.
+     *
+     * `for()` reads every heartbeat in the window for one site, which is the right shape for a
+     * screen about one site and the wrong one for a list of them: the fleet screen would otherwise
+     * issue a query per row, which is invisible on a fleet of three and painful on a fleet of two
+     * hundred — the failure the sites index already avoids everywhere else.
+     *
+     * So this is the real implementation and `for()` is a wrapper on it, rather than the two being
+     * written separately. A second copy of the outage arithmetic would eventually disagree with the
+     * first, and the disagreement would be a percentage on a dashboard that does not match the
+     * percentage on the site's own screen.
+     *
+     * The volume is worth stating plainly, because it is the reason this is not offered for 30 days
+     * on a list. At the default five-minute interval a site produces roughly 2,000 heartbeats a
+     * week; a fleet of fifty is 100,000 timestamps in memory. That is one query and a few
+     * megabytes, which is fine — and it is also why the caller passes 7 days rather than 720 hours.
+     *
+     * @param  iterable<Site>  $sites
+     * @return array<int, UptimeWindow> keyed by site id
+     */
+    public function forMany(iterable $sites, int $windowHours): array
+    {
+        $sites = collect($sites);
+
+        if ($sites->isEmpty()) {
+            return [];
+        }
+
+        $to = Carbon::now();
+        $windowStart = $to->copy()->subHours($windowHours);
+
+        // Only the timestamps and the site they belong to: a week of heartbeats is thousands of rows
+        // per site, and none of the rest of the record is read here.
+        $beatsBySite = Heartbeat::query()
+            ->whereIn('site_id', $sites->pluck('id'))
+            ->where('received_at', '>=', $windowStart)
+            ->orderBy('received_at')
+            ->get(['site_id', 'received_at'])
+            ->groupBy('site_id')
+            ->map(static fn ($rows): array => $rows
+                ->map(static fn (Heartbeat $heartbeat): Carbon => $heartbeat->received_at)
+                ->all());
+
+        $windows = [];
+
+        foreach ($sites as $site) {
+            $windows[$site->id] = $this->window(
+                $site,
+                $beatsBySite->get($site->id, []),
+                $windowStart,
+                $to,
+                $windowHours,
+            );
+        }
+
+        return $windows;
+    }
+
+    /**
+     * One site's window, from heartbeats already in hand.
+     *
+     * @param  list<Carbon>  $beats
+     */
+    private function window(Site $site, array $beats, Carbon $windowStart, Carbon $to, int $windowHours): UptimeWindow
+    {
         $interval = $this->interval();
         $tolerated = $interval * $this->graceMultiplier();
 
-        // Only the timestamps: a month of heartbeats is thousands of rows, and none of the rest of
-        // the record is read here.
-        /** @var list<Carbon> $beats */
-        $beats = Heartbeat::query()
-            ->where('site_id', $site->id)
-            ->where('received_at', '>=', $from)
-            ->orderBy('received_at')
-            ->get(['received_at'])
-            ->map(static fn (Heartbeat $heartbeat): Carbon => $heartbeat->received_at)
-            ->all();
-
-        $from = $this->effectiveStart($site, $from, $beats);
+        $from = $this->effectiveStart($site, $windowStart, $beats);
 
         $outages = $this->outages($beats, $from, $to, $tolerated, $site);
 

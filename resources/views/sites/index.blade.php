@@ -176,15 +176,18 @@
             </div>
         @else
             {{--
-                Four of the seven columns are hidden below the large breakpoint.
+                Six of the ten columns are hidden below the large breakpoint.
 
-                A seven-column table on a phone is a table you read one column at a time by dragging,
+                A ten-column table on a phone is a table you read one column at a time by dragging,
                 and the version numbers are not what the fleet screen is for - "which of these needs
                 me today" is answered by name, status and when it was last heard from. The versions
                 are still one tap away on the site itself.
+
+                Backup sits at `lg` beside Craft and Disk rather than at `xl`, because "when could I
+                last restore this" is closer to that question than a PHP version is.
             --}}
             <div class="relative overflow-x-auto">
-                <table class="table-sticky w-full text-[13px] lg:min-w-[1120px]">
+                <table class="table-sticky w-full text-[13px] lg:min-w-[1320px]">
                     <thead>
                         <tr class="bg-surface-2">
                             @php
@@ -196,7 +199,24 @@
                                     'Craft' => ['hidden lg:table-cell', 'craft'],
                                     'PHP' => ['hidden xl:table-cell', null],
                                     'Disk' => ['hidden lg:table-cell', 'disk'],
+                                    'Backup' => ['hidden lg:table-cell', 'backup'],
                                     'Response' => ['hidden xl:table-cell', 'response'],
+
+                                    /*
+                                     | "Reporting", not "Uptime", and the word is the honest one
+                                     | rather than the expected one.
+                                     |
+                                     | Manager never calls out to a site. This measures the share of
+                                     | the last seven days a connector was checking in, which is a
+                                     | different claim: a site whose web server is down but whose
+                                     | cron still runs keeps reporting, and one on a traffic-driven
+                                     | scheduler reads a quiet night as a gap. The site's own Health
+                                     | tab has called it Reporting since it was built, and a fleet
+                                     | column headed Uptime would be the only place in the product
+                                     | making a promise the rest of it declines to make.
+                                     */
+                                    'Reporting' => ['hidden xl:table-cell', 'reporting'],
+
                                     'Last seen' => ['hidden sm:table-cell', 'seen'],
                                 ];
                             @endphp
@@ -225,7 +245,7 @@
                             @continue($sites->isEmpty())
 
                             <tr>
-                                <td colspan="8" class="border-y border-border bg-surface-2 px-3.5 py-2">
+                                <td colspan="10" class="border-y border-border bg-surface-2 px-3.5 py-2">
                                     <span class="flex items-center gap-2.5">
                                         <span class="font-mono text-[10px] font-medium uppercase tracking-[0.08em] text-text-2">{{ $groupName }}</span>
                                         <span class="font-mono text-[10.5px] text-text-3">{{ $sites->count() }} {{ Str::plural('site', $sites->count()) }}</span>
@@ -287,12 +307,68 @@
                                         @endif
                                     </td>
 
+                                    @php
+                                        $backup = $backups[$site->id] ?? ['at' => null, 'failed' => false];
+                                    @endphp
+
+                                    {{--
+                                        When this site could last be restored from, and whether the
+                                        most recent attempt failed.
+
+                                        Both, not one. A failure that arrived after a good backup
+                                        does not change when the last restorable copy was taken, and
+                                        showing only the failure would hide that there is one. Showing
+                                        only the date would report a fleet as fine on the morning it
+                                        stopped backing up.
+
+                                        The date is deliberately not toned by age. "Old" depends on
+                                        the retention and schedule set per site, and a fleet column
+                                        that called a weekly backup late would be wrong on every site
+                                        that had chosen weekly.
+                                    --}}
+                                    <td class="hidden whitespace-nowrap px-3 py-3 lg:table-cell">
+                                        @if ($backup['failed'])
+                                            <x-status-badge tone="bad" label="Failed" />
+                                        @elseif ($backup['at'] === null)
+                                            <span class="font-mono text-[12px] text-text-3">—</span>
+                                        @else
+                                            <span class="font-mono text-[12px] tabular text-text-2">
+                                                {{ $backup['at']->diffForHumans(short: true) }}
+                                            </span>
+                                        @endif
+                                    </td>
+
                                     <td class="hidden whitespace-nowrap px-3 py-3 font-mono text-[12px] tabular xl:table-cell">
                                         @if ($figures['p95'] === null)
                                             <span class="text-text-3">—</span>
                                         @else
                                             <span class="{{ $figures['p95'] >= 2000 ? 'font-medium text-amber' : 'text-text-2' }}">
                                                 {{ number_format($figures['p95']) }} ms
+                                            </span>
+                                        @endif
+                                    </td>
+
+                                    {{--
+                                        The share of the last seven days this site's connector was
+                                        checking in.
+
+                                        An em-dash until there is more than one heartbeat to reason
+                                        from — hasEvidence() is what stops a site paired ten minutes
+                                        ago reading a confident 100%, which is the number somebody
+                                        would act on and the one we are least entitled to print.
+
+                                        The label and the tone both come from UptimeWindow, so this
+                                        cell and the site's own Health tab cannot round differently
+                                        or disagree about what counts as healthy.
+                                    --}}
+                                    <td class="hidden whitespace-nowrap px-3 py-3 font-mono text-[12px] tabular xl:table-cell">
+                                        @php $window = $reporting[$site->id] ?? null; @endphp
+
+                                        @if ($window === null || ! $window->hasEvidence())
+                                            <span class="text-text-3">—</span>
+                                        @else
+                                            <span class="{{ in_array($window->tone(), ['bad', 'warn'], true) ? 'font-medium text-amber' : 'text-text-2' }}">
+                                                {{ $window->availabilityLabel() }}
                                             </span>
                                         @endif
                                     </td>
