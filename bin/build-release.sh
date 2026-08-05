@@ -57,30 +57,44 @@ if command -v composer >/dev/null 2>&1; then
     git archive --format=tar "$TAG" composer.json composer.lock | tar -x -C "$WORK"
 
     if [ -f "$WORK/composer.lock" ]; then
-        # allow-plugins, because the package is a Composer plugin and a non-interactive install
-        # declines to run one it has not been told about - silently, which is how this went unnoticed.
-        composer --working-dir="$WORK" --no-interaction --quiet \
-            config --no-plugins allow-plugins.cyclonedx/cyclonedx-php-composer true >/dev/null 2>&1 || true
-
-        composer --working-dir="$WORK" --no-interaction --quiet \
-            require --dev cyclonedx/cyclonedx-php-composer >/dev/null 2>&1 || true
-
-        # A namespaced Composer command, not a binary.
+        # Everything below logs instead of discarding, and the log is printed if the SBOM does not
+        # appear.
         #
-        # This used to test for `vendor/bin/cyclonedx-php-composer` and run it. That file has never
-        # existed - the package installs no vendor/bin entry, it registers `CycloneDX:make-sbom` - so
-        # the condition was false on every run and the SBOM was never built. Every failure path here
-        # is `|| true`, so nothing said so, and the header above went on promising three artifacts
-        # while two were produced. ci.yml was fixed for exactly this and this script was not.
+        # This is the second time this step has been wrong in a way nothing reported. The first was a
+        # test for `vendor/bin/cyclonedx-php-composer`, a file that has never existed - the package
+        # installs no vendor/bin entry, it registers the `CycloneDX:make-sbom` command - so the
+        # condition was false on every run and no SBOM was ever built. That was fixed, v1.0.0 was
+        # tagged, and the SBOM still did not appear: it generates here and not on the runner, and
+        # every command was `>/dev/null 2>&1 || true`, so the reason went with it.
+        #
+        # The repository's own note about this says: diagnose a red job from its output, and if the
+        # output is not to hand, say so rather than inferring. There is no point guessing a third
+        # time. The next release that fails will say why.
+        SBOM_LOG="$WORK/sbom.log"
+
+        # allow-plugins, because the package is a Composer plugin and a non-interactive install
+        # declines to run one it has not been told about - silently, which is its own version of this
+        # same problem.
+        composer --working-dir="$WORK" --no-interaction \
+            config --no-plugins allow-plugins.cyclonedx/cyclonedx-php-composer true >>"$SBOM_LOG" 2>&1 || true
+
+        composer --working-dir="$WORK" --no-interaction \
+            require --dev cyclonedx/cyclonedx-php-composer >>"$SBOM_LOG" 2>&1 || true
+
         composer --working-dir="$WORK" --no-interaction \
             CycloneDX:make-sbom --output-file="$OUT/sbom.json" --output-format=JSON \
-            --omit=dev "$WORK/composer.lock" >/dev/null 2>&1 || true
+            --omit=dev "$WORK/composer.lock" >>"$SBOM_LOG" 2>&1 || true
 
         if [ ! -f "$OUT/sbom.json" ]; then
-            # Reported rather than swallowed. A missing bill of materials is not worth failing a
-            # release over, but it is worth somebody knowing about instead of finding out later that
-            # the manifest lists two files where the documentation says three.
+            # Not fatal. A missing bill of materials is not worth refusing to publish a release over,
+            # and the archive and its checksum - the two things an operator actually verifies - are
+            # already built. But it is worth saying loudly, with the reason attached, rather than
+            # leaving somebody to notice later that the manifest lists two files where the header of
+            # this script promises three.
             echo "warning: the SBOM could not be generated; the release will not carry one." >&2
+            echo "--- composer output ---" >&2
+            tail -n 30 "$SBOM_LOG" >&2 || true
+            echo "--- end composer output ---" >&2
         fi
     fi
 
