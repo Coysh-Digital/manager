@@ -64,6 +64,11 @@ jobs:
 
       # A rolling tag rather than a versioned release: the docs describe main, and pinning them to a
       # platform version would mean a documentation typo needing a release to reach anyone.
+      #
+      # --latest=false because this is a rolling build, not a release. `gh release create` marks
+      # whatever it creates as Latest by default, so without it the first documentation change after
+      # a version is tagged replaces that version as the Latest badge on the repository homepage —
+      # and a visitor looking for what to install is shown "Documentation build" instead.
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
@@ -73,4 +78,5 @@ jobs:
           gh release create docs-latest \
             --title "Documentation build" \
             --notes "Static build of docs/, published to managerforcraft.com/docs. Rolling: replaced on every change to the documentation." \
+            --latest=false \
             docs-site.tar.gz docs-site.tar.gz.sha256

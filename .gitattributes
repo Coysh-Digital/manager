@@ -7,5 +7,16 @@
 *.php diff=php
 
 /.github export-ignore
-CHANGELOG.md export-ignore
 .styleci.yml export-ignore
+
+# Belt and braces against a release built from the wrong branch.
+#
+# `cloud/` is the private hosting layer. It is not on this branch and .gitignore keeps it from being
+# committed here, but bin/build-release.sh packages with `git archive`, which reads the tree it is
+# given rather than the working directory - so a tarball built from a branch that does carry it would
+# contain billing, the managed key service and the storage implementations.
+#
+# .dockerignore already excludes it from images and ci.yml skips that job on console. git archive had
+# no equivalent, and this is it. The real protection is tagging from origin/main; this is what makes
+# getting that wrong recoverable rather than public.
+/cloud export-ignore

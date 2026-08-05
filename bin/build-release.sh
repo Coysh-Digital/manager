@@ -5,9 +5,14 @@
 # Invariant 17: connector and platform updates must use verifiable release artifacts. "Verifiable"
 # needs three things, and this produces all three:
 #
-#   1. An artifact whose contents are fixed by a signed tag.
+#   1. An artifact whose contents are fixed by the tag it is built from.
 #   2. A checksum an operator can compare against what they downloaded.
 #   3. A bill of materials, so what is inside is a matter of record rather than inspection.
+#
+# That first line used to say "fixed by a signed tag". Tag signing was removed deliberately - there is
+# no allowed_signers file, release.yml verifies nothing, and tests/Invariants/ReleaseArtifactTest.php
+# says so outright. Integrity is checkable through the manifest and reproducibility below; authorship
+# is not, and claiming otherwise in the script that builds the artifacts is the worst place to.
 #
 # The tarball is **reproducible**: `git archive` writes entry timestamps from the commit rather than
 # from the clock, and gzip is told not to stamp its header. Two people building the same tag on
@@ -52,13 +57,30 @@ if command -v composer >/dev/null 2>&1; then
     git archive --format=tar "$TAG" composer.json composer.lock | tar -x -C "$WORK"
 
     if [ -f "$WORK/composer.lock" ]; then
+        # allow-plugins, because the package is a Composer plugin and a non-interactive install
+        # declines to run one it has not been told about - silently, which is how this went unnoticed.
+        composer --working-dir="$WORK" --no-interaction --quiet \
+            config --no-plugins allow-plugins.cyclonedx/cyclonedx-php-composer true >/dev/null 2>&1 || true
+
         composer --working-dir="$WORK" --no-interaction --quiet \
             require --dev cyclonedx/cyclonedx-php-composer >/dev/null 2>&1 || true
 
-        if [ -x "$WORK/vendor/bin/cyclonedx-php-composer" ]; then
-            "$WORK/vendor/bin/cyclonedx-php-composer" make-sbom \
-                --output-file="$OUT/sbom.json" --output-format=JSON \
-                --omit=dev "$WORK/composer.lock" >/dev/null 2>&1 || true
+        # A namespaced Composer command, not a binary.
+        #
+        # This used to test for `vendor/bin/cyclonedx-php-composer` and run it. That file has never
+        # existed - the package installs no vendor/bin entry, it registers `CycloneDX:make-sbom` - so
+        # the condition was false on every run and the SBOM was never built. Every failure path here
+        # is `|| true`, so nothing said so, and the header above went on promising three artifacts
+        # while two were produced. ci.yml was fixed for exactly this and this script was not.
+        composer --working-dir="$WORK" --no-interaction \
+            CycloneDX:make-sbom --output-file="$OUT/sbom.json" --output-format=JSON \
+            --omit=dev "$WORK/composer.lock" >/dev/null 2>&1 || true
+
+        if [ ! -f "$OUT/sbom.json" ]; then
+            # Reported rather than swallowed. A missing bill of materials is not worth failing a
+            # release over, but it is worth somebody knowing about instead of finding out later that
+            # the manifest lists two files where the documentation says three.
+            echo "warning: the SBOM could not be generated; the release will not carry one." >&2
         fi
     fi
 

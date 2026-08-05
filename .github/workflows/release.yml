@@ -15,6 +15,40 @@ jobs:
     name: Verify, build and publish
     runs-on: ubuntu-latest
 
+    # The same services ci.yml gives the same command.
+    #
+    # This job runs `pest --testsuite=Invariants`, and tests/Pest.php applies RefreshDatabase to
+    # Invariants as well as Feature - so the suite needs Postgres to start at all, and phpunit.xml
+    # points REDIS_CLIENT at predis. Without these the step fails on connection rather than on
+    # anything it is meant to be checking.
+    #
+    # It went unnoticed because this workflow triggers only on `v*` and nothing has ever been tagged,
+    # so it had never run once. The test that would have caught it, ReleaseArtifactTest, is itself in
+    # the suite that could not start.
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: db_test
+          POSTGRES_USER: db
+          POSTGRES_PASSWORD: db
+        options: >-
+          --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+        ports: ['5432:5432']
+
+      redis:
+        image: redis:8-alpine
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
+        ports: ['6379:6379']
+
+    env:
+      DB_HOST: 127.0.0.1
+      DB_DATABASE: db_test
+      DB_USERNAME: db
+      DB_PASSWORD: db
+      REDIS_HOST: 127.0.0.1
+
     steps:
       # Full history, because the release is built from the tag rather than from the checkout.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -33,13 +67,19 @@ jobs:
             exit 1
           fi
 
+      # Matching ci.yml. pdo_pgsql is the one that decides whether the suite below runs at all.
       - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
         with:
           php-version: '8.4'
-          extensions: sodium
+          extensions: pdo_pgsql, intl, zip, sodium, redis
           coverage: none
 
       - run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Prepare environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate
 
       # A release that fails its own security suite is not a release. CI already ran this on the commit,
       # but a tag can be moved after CI passed, so it runs again on exactly what is being published.

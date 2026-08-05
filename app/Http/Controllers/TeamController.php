@@ -89,7 +89,7 @@ final class TeamController
 
         // Sent after the invitation is committed, and reported honestly either way: a mail server
         // being down is not a reason to pretend nothing happened, nor to claim an email was sent.
-        $sent = $this->team->sendInvitationLink($membership->user);
+        $sent = $this->team->sendInvitationLink($membership->user, $organisation, $request->user());
 
         return back()->with($sent ? 'status' : 'warning', $sent
             ? "Invited {$validated['email']}. They have been emailed a link to set their own password - no password passes through you."
@@ -105,7 +105,7 @@ final class TeamController
         $this->authoriseOwner();
         $this->authoriseMembership($membership, $organisation);
 
-        $sent = $this->team->sendInvitationLink($membership->user);
+        $sent = $this->team->sendInvitationLink($membership->user, $organisation, $request->user());
 
         return back()->with($sent ? 'status' : 'warning', $sent
             ? "A new link has been sent to {$membership->user->email}. Any previous link stops working."

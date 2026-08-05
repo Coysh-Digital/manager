@@ -12,6 +12,7 @@ use App\Http\Controllers\Auth\TwoFactorChallengeController;
 use App\Http\Controllers\BackupController;
 use App\Http\Controllers\BackupDownloadController;
 use App\Http\Controllers\CapabilityController;
+use App\Http\Controllers\EmailCatalogueController;
 use App\Http\Controllers\FindingController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\MailSettingsController;
@@ -211,6 +212,11 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
         ->name('settings.notifications');
     Route::get('settings/recovery-keys', [RecoveryKeyController::class, 'show'])
         ->name('settings.recovery-keys');
+
+    // Every edition, unlike Mail below. Both send email, and the question this answers - what will
+    // this installation ever send, and what causes it - is one a hosted customer has as much as an
+    // operator does. It holds no credential, so it is gated on canAdminister() rather than ownership.
+    Route::get('settings/emails', [EmailCatalogueController::class, 'show'])->name('settings.emails');
 
     // Self-hosted only, and owner-only. The controller refuses on both counts rather than relying on
     // the tab being absent - see MailSettingsController::authorise().

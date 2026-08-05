@@ -19,6 +19,7 @@ use App\Support\SelfHosted\NoDirectUploads;
 use coyshdigital\managerprotocol\Protocol;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
 
@@ -34,6 +35,15 @@ use Throwable;
  */
 final class Diagnostics
 {
+    /**
+     * How long a job may sit unclaimed before the queue is called stalled.
+     *
+     * Generous on purpose. A worker restarting during a deploy, or a long job holding the only
+     * process, both produce a short backlog that resolves itself, and a check that goes red for those
+     * is one people learn to ignore. Twenty minutes of nothing being picked up is not a busy queue.
+     */
+    private const QUEUE_STALL_MINUTES = 20;
+
     public function __construct(
         private readonly PlatformKeypair $keypair,
         private readonly BackupKeypair $backupKeypair,
@@ -646,7 +656,79 @@ final class Diagnostics
             );
         }
 
-        return Check::pass('Queue', "Connection: {$connection}.");
+        /*
+         | Configured is not the same as consumed.
+         |
+         | This used to stop at the line above, which answers "is a queue set up" and not "is anything
+         | draining it" - and the second is the question that matters, because every failure it hides
+         | is silent. A stopped worker means backups are never fetched, notification deliveries never
+         | leave, and, where a hosting layer is installed, no subscription email is ever sent. Nothing
+         | errors. Every screen looks right. The only visible symptom is an absence, which is exactly
+         | the kind of thing nobody notices until a customer asks why they were not told.
+         |
+         | Measured by the age of the oldest waiting job rather than by the depth. A deep queue is
+         | normal after a burst of work and says nothing on its own; a job that has been waiting
+         | twenty minutes means nothing has picked it up in twenty minutes, whatever the depth.
+         |
+         | Cannot distinguish an empty queue from an unworked one, and does not pretend to: with
+         | nothing waiting there is nothing to time, and it reports the connection and stops.
+         */
+        try {
+            $waiting = Queue::size();
+        } catch (Throwable $e) {
+            return Check::fail(
+                'Queue',
+                "Connection {$connection} could not be reached.",
+                'Background work is not running. '.$e->getMessage(),
+            );
+        }
+
+        if ($waiting === 0) {
+            return Check::pass('Queue', "Connection: {$connection}. Nothing waiting.");
+        }
+
+        $oldest = $this->oldestQueuedJobMinutes();
+
+        if ($oldest !== null && $oldest >= self::QUEUE_STALL_MINUTES) {
+            return Check::fail(
+                'Queue',
+                "{$waiting} job(s) waiting, the oldest for {$oldest} minutes. Nothing appears to be processing them.",
+                'Start a queue worker, or check the one that should be running. '
+                    .'Backups, notifications and scheduled work are all queued.',
+            );
+        }
+
+        return Check::pass('Queue', "Connection: {$connection}. {$waiting} job(s) waiting.");
+    }
+
+    /**
+     * How long the oldest waiting job has been waiting, in minutes.
+     *
+     * Only the database driver can answer this: the jobs table carries available_at, so the question
+     * is a query. Redis holds an opaque list and would need every payload decoded to find out, which
+     * is not worth doing on a health check - so this returns null there and the caller reports the
+     * depth without judging it.
+     */
+    private function oldestQueuedJobMinutes(): ?int
+    {
+        if ((string) config('queue.default') !== 'database') {
+            return null;
+        }
+
+        try {
+            $availableAt = DB::table((string) config('queue.connections.database.table', 'jobs'))
+                ->min('available_at');
+
+            if (! is_numeric($availableAt)) {
+                return null;
+            }
+
+            return (int) floor((time() - (int) $availableAt) / 60);
+        } catch (Throwable) {
+            // The table not existing is not a queue fault - a fresh installation before migrations
+            // looks exactly like this, and the migrations check already reports that.
+            return null;
+        }
     }
 
     /**

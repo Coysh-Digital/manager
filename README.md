@@ -9,7 +9,7 @@ Installation, configuration, pairing, backups and the security model all live in
 
 Free software under the **AGPL-3.0-or-later**. If you want to check it out on a hosted site check out [managerforcraft.com](https://managerforcraft.com/)
 
-Requires PHP 8.1+, PostgreSQL 15+ and Redis 7+.
+Requires PHP 8.3+, PostgreSQL 15+ and Redis 7+. The Docker image ships PHP 8.4.
 
 ## What it holds, and what it does not
 
@@ -143,7 +143,10 @@ including what an attacker gets from each component they compromise.
 [LICENSE.md](LICENSE.md) for what it means in practice.
 
 Run it for your own sites, run it for your clients' sites, run it commercially, fork it. None of that
-asks anything of you. The
+asks anything of you. The obligation the AGPL adds is narrow and only bites in one direction: if you
+modify Manager and offer it to other people over a network, those people are entitled to your
+modified source. Running an unmodified copy, or a modified one only you and your colleagues use,
+triggers nothing.
 
 The connector, the protocol package and the restore tool are MIT, because they run inside somebody
 else's codebase or on somebody else's machine.
@@ -156,4 +159,17 @@ features that are missing here; it adds the fact that somebody else runs it.
 Bug reports and patches are welcome. Two things to know first:
 
 - **Security issues go to us at support@managerforcraft.com, never to a public issue please!**
+- **The invariant suites are not negotiable.** `vendor/bin/pest --testsuite=Invariants` here, and
+  `php bin/verify-invariants.php` in the connector, are written to fail rather than warn, and every
+  rule in them exists because something went wrong once. A patch that makes one red needs a different
+  approach, not a weaker check. If you think a rule is wrong, say so in the issue — that is a
+  conversation worth having, and changing it quietly in the same commit as a feature is not.
+
+Run the suite before opening a pull request:
+
+```bash
+vendor/bin/pest
+vendor/bin/pint --test
+vendor/bin/phpstan analyse
+```
 

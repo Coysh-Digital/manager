@@ -21,12 +21,13 @@ nowhere to put them.
 
 ## 1. Get it running
 
-Grab the release and start the stack:
+Get the source and start the stack. Every command in this section runs from `deploy/docker`, which is
+where the compose file lives — there is none at the top of the repository.
 
 ```bash
-curl -LO https://github.com/Coysh-Digital/manager/releases/latest/download/manager.tar.gz
-tar xzf manager.tar.gz && cd manager
-cp .env.example .env
+git clone --branch v1.0.0 https://github.com/Coysh-Digital/manager.git /opt/manager
+cd /opt/manager/deploy/docker
+cp ../../.env.example .env
 ```
 
 Open `.env` and set at minimum:
@@ -34,6 +35,7 @@ Open `.env` and set at minimum:
 ```dotenv
 APP_URL=https://manager.example.com
 DB_PASSWORD=            # something long and random
+MANAGER_VERSION=1.0.0   # which release this is; the interface says "unreleased build" without it
 ```
 
 The container will refuse to start if `APP_KEY` is empty, if `APP_DEBUG` is on in production, or if
@@ -44,10 +46,15 @@ Now generate the three secrets. Do this once, and keep the output somewhere that
 database backup:
 
 ```bash
-docker compose run --rm app php artisan key:generate --show
-docker compose run --rm app php artisan manager:keys:generate
-docker compose run --rm app php artisan manager:backups:keygen
+docker compose run --rm --no-deps app php artisan key:generate --show
+docker compose run --rm --no-deps app php artisan manager:keys:generate --show
+docker compose run --rm --no-deps app php artisan manager:backups:keygen --show
 ```
+
+**Copy every line of that output into `.env` yourself.** The container's root filesystem is
+read-only and its environment arrives from that file, so nothing can write them for you — which is
+why they are printed rather than saved. `--no-deps` keeps the database and Redis from starting just
+to generate a key.
 
 - `APP_KEY` encrypts things at rest.
 - The **signing keypair** is how Manager for Craft proves to your sites that instructions really

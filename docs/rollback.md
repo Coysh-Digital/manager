@@ -2,12 +2,17 @@
 
 ## Application only
 
-If a release misbehaves but the schema has not changed:
+If a release misbehaves but the schema has not changed. Replace the tag with the version you were on
+before the upgrade — `git tag --sort=-v:refname | head` lists them:
 
 ```bash
 cd /opt/manager
 git checkout v1.0.0
 cd deploy/docker
+
+# Put MANAGER_VERSION back too, or the interface keeps reporting the version you rolled away from.
+sed -i 's/^MANAGER_VERSION=.*/MANAGER_VERSION=1.0.0/' .env
+
 docker compose up -d --build
 docker compose exec app php artisan manager:doctor
 ```
