@@ -148,10 +148,36 @@ class AppServiceProvider extends ServiceProvider
 
         Model::preventLazyLoading(! $this->app->isProduction());
 
-        // Emit HTTPS URLs whenever the canonical URL is HTTPS, so a reverse proxy terminating TLS
-        // cannot cause password-reset and verification links to go out over plain HTTP.
-        if (str_starts_with((string) config('app.url'), 'https://')) {
-            URL::forceScheme('https');
+        /*
+         | Every generated URL is built from the canonical address, never from the request.
+         |
+         | Forcing the scheme was already here, and it closed half the problem: a reverse proxy
+         | terminating TLS could no longer send password-reset links out over plain HTTP. It left
+         | the host alone, and the host is the half that is attacker-controlled. Laravel derives it
+         | from the Host header, so a request carrying `Host: attacker.example` produced a reset
+         | link on attacker.example - emailed, by us, to the address whose account was being taken.
+         |
+         | forceRootUrl fixes it at the point of generation, which is the right place: it holds for
+         | every route(), url() and signed URL, in a request, a queued job or a console command,
+         | without each caller having to remember.
+         |
+         | TrustHosts was considered and deliberately not added. It refuses the request outright,
+         | which is a stronger control and the wrong trade here: /up and /ready exist to be probed
+         | by an orchestrator, which may reasonably reach them on a container address rather than on
+         | the canonical host. Refusing those would swap a fixed vulnerability for an outage, and the
+         | vulnerability is already fixed by the line below.
+         |
+         | APP_URL is safe to lean on this hard: the entrypoint refuses to boot without it, and it
+         | already decides cookie security.
+        */
+        $canonical = (string) config('app.url');
+
+        if ($canonical !== '') {
+            URL::forceRootUrl($canonical);
+
+            if (str_starts_with($canonical, 'https://')) {
+                URL::forceScheme('https');
+            }
         }
 
         // Counts for the sidebar. A composer rather than something threaded through every

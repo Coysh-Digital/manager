@@ -76,6 +76,30 @@ it('reads trusted proxies from config, not the environment', function (): void {
     expect(checkNamed('Trusted proxies')->detail)->toContain('10.0.0.0/8');
 });
 
+it('does not call a blank trusted-proxy setting a pass when something terminates TLS in front', function (): void {
+    /*
+     | Blank is safe against forgery and unsafe for rate limiting, and it reported as a clean pass.
+     |
+     | With no trusted proxy every caller appears to come from the proxy, so the per-network
+     | connector limit and the pairing limit collapse into one bucket shared by the whole fleet -
+     | which any unauthenticated caller can then exhaust. The shipped .env.example leaves it blank
+     | and the documented deployment puts a proxy in front, so this was the default state.
+    */
+    config(['manager.trusted_proxies' => '', 'app.url' => 'https://manager.example']);
+
+    expect(checkNamed('Trusted proxies')->warned())->toBeTrue()
+        ->and(checkNamed('Trusted proxies')->detail)->toContain('one bucket shared by the whole fleet');
+});
+
+it('leaves a blank trusted-proxy setting alone when nothing is in front', function (): void {
+    // An installation with no proxy is correctly configured this way, and warning at it would teach
+    // people to ignore the warning.
+    config(['manager.trusted_proxies' => '', 'app.url' => 'http://localhost']);
+
+    expect(checkNamed('Trusted proxies')->warned())->toBeFalse()
+        ->and(checkNamed('Trusted proxies')->failed())->toBeFalse();
+});
+
 it('warns while first-run setup is still open', function (): void {
     User::query()->delete();
 

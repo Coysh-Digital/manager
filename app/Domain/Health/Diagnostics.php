@@ -335,11 +335,40 @@ final class Diagnostics
         // limits and the source addresses in the audit log.
         $proxies = (string) config('manager.trusted_proxies');
 
+        /*
+         | Blank is safe against forgery and unsafe for rate limiting, and it used to report as a
+         | clean pass.
+         |
+         | With no trusted proxy, forwarded headers are ignored - correct, and the reason a wildcard
+         | fails above. But it also means $request->ip() is the *proxy's* address for every caller,
+         | so the per-network connector limit and the pairing limit collapse into one bucket shared
+         | by the whole fleet. Any unauthenticated caller can exhaust it, and every site stops being
+         | able to pair or report. The audit log records the proxy as the source of everything.
+         |
+         | Warned rather than failed, on both halves of the severity. It is not "do not serve
+         | traffic": nothing is spoofable and an installation with no proxy in front is correctly
+         | configured this way. But it is not a pass either, which is what it said while the fleet
+         | shared a bucket.
+         |
+         | Keyed on the canonical URL being HTTPS, because that is what a proxy in front looks like
+         | from a console command with no request to inspect: this stack does not terminate TLS
+         | itself, so an HTTPS APP_URL means something else does.
+        */
+        $behindTls = str_starts_with((string) config('app.url'), 'https://');
+
         $checks[] = match (true) {
             trim($proxies) === '*' => Check::fail(
                 'Trusted proxies',
                 'Set to "*", so any caller can forge its apparent source address.',
                 'List the actual proxy addresses or CIDR ranges in MANAGER_TRUSTED_PROXIES.',
+            ),
+            $proxies === '' && $behindTls => Check::warn(
+                'Trusted proxies',
+                'None configured, but APP_URL is HTTPS - so something terminates TLS in front, and '
+                .'every caller appears to come from it. The connector and pairing rate limits are '
+                .'one bucket shared by the whole fleet, and the audit log records the proxy as the '
+                .'source of everything.',
+                'List the proxy addresses or CIDR ranges in MANAGER_TRUSTED_PROXIES.',
             ),
             $proxies === '' => Check::pass('Trusted proxies', 'None configured, so forwarded headers are ignored.'),
             default => Check::pass('Trusted proxies', $proxies),
