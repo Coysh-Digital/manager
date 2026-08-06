@@ -22,21 +22,41 @@ require_config() {
 
     [ "${APP_URL:-}" = "" ] && fail "APP_URL is not set. Cookie security and connector callbacks depend on it."
 
-    # A default database password reaching production is one of the few mistakes that is both easy
-    # to make and completely fatal.
-    if [ "${APP_ENV:-production}" = "production" ]; then
-        case "${DB_PASSWORD:-}" in
-            ""|password|secret|postgres|changeme|manager)
-                fail "DB_PASSWORD is empty or a well-known default. Refusing to start in production."
-                ;;
-        esac
+    # These used to be conditional on APP_ENV=production, and the condition was the hole.
+    #
+    # The fallback was right - an absent APP_ENV is treated as production, so an operator who deletes
+    # the line is protected. What it could not survive was the line being *present and wrong*, which
+    # is the likelier case by far: the shipped .env.example says APP_ENV=local, and docs/install.md
+    # tells an operator to copy that file. Following the documentation exactly therefore produced an
+    # installation where every check written to catch a dangerous configuration was skipped by the
+    # very setting that made it dangerous.
+    #
+    # So they are unconditional now. This image is how Manager is *run*; it is not how Manager is
+    # developed - ddev serves that, with its own container and its own entrypoint - so there is no
+    # audience for whom booting with a default database password is the right outcome.
+    case "${DB_PASSWORD:-}" in
+        ""|password|secret|postgres|changeme|manager)
+            fail "DB_PASSWORD is empty or a well-known default. Refusing to start."
+            ;;
+    esac
 
-        case "${APP_DEBUG:-false}" in
-            true|1|on)
-                fail "APP_DEBUG is on in production. Refusing to start: exceptions would render internal detail to visitors."
-                ;;
-        esac
-    fi
+    case "${APP_DEBUG:-false}" in
+        true|1|on)
+            fail "APP_DEBUG is on. Refusing to start: exceptions would render internal detail to visitors, including configuration and query fragments."
+            ;;
+    esac
+
+    # Not a security check, and it belongs here anyway.
+    #
+    # Laravel behaves differently outside production, and one of those differences is load-bearing:
+    # Model::preventLazyLoading() is enabled when the environment is not production, so a lazy load
+    # that is merely inefficient in development becomes an exception here. An operator who copied the
+    # example file gets a control plane that throws on pages that work everywhere else, and nothing
+    # in the resulting stack trace points at APP_ENV.
+    case "${APP_ENV:-production}" in
+        production) ;;
+        *) fail "APP_ENV is '${APP_ENV}'. This image runs Manager in production; set APP_ENV=production. Development is served by ddev, not by this image." ;;
+    esac
 }
 
 # Key generation is exempt from the checks below, and has to be.
