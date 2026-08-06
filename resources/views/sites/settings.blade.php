@@ -110,8 +110,12 @@
                 <div class="flex flex-col gap-1">
                     <span class="font-mono text-[10px] uppercase tracking-[0.07em] text-text-3">Connector key</span>
                     <span class="font-mono text-[13px]">
-                        {{-- Only ever the tail. The full key is public, but showing it in full invites
-                             pasting it around as though it were meaningful. --}}
+                        {{-- The tail here, and the whole thing below. This used to be the tail and
+                             nothing else, on the reasoning that showing a public key in full invites
+                             pasting it around as though it were meaningful. It is meaningful: it is
+                             the input to `manager-restore verify --site-key`, which is the only way a
+                             customer can confirm a backup came from their own site without asking us
+                             - and asking us is exactly what that check exists to avoid. --}}
                         {{ $connector ? '··········'.Str::substr($connector->public_key, -6) : 'Not paired' }}
                     </span>
                 </div>
@@ -139,6 +143,38 @@
                     </form>
                 @endif
             </div>
+
+            @if ($connector)
+                {{--
+                    The key a customer needs to check a backup themselves.
+
+                    Manager signs nothing about a backup's origin - the site does, with this key, over
+                    the manifest. `manager-restore verify --site-key` is how somebody confirms an
+                    artifact came from their own site, and it is deliberately a check they can run
+                    against us: it needs no Manager installation, no network, and no trust in this
+                    screen beyond copying a public value from it once.
+
+                    Which is why it could not be run. The key was shown only as its last six
+                    characters, so the check the zero-knowledge story rests on had no obtainable
+                    input.
+
+                    Shown to every member rather than to administrators only. It is a public key, and
+                    the person holding the recovery key and doing the restore at three in the morning
+                    is not necessarily the person who can administer the site.
+                --}}
+                <div class="flex flex-col gap-2 border-b border-border bg-surface-2 px-4 py-3">
+                    <span class="text-[13px] font-medium">Verifying a backup came from this site</span>
+                    <p class="max-w-[80ch] text-[12.5px] leading-relaxed text-text-2">
+                        This site signs every backup manifest with the key below. Checking that signature
+                        needs no Manager installation and no network - which is the point, because it is
+                        the check that does not take our word for it.
+                    </p>
+
+                    <code class="select-all break-all rounded-[7px] border border-border bg-surface px-2.5 py-2 font-mono text-[12px]">{{ $connector->public_key }}</code>
+
+                    <code class="max-w-full overflow-x-auto rounded-[7px] border border-border bg-surface px-2.5 py-2 font-mono text-[12px] text-text-2">manager-restore verify --key=your-recovery.secret --site-key={{ $connector->public_key }} ./artifact</code>
+                </div>
+            @endif
 
             @if ($membership->canAdminister())
                 <div class="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-surface-2 px-4 py-3">
