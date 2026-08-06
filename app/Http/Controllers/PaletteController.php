@@ -53,6 +53,7 @@ final class PaletteController
             'screens' => [
                 ['name' => 'Sites', 'url' => route('sites.index')],
                 ['name' => 'Updates', 'url' => route('updates.index')],
+                ['name' => 'Security', 'url' => route('security.index')],
                 ['name' => 'Findings', 'url' => route('findings.index')],
                 ['name' => 'Backups', 'url' => route('backups.index')],
                 ['name' => 'Activity log', 'url' => route('activity.index')],
@@ -60,7 +61,11 @@ final class PaletteController
                 // now, so the palette can land on the screen somebody asked for.
                 ['name' => 'Settings', 'url' => route('settings.show')],
                 ['name' => 'Account', 'url' => route('settings.account')],
-                ['name' => 'Security', 'url' => route('settings.security')],
+
+                // "Account security", where the tab itself says "Security". The tab is inside
+                // Settings and unambiguous there; a flat list that offered two entries called
+                // Security would make somebody guess which one watches the fleet.
+                ['name' => 'Account security', 'url' => route('settings.security')],
                 ['name' => 'People', 'url' => route('settings.people')],
                 ['name' => 'Notifications', 'url' => route('settings.notifications')],
                 ['name' => 'Recovery keys', 'url' => route('settings.recovery-keys')],

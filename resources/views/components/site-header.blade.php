@@ -24,7 +24,30 @@
             @endif
         </div>
         <p class="text-[12.5px] text-text-2 sm:text-[13px]">
-            <span class="break-all">{{ $site->expected_domain }}</span>
+            {{--
+                The one link in this interface that leaves for a host we do not control.
+
+                `expected_domain` is a bare host - the column stores no scheme - so one is prepended
+                here, and it is always https. Manager raises a finding when a site does not enforce
+                HTTPS; offering the http:// version of the same site from the screen reporting that
+                would be the product arguing with itself, and it is the request most worth not
+                sending in the clear.
+
+                `rel="noopener noreferrer"` for the reason <x-changelog-link> gives: noopener because
+                the opened page can otherwise reach back through window.opener, and noreferrer
+                because the Referer would tell somebody else's site which control plane is watching
+                it, and from which URL.
+
+                Deliberately not on the fleet table. Forty of these in a column turns a screen people
+                scan into forty chances to leave it by accident; this sits on the site somebody has
+                already chosen to look at, and every one of its seven tabs renders this header.
+            --}}
+            <a href="https://{{ $site->expected_domain }}" target="_blank" rel="noopener noreferrer"
+               class="inline-flex items-baseline gap-1 break-all text-text-2 no-underline hover:text-primary hover:underline">
+                {{ $site->expected_domain }}
+                <span aria-hidden="true" class="text-[10px] leading-none">↗</span>
+                <span class="sr-only">(opens {{ $site->name }} in a new tab)</span>
+            </a>
             <span class="hidden sm:inline">· Read-only access</span> ·
             Last seen {{ $site->last_seen_at?->diffForHumans() ?? 'never' }}
         </p>

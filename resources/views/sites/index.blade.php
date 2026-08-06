@@ -186,10 +186,49 @@
                 Backup sits at `lg` beside Craft and Disk rather than at `xl`, because "when could I
                 last restore this" is closer to that question than a PHP version is.
             --}}
+            {{--
+                The table lives inside the bulk-backup form.
+
+                A form rather than a script collecting ticked boxes and posting JSON: the checkboxes
+                are the form's own state, so selecting sites and asking for backups works with
+                JavaScript switched off, and the recent-authentication gate can carry the selection
+                across the confirm-password screen the same way it carries "Add a site".
+
+                Wrapping the table rather than the whole card, because the filter controls above are
+                already a GET form and forms cannot nest.
+            --}}
+            <form method="POST" action="{{ route('backups.store-many') }}" data-bulk-form>
+                @csrf
+
+                @php
+                    /*
+                     | Only administrators get the column, matching the single-site button on the
+                     | Backups screen and the guard in BackupController::storeMany().
+                     |
+                     | Checkboxes are drawn for every site, including ones that cannot be backed up
+                     | right now. Disabling those rows would let a fleet look fully covered while
+                     | half of it was quietly unselectable; the controller reports what it skipped
+                     | and why instead, which is the same choice `Refresh all` made.
+                     */
+                    $bulk = $membership->canAdminister();
+                    $columnCount = $bulk ? 11 : 10;
+                    $restoredSites = $bulk ? (array) old('sites', []) : [];
+                @endphp
+
             <div class="relative overflow-x-auto">
                 <table class="table-sticky w-full text-[13px] lg:min-w-[1320px]">
                     <thead>
                         <tr class="bg-surface-2">
+                            @if ($bulk)
+                                <th class="w-[38px] border-b border-border pl-3.5 pr-1 py-2.5 text-left">
+                                    {{-- Unchecked and inert without JavaScript, where it would have
+                                         nothing to toggle. The per-row boxes work regardless. --}}
+                                    <input type="checkbox" data-bulk-all
+                                           aria-label="Select every site shown"
+                                           class="align-middle accent-[var(--primary)]">
+                                </th>
+                            @endif
+
                             @php
                                 // heading => [responsive classes, sort key or null]
                                 $columns = [
@@ -222,7 +261,9 @@
                             @endphp
 
                             @foreach ($columns as $heading => [$responsive, $key])
-                                <th class="whitespace-nowrap border-b border-border px-3 py-2.5 text-left font-mono text-[10px] font-medium uppercase tracking-[0.07em] text-text-3 {{ $loop->first ? 'pl-3.5' : '' }} {{ $responsive }}"
+                                {{-- The checkbox column already carries the left inset when it is
+                                     drawn, so Site only takes it when standing first itself. --}}
+                                <th class="whitespace-nowrap border-b border-border px-3 py-2.5 text-left font-mono text-[10px] font-medium uppercase tracking-[0.07em] text-text-3 {{ $loop->first && ! $bulk ? 'pl-3.5' : '' }} {{ $responsive }}"
                                     @if ($key && $sort === $key) aria-sort="ascending" @endif>
                                     @if ($key)
                                         {{-- In the query string, like the filters: a fleet somebody
@@ -245,8 +286,16 @@
                             @continue($sites->isEmpty())
 
                             <tr>
-                                <td colspan="10" class="border-y border-border bg-surface-2 px-3.5 py-2">
+                                <td colspan="{{ $columnCount }}" class="border-y border-border bg-surface-2 px-3.5 py-2">
                                     <span class="flex items-center gap-2.5">
+                                        @if ($bulk)
+                                            {{-- Per group, because the groups are the reason somebody
+                                                 is here: "back up everything needing attention" is a
+                                                 sentence, and ticking eleven boxes to say it is not. --}}
+                                            <input type="checkbox" data-bulk-group="{{ $loop->index }}"
+                                                   aria-label="Select every site in {{ $groupName }}"
+                                                   class="accent-[var(--primary)]">
+                                        @endif
                                         <span class="font-mono text-[10px] font-medium uppercase tracking-[0.08em] text-text-2">{{ $groupName }}</span>
                                         <span class="font-mono text-[10.5px] text-text-3">{{ $sites->count() }} {{ Str::plural('site', $sites->count()) }}</span>
                                     </span>
@@ -266,7 +315,16 @@
                                      badge - which is three things to read and one fact to learn. The
                                      rail went: it was the encoding that carried no words. --}}
                                 <tr class="border-b border-border hover:bg-row-hover">
-                                    <td class="py-3 pl-3.5 pr-3 align-middle">
+                                    @if ($bulk)
+                                        <td class="py-3 pl-3.5 pr-1 align-middle">
+                                            <input type="checkbox" name="sites[]" value="{{ $site->external_id }}"
+                                                   data-bulk-site="{{ $loop->parent->index }}"
+                                                   @checked(in_array($site->external_id, $restoredSites, true))
+                                                   aria-label="Select {{ $site->name }}"
+                                                   class="align-middle accent-[var(--primary)]">
+                                        </td>
+                                    @endif
+                                    <td class="py-3 pr-3 align-middle {{ $bulk ? 'pl-1' : 'pl-3.5' }}">
                                         <a href="{{ route('sites.show', $site) }}" class="flex flex-col gap-0.5 no-underline">
                                             <span class="text-[13.5px] font-medium text-text">{{ $site->name }}</span>
                                             <span class="font-mono text-[11px] text-text-3">{{ $site->expected_domain }}</span>
@@ -382,6 +440,39 @@
                     </tbody>
                 </table>
             </div>
+
+                @if ($bulk)
+                    {{--
+                        The action bar.
+
+                        Rendered rather than injected, and visible by default. Hiding it until
+                        something is ticked needs script; showing it always does not, and a bar that
+                        never appeared without JavaScript would make the whole feature invisible in
+                        the one condition it was built to survive. bulk.js hides it while the
+                        selection is empty, and that is the only thing it does to it.
+
+                        Pressing it with nothing selected is a validation error rather than a silent
+                        no-op, which is why the button is not disabled here.
+                    --}}
+                    <div data-bulk-bar
+                         class="sticky bottom-0 z-10 flex flex-wrap items-center gap-3 border-t border-border bg-surface px-3.5 py-2.5">
+                        <span class="text-[12.5px] text-text-2">
+                            <span data-bulk-count class="font-medium text-text">0</span> selected
+                        </span>
+
+                        <button type="submit"
+                                class="ml-auto flex h-8 items-center whitespace-nowrap rounded-[7px] border border-primary bg-primary px-3 text-[12.5px] font-medium text-primary-fg hover:bg-primary-hover">
+                            Back up selected
+                        </button>
+
+                        <span class="basis-full text-[11.5px] text-text-3">
+                            Each site is asked separately, and runs when it next checks in. Anything
+                            that cannot be backed up right now is reported rather than skipped
+                            quietly.
+                        </span>
+                    </div>
+                @endif
+            </form>
         @endif
 
         <div class="flex items-center justify-between bg-surface-2 px-3.5 py-2.5 text-[12px] text-text-3">

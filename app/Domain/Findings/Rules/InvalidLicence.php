@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Findings\Rules;
 
 use App\Domain\Findings\Rule;
+use App\Domain\Findings\RuleCategory;
 use App\Domain\Findings\RuleMatch;
 use App\Domain\Findings\Severity;
 use App\Domain\Findings\Snapshot;
@@ -20,6 +21,11 @@ final class InvalidLicence implements Rule
     public function key(): string
     {
         return 'licence_not_valid';
+    }
+
+    public function category(): string
+    {
+        return RuleCategory::MAINTENANCE;
     }
 
     public function requiresCapability(): string

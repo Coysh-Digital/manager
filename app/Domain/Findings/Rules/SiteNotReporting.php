@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Findings\Rules;
 
 use App\Domain\Findings\Rule;
+use App\Domain\Findings\RuleCategory;
 use App\Domain\Findings\RuleMatch;
 use App\Domain\Findings\Severity;
 use App\Domain\Findings\Snapshot;
@@ -28,6 +29,16 @@ final class SiteNotReporting implements Rule
     public function key(): string
     {
         return 'site_not_reporting';
+    }
+
+    /**
+     * Operational, not security. A silent site might be compromised, but it is far more often a
+     * cron that stopped or a host that moved, and filing it under security would put a rule that
+     * fires on every decommissioned site at the top of the screen that has to stay readable.
+     */
+    public function category(): string
+    {
+        return RuleCategory::OPERATIONAL;
     }
 
     public function requiresCapability(): ?string

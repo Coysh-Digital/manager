@@ -12,6 +12,7 @@ use App\Domain\Notifications\UnsafeDestinationException;
 use App\Models\Membership;
 use App\Models\NotificationDestination;
 use App\Models\Organisation;
+use App\Models\Site;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -47,10 +48,21 @@ final class NotificationDestinationController
 
             'destinations' => NotificationDestination::query()
                 ->where('organisation_id', $organisation->id)
-                ->with(['deliveries' => fn ($query) => $query->latest('created_at')->limit(3)])
+                ->with([
+                    'deliveries' => fn ($query) => $query->latest('created_at')->limit(3),
+                    'sites:id,name',
+                ])
                 ->orderBy('label')
                 ->get(),
             'eventCatalogue' => NotificationEvent::catalogue(),
+
+            // For the scope picker. Ordered by name, because somebody choosing which client's sites
+            // a mailbox covers is looking for a name rather than scanning a fleet.
+            'sites' => Site::query()
+                ->where('organisation_id', $organisation->id)
+                ->active()
+                ->orderBy('name')
+                ->get(['id', 'external_id', 'name', 'expected_domain']),
         ]);
     }
 
@@ -64,6 +76,18 @@ final class NotificationDestinationController
             'target' => ['required', 'string', 'max:512'],
             'events' => ['required', 'array', 'min:1'],
             'events.*' => ['string', 'in:'.implode(',', array_keys(NotificationEvent::catalogue()))],
+
+            /*
+             | Scope. `all` is the default and writes no rows - see the pivot migration for why the
+             | empty state is the whole of "every site" rather than a column saying so.
+             |
+             | `sites` is only read when the scope is `some`, and is required then: a destination
+             | scoped to nothing would subscribe to five events and receive none of them, which is
+             | a silent failure wearing the costume of a setting.
+             */
+            'scope' => ['nullable', 'in:all,some'],
+            'sites' => ['array', 'required_if:scope,some'],
+            'sites.*' => ['string', 'max:64'],
         ]);
 
         if ($validated['transport'] === NotificationDestination::TRANSPORT_EMAIL) {
@@ -75,6 +99,36 @@ final class NotificationDestinationController
                 $this->guard->resolve($validated['target']);
             } catch (UnsafeDestinationException $e) {
                 throw ValidationException::withMessages(['target' => $e->getMessage()]);
+            }
+        }
+
+        /*
+         | The scope, resolved before anything is written.
+         |
+         | Empty means every identifier was unrecognised, and the safe-looking thing to do there is
+         | the dangerous one. No pivot rows is "all sites", so writing none would answer "only these
+         | two" with "every site you have" - a scope that silently widened, on the one screen where
+         | widening means telling somebody about a client that is not theirs.
+         |
+         | Refused rather than narrowed to nothing, which is equally wrong in the other direction: a
+         | destination subscribed to five events and scoped to no site is a setting that can never
+         | fire.
+         */
+        $scoped = [];
+
+        if (($validated['scope'] ?? 'all') === 'some') {
+            // Resolved against this organisation's own rows, so a ULID from somewhere else attaches
+            // nothing rather than scoping a destination to a site its owner cannot see.
+            $scoped = Site::query()
+                ->where('organisation_id', $organisation->id)
+                ->whereIn('external_id', $validated['sites'] ?? [])
+                ->pluck('id')
+                ->all();
+
+            if ($scoped === []) {
+                throw ValidationException::withMessages([
+                    'sites' => 'None of those sites are in this fleet, so there is nothing to scope this destination to.',
+                ]);
             }
         }
 
@@ -95,6 +149,10 @@ final class NotificationDestinationController
             'created_by_label' => $request->user()->name ?: $request->user()->email,
         ]);
 
+        if ($scoped !== []) {
+            $destination->sites()->sync($scoped);
+        }
+
         $this->audit->record(
             action: 'notification_destination.added',
             organisation: $organisation,
@@ -107,6 +165,10 @@ final class NotificationDestinationController
                 'transport' => $destination->transport,
                 'target' => $destination->target,
                 'events' => $destination->events,
+
+                // Which sites, or all of them. Recorded because "why did this client hear about
+                // that site" is a question the audit log should be able to answer.
+                'sites' => $scoped === [] ? 'all' : $destination->sites()->pluck('name')->all(),
             ],
         );
 

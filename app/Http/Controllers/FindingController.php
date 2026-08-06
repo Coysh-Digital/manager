@@ -6,22 +6,38 @@ namespace App\Http\Controllers;
 
 use App\Domain\Audit\AuditRecorder;
 use App\Domain\Findings\FindingsEvaluator;
+use App\Domain\Findings\RuleCategory;
 use App\Domain\Findings\Severity;
 use App\Models\Finding;
 use App\Models\Membership;
 use App\Models\Organisation;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 /**
- * Findings across the fleet.
+ * Findings across the fleet, apart from the security ones.
  *
  * Ordered by severity and then by age, because a critical finding that has been true for a month is
  * worse than one raised this morning and should read that way.
  *
  * Acknowledged findings are shown, not hidden. Acknowledgement means somebody has decided not to act
  * yet; filing it out of sight turns that decision into a permanent one nobody revisits.
+ *
+ * Security findings live on {@see SecurityController} instead. This screen excludes them rather than
+ * showing everything with a filter, because the two are read for different reasons - one is "what is
+ * exposed", the other is "what is owed" - and a single list ordered by severity interleaves them so
+ * that neither question gets answered.
+ *
+ * What it does **not** do is drop them silently. A count and a link to the other screen are passed
+ * through whenever any are outstanding: a number going down because a screen stopped counting it is
+ * the failure this whole split has to avoid.
+ *
+ * The filter is `whereNotIn` the security keys rather than `whereIn` the other two categories, and
+ * that is load-bearing for the same reason. A rule removed from the evaluator leaves its open
+ * findings behind - reconciliation cannot resolve what it no longer runs - and a positive list would
+ * put those rows on no screen at all. This screen is the one that shows anything uncategorised.
  */
 final class FindingController
 {
@@ -39,6 +55,7 @@ final class FindingController
             ->whereHas('site', fn ($query) => $query
                 ->where('organisation_id', $organisation->id)
                 ->whereNull('archived_at'))
+            ->whereNotIn('rule', RuleCategory::keysFor(RuleCategory::SECURITY))
             ->when(
                 ! $showResolved,
                 fn ($query) => $query->whereIn('state', [Finding::STATE_OPEN, Finding::STATE_ACKNOWLEDGED]),
@@ -55,6 +72,7 @@ final class FindingController
             'findings' => $findings,
             'showResolved' => $showResolved,
             'counts' => $this->counts($organisation),
+            'securityCount' => $this->securityCount($organisation),
             'canAcknowledge' => app(Membership::class)->canAdminister(),
         ]);
     }
@@ -127,17 +145,19 @@ final class FindingController
     }
 
     /**
+     * The severity tally for what this screen actually lists.
+     *
+     * Scoped the same way the list is. A tally that counted security findings while the list below it
+     * did not would be the one number on the page nobody could reconcile.
+     *
      * @return array<string, int>
      */
     private function counts(Organisation $organisation): array
     {
         $counts = array_fill_keys(Severity::ordered(), 0);
 
-        $rows = Finding::query()
-            ->whereHas('site', fn ($query) => $query
-                ->where('organisation_id', $organisation->id)
-                ->whereNull('archived_at'))
-            ->whereIn('state', [Finding::STATE_OPEN, Finding::STATE_ACKNOWLEDGED])
+        $rows = $this->outstanding($organisation)
+            ->whereNotIn('rule', RuleCategory::keysFor(RuleCategory::SECURITY))
             ->selectRaw('severity, count(*) as total')
             ->groupBy('severity')
             ->pluck('total', 'severity');
@@ -147,6 +167,32 @@ final class FindingController
         }
 
         return $counts;
+    }
+
+    /**
+     * How many security findings are outstanding on the other screen.
+     *
+     * Only ever rendered as "n security findings are on the Security page". The number is the whole
+     * point of it: somebody who used to see everything here needs to know that what is missing is
+     * somewhere, not gone.
+     */
+    private function securityCount(Organisation $organisation): int
+    {
+        return $this->outstanding($organisation)
+            ->whereIn('rule', RuleCategory::keysFor(RuleCategory::SECURITY))
+            ->count();
+    }
+
+    /**
+     * @return Builder<Finding>
+     */
+    private function outstanding(Organisation $organisation): Builder
+    {
+        return Finding::query()
+            ->whereHas('site', fn ($query) => $query
+                ->where('organisation_id', $organisation->id)
+                ->whereNull('archived_at'))
+            ->whereIn('state', [Finding::STATE_OPEN, Finding::STATE_ACKNOWLEDGED]);
     }
 
     private function authorise(Finding $finding): void

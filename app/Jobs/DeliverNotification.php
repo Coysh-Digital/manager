@@ -68,6 +68,16 @@ final class DeliverNotification implements ShouldQueue
             return;
         }
 
+        // Scope is re-read here for the same reason the subscription is. A destination narrowed to
+        // one client's sites between queueing and running would otherwise still deliver whatever was
+        // already in flight - which is the one failure mode scoping exists to prevent, arriving
+        // minutes late and looking like a bug in the scope rather than in the queue.
+        //
+        // A test delivery bypasses this too: it carries no site, and covers(null) is true anyway.
+        if (! $isTest && ! $destination->covers($this->event->site)) {
+            return;
+        }
+
         $result = $destination->isWebhook()
             ? $webhooks->send($destination, $this->event)
             : $emails->send($destination, $this->event);

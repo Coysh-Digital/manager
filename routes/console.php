@@ -61,6 +61,22 @@ Schedule::command('manager:certificates:check')
     ->dailyAt('05:00')
     ->withoutOverlapping();
 
+/*
+ | Findings, on a clock rather than on a report.
+ |
+ | The rule that matters here is `site_not_reporting`, and the reason it needs a schedule is the
+ | reason it exists: findings were only ever evaluated when a site sent a report or when somebody
+ | opened a screen, and a site that has stopped reporting does neither. The one alert whose whole
+ | subject is silence was raised only by code paths that silence prevents from running.
+ |
+ | Hourly, which is well inside the rule's own six-hour threshold and cheap: nothing here calls out
+ | to a site, it re-reads rows already stored. It also gives every other time-dependent rule a clock
+ | to move against, and lets a resolved finding close itself without waiting for the next report.
+ */
+Schedule::command('manager:findings:sweep')
+    ->hourly()
+    ->withoutOverlapping();
+
 // Heartbeats arrive every five minutes per site and the Health screen derives uptime from them
 // rather than storing it, so they accumulate faster than anything else here. Retention is a stated
 // window, not "forever with an index on it".

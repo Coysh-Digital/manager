@@ -19,6 +19,7 @@ use App\Http\Controllers\NotificationDestinationController;
 use App\Http\Controllers\PaletteController;
 use App\Http\Controllers\PasskeyController;
 use App\Http\Controllers\RecoveryKeyController;
+use App\Http\Controllers\SecurityController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SetupController;
 use App\Http\Controllers\SiteAuditController;
@@ -136,6 +137,19 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
 
     Route::get('updates', [UpdateController::class, 'index'])->name('updates.index');
 
+    /*
+     | Security and Findings are one query split in two, and the split is deliberate.
+     |
+     | Every rule declares a category, so this screen lists the security ones grouped by site and
+     | Findings lists the rest grouped by rule. "Is this site exposed" and "what work is owed" are
+     | different questions asked by different people, and a single list ordered by severity
+     | interleaves them so that neither gets answered.
+     |
+     | Acknowledging works from either, on the same two routes below - a finding does not care which
+     | screen somebody was standing on.
+     */
+    Route::get('security', [SecurityController::class, 'index'])->name('security.index');
+
     Route::get('findings', [FindingController::class, 'index'])->name('findings.index');
 
     Route::get('backups', [BackupController::class, 'index'])->name('backups.index');
@@ -245,6 +259,18 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
         // secret until it is consumed, so a stale session must not be able to mint one.
         Route::post('sites', [SiteController::class, 'store'])->name('sites.store');
         Route::delete('backups/{artifact}', [BackupController::class, 'destroy'])->name('backups.destroy');
+
+        /*
+         | Several sites at once, from the fleet screen.
+         |
+         | Not inside the `site.scoped` group below: that middleware binds one {site}, and this takes
+         | a list. The controller scopes the list to the organisation itself, in the query.
+         |
+         | Behind recent authentication with the single-site button, and for the same reason - this
+         | asks production sites for a copy of their database, and asking twelve of them at once is
+         | not a smaller act than asking one.
+         */
+        Route::post('backups/sites', [BackupController::class, 'storeMany'])->name('backups.store-many');
 
         /*
          | Downloading an artifact's ciphertext.

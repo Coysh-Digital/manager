@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Findings\Rules;
 
 use App\Domain\Findings\Rule;
+use App\Domain\Findings\RuleCategory;
 use App\Domain\Findings\RuleMatch;
 use App\Domain\Findings\Severity;
 use App\Domain\Findings\Snapshot;
@@ -14,6 +15,16 @@ final class PhpEndOfLife implements Rule
     public function key(): string
     {
         return 'php_end_of_life';
+    }
+
+    /**
+     * Maintenance, though it shades into security: a PHP version past end of life stops receiving
+     * security patches. It is filed here because the action is a planned upgrade rather than a
+     * response, and there is no exposure to point at on the day it is raised.
+     */
+    public function category(): string
+    {
+        return RuleCategory::MAINTENANCE;
     }
 
     public function requiresCapability(): string

@@ -22,6 +22,18 @@ interface Rule
     public function key(): string;
 
     /**
+     * Which screen this rule's findings belong on.
+     *
+     * Declared by the rule rather than inferred from its severity or its capability. Both were tried
+     * as proxies and both are wrong: a critical disk is not a security problem, and
+     * `certificate_expiring` needs no capability at all because the platform observes it directly.
+     *
+     * One of the {@see RuleCategory} constants. `RuleCategoryTest` asserts every rule answers with a
+     * known one, so a new rule cannot quietly appear on no screen.
+     */
+    public function category(): string;
+
+    /**
      * Evaluate against a site's most recent reports.
      */
     public function evaluate(Snapshot $snapshot): ?RuleMatch;

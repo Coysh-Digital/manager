@@ -58,6 +58,27 @@
             @endisset
         </a>
 
+        {{-- Above Findings, because it is the one people open during an incident and the order of a
+             nav is read as an order of importance. The two counts do not overlap: every rule is in
+             exactly one category, and the composer scopes each badge to its own screen. --}}
+        <a href="{{ route('security.index') }}"
+           @class([
+               'flex items-center justify-between rounded-md px-2.5 py-[7px] text-[13.5px] font-medium no-underline',
+               'bg-pale text-primary' => request()->routeIs('security.*'),
+               'text-text-2 hover:bg-row-hover hover:text-text' => ! request()->routeIs('security.*'),
+           ])>
+            <span>Security</span>
+            @isset($securityFindingCount)
+                @if ($securityFindingCount > 0)
+                    <span @class([
+                        'font-mono text-[11px]',
+                        'rounded px-1.5 py-px border border-danger-line bg-danger-bg text-danger' => $severeSecurityFindings ?? false,
+                        'rounded px-1.5 py-px border border-amber-line bg-amber-bg text-amber' => ! ($severeSecurityFindings ?? false),
+                    ])>{{ $securityFindingCount }}</span>
+                @endif
+            @endisset
+        </a>
+
         <a href="{{ route('findings.index') }}"
            @class([
                'flex items-center justify-between rounded-md px-2.5 py-[7px] text-[13.5px] font-medium no-underline',

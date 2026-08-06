@@ -26,6 +26,20 @@
                 Derived on the platform from what each site reports. A finding resolves itself once the
                 problem is fixed - there is nothing to tick off.
             </p>
+
+            {{-- What this screen no longer shows, and where it went.
+                 Security findings moved to their own screen, and a number that goes down because a
+                 list stopped counting something is exactly the failure that split has to avoid. So
+                 the count is stated here rather than left for somebody to notice. --}}
+            @if ($securityCount > 0)
+                <a href="{{ route('security.index') }}"
+                   class="inline-flex w-fit items-center gap-1.5 rounded-[7px] border border-amber-line bg-amber-bg px-2.5 py-1 text-[12.5px] text-text no-underline hover:bg-row-hover">
+                    <span class="font-medium">{{ $securityCount }}</span>
+                    security {{ Str::plural('finding', $securityCount) }}
+                    {{ $securityCount === 1 ? 'is' : 'are' }} on the Security screen
+                    <span aria-hidden="true">&rarr;</span>
+                </a>
+            @endif
         </div>
 
         <a href="{{ route('findings.index', ['resolved' => $showResolved ? null : 1]) }}"
