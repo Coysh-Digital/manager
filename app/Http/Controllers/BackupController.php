@@ -110,9 +110,10 @@ final class BackupController
             // and offer somewhere to go, instead of repeating the same sentence down every row.
             'needsRecoveryKey' => ! $this->recoveryKeys->hasActiveKey($organisation),
 
+            // What storage holds, matching the quota rather than reporting a different number to it.
             'storedBytes' => $artifacts
                 ->where('state', BackupArtifact::STATE_STORED)
-                ->sum('ciphertext_bytes'),
+                ->sum(fn (BackupArtifact $artifact): int => $artifact->expectedUploadBytes()),
 
             'storage' => $this->backups->describeStorage(),
             'acknowledgement' => CapabilityService::acknowledgementFor('backups:create'),

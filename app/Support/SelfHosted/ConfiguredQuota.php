@@ -42,10 +42,14 @@ final class ConfiguredQuota implements StorageQuota
             return null;
         }
 
+        // The bytes storage actually holds, which is not `ciphertext_bytes`. See
+        // BackupArtifact::storedBytesExpression() for why those are different numbers, and why
+        // admitting on one while measuring the other was a quota that did not measure the thing it
+        // was limiting.
         $used = (int) BackupArtifact::query()
             ->where('organisation_id', $organisation->id)
             ->whereIn('state', [BackupArtifact::STATE_PENDING, BackupArtifact::STATE_STORED])
-            ->sum('ciphertext_bytes');
+            ->sum(BackupArtifact::storedBytesExpression());
 
         return max(0, (int) $limit - $used);
     }

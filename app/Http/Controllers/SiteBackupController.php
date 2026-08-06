@@ -234,7 +234,8 @@ final class SiteBackupController
             'artifacts' => $artifacts,
             'latest' => $stored->first(),
             'storedCount' => $stored->count(),
-            'storedBytes' => (int) $stored->sum('ciphertext_bytes'),
+            // What storage holds, matching the quota rather than reporting a different number to it.
+            'storedBytes' => (int) $stored->sum(fn (BackupArtifact $artifact): int => $artifact->expectedUploadBytes()),
 
             // Oldest first for the chart: a size trend read right to left is nobody's instinct.
             'trend' => $stored->sortBy('taken_at')->values()->map(fn (BackupArtifact $artifact): array => [

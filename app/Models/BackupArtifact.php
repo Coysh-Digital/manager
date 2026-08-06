@@ -6,12 +6,14 @@ namespace App\Models;
 
 use App\Support\Concerns\HasExternalId;
 use Database\Factories\BackupArtifactFactory;
+use Illuminate\Contracts\Database\Query\Expression;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 /**
  * One encrypted database backup.
@@ -240,6 +242,30 @@ class BackupArtifact extends Model
         return $this->isZeroKnowledge() && $this->artifact_bytes !== null
             ? $this->artifact_bytes
             : $this->ciphertext_bytes;
+    }
+
+    /**
+     * The same question as {@see self::expectedUploadBytes()}, asked of a whole set in SQL.
+     *
+     * How many bytes an artifact costs is one rule, and it has to be the same rule wherever it is
+     * asked. It was not: admission control measured `artifact_bytes` - the whole file, settled to its
+     * real size when the upload completed - while every meter summed `ciphertext_bytes`, which is the
+     * encrypted stream without its envelope, is declared by the connector, and is never checked
+     * against anything. A quota admitted on one number and reported on a different, unverified one.
+     *
+     * Expressed here rather than repeated at each call site, for the reason the docblock above
+     * already gives: getting it wrong in one place produces a check that silently passes.
+     *
+     * Collections should use `expectedUploadBytes()` directly. This exists for the sums that cannot
+     * hydrate the rows first - a quota check runs on the connector's upload path and must not load an
+     * organisation's entire artifact history to add up a column.
+     */
+    public static function storedBytesExpression(): Expression
+    {
+        return DB::raw(sprintf(
+            'CASE WHEN format_version = %s AND artifact_bytes IS NOT NULL THEN artifact_bytes ELSE ciphertext_bytes END',
+            DB::getPdo()->quote(self::FORMAT_V2),
+        ));
     }
 
     public function hasExpired(): bool

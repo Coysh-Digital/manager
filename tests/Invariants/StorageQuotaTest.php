@@ -155,5 +155,48 @@ it('does not let one organisation consume another organisation quota', function 
 
     expect($remaining)->toBe(1_000_000)
         ->and(app(StorageQuota::class)->remainingBytes($this->organisation))
-        ->toBe(1_000_000 - $mine->ciphertext_bytes);
+        // The rule, rather than one of the two columns that used to disagree about it.
+        ->toBe(1_000_000 - $mine->expectedUploadBytes());
+});
+
+it('measures the bytes storage holds, not the ciphertext the connector declared', function (): void {
+    /*
+     | The two numbers are different, and only one of them is checked.
+     |
+     | `artifact_bytes` is the whole file - the encrypted stream inside its envelope - and it is
+     | settled to the real size when the upload completes. `ciphertext_bytes` is the stream alone, is
+     | declared by the connector, and nothing ever compares it to anything.
+     |
+     | Admission control already used artifact_bytes. Every meter summed ciphertext_bytes, so the
+     | quota admitted on one number and reported on a different, unverified one - and a connector
+     | under-declaring it would have had its storage counted as almost nothing.
+    */
+    config(['manager.backups.quota_bytes' => 1_000_000]);
+
+    BackupArtifact::factory()->for($this->site)->create([
+        'organisation_id' => $this->organisation->id,
+        'state' => BackupArtifact::STATE_STORED,
+        'format_version' => BackupArtifact::FORMAT_V2,
+        'ciphertext_bytes' => 1_000,
+        'artifact_bytes' => 400_000,
+    ]);
+
+    // 600_000, not 999_000.
+    expect(app(StorageQuota::class)->remainingBytes($this->organisation))->toBe(600_000);
+});
+
+it('falls back to the ciphertext size for a v1 artifact, which has no envelope', function (): void {
+    // A v1 artifact is a bare encrypted stream, so there is no second number and ciphertext_bytes is
+    // the whole file. Artifacts written under v1 still exist and still count against the quota.
+    config(['manager.backups.quota_bytes' => 1_000_000]);
+
+    BackupArtifact::factory()->for($this->site)->create([
+        'organisation_id' => $this->organisation->id,
+        'state' => BackupArtifact::STATE_STORED,
+        'format_version' => BackupArtifact::FORMAT_V1,
+        'ciphertext_bytes' => 250_000,
+        'artifact_bytes' => null,
+    ]);
+
+    expect(app(StorageQuota::class)->remainingBytes($this->organisation))->toBe(750_000);
 });
