@@ -188,6 +188,17 @@
         <div class="overflow-hidden rounded-[10px] border border-border bg-surface shadow-[var(--shadow)]">
             <div class="border-b border-border px-4 py-3 text-[13.5px] font-medium">Where you are signed in</div>
 
+            {{--
+                Said here rather than left to be discovered. "Stay signed in" is one token per
+                account, not one per device, so ending any session ends every remembered device —
+                and a security control that quietly does more than its label says is as much of a
+                problem as one that quietly does less.
+            --}}
+            <p class="border-b border-border px-4 py-2.5 text-[12.5px] text-text-2">
+                Signing out a session also ends "stay signed in" everywhere. Every device set to stay
+                signed in will have to sign in again, including this one.
+            </p>
+
             @foreach ($sessions as $session)
                 <div class="flex items-center justify-between gap-4 border-b border-border px-4 py-3 text-[12.5px] last:border-b-0">
                     <div class="flex min-w-0 flex-col gap-0.5">
