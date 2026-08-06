@@ -6,6 +6,7 @@ namespace App\Domain\Backup;
 
 use App\Models\BackupArtifact;
 use App\Models\Site;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
@@ -132,6 +133,44 @@ final class RetentionPolicy
         }
 
         return $keep;
+    }
+
+    /**
+     * The furthest back this policy can still protect an artifact, measured forward from $from.
+     *
+     * The mirror image of {@see self::keep()}: that walks backwards from now and asks which windows
+     * an artifact still falls inside, and this asks how long an artifact taken now could stay inside
+     * any of them. The two have to agree, which is why they are in the same class - they did not
+     * agree before, and the disagreement was silent.
+     *
+     * What went wrong: expiry was computed from `days` alone, so a site with `days = 0` - a value the
+     * settings form explicitly offers and describes as "no window of this kind" - got a null expiry
+     * on every artifact. Nothing with a null expiry is ever eligible for pruning, so the weekly and
+     * monthly windows below were computed on every sweep and could never apply to anything. The
+     * screen stated a weeks-and-months policy and the sweep ran a keep-everything one.
+     *
+     * Null only when all three windows are zero, which is the one case that genuinely means "keep
+     * indefinitely" rather than "keep for the other windows".
+     */
+    public function horizon(Carbon $from): ?Carbon
+    {
+        $edges = [];
+
+        if ($this->days > 0) {
+            $edges[] = $from->copy()->addDays($this->days);
+        }
+
+        if ($this->weeks > 0) {
+            $edges[] = $from->copy()->addWeeks($this->weeks);
+        }
+
+        if ($this->months > 0) {
+            $edges[] = $from->copy()->addMonths($this->months);
+        }
+
+        // The widest window wins. A month is not a fixed number of days, so these are compared as
+        // dates rather than converted into a common unit and compared as numbers.
+        return $edges === [] ? null : max($edges);
     }
 
     /**
