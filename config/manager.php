@@ -69,6 +69,29 @@ return [
         'rate_limit_per_ip' => (int) env('MANAGER_RATE_LIMIT_IP', 120),
 
         /*
+         | A separate allowance for artifact bytes, counted separately.
+         |
+         | The two above are sized for a connector that reports: a heartbeat, an inventory, a job
+         | claim - a handful of requests a minute, where sixty is generous and a site exceeding it is
+         | misbehaving. An artifact arriving in eight-megabyte parts is not that. A two-gigabyte
+         | database is two hundred and fifty requests, and on a fast uplink they arrive in under a
+         | minute, so the ordinary allowance would refuse a backup for doing exactly what this
+         | platform told it to do - and the per-IP one would do it sooner, because every site behind
+         | one office NAT shares it.
+         |
+         | Counted under its own key rather than raising the general limit. An upload in progress must
+         | not be able to exhaust the allowance that heartbeats and job claims depend on, and a site
+         | flooding the reporting endpoints must not be given a larger budget because uploads need
+         | one. Two budgets, two purposes.
+         |
+         | Only the streaming routes draw on it, which is to say only the two that carry artifact
+         | bytes. Not skipped, and never to be: "no rate limit on the endpoint that accepts the
+         | largest bodies" is not a sentence that should be true of this file.
+         */
+        'rate_limit_ingest_per_site' => ((int) env('MANAGER_RATE_LIMIT_INGEST_SITE', 600)) ?: 600,
+        'rate_limit_ingest_per_ip' => ((int) env('MANAGER_RATE_LIMIT_INGEST_IP', 1200)) ?: 1200,
+
+        /*
         | Which cache store holds seen nonces. This must be a shared, atomic store: the replay
         | check relies on an atomic add, and an in-process store would let a replay through on a
         | second worker. If it is unreachable, verification rejects rather than passes.
@@ -165,6 +188,53 @@ return [
          | multipart path and a first real exercise of it on somebody's production backup.
          */
         'part_bytes' => ((int) env('MANAGER_BACKUP_PART_BYTES', Protocol::ARTIFACT_PART_BYTES)) ?: Protocol::ARTIFACT_PART_BYTES,
+
+        /*
+         | Bytes per part when an artifact arrives *through this application* rather than going
+         | straight to a store.
+         |
+         | A second part size, and the temptation is to reuse `part_bytes` above. Resist it: the two
+         | numbers exist for unrelated reasons and would be wrong at each other's value. `part_bytes`
+         | is 256 MiB because an object store refuses a single PUT over 5 GB and permits ten thousand
+         | parts - a constraint about the *store*. This one is about the *request path*: nginx,
+         | php-fpm and anything else between a site and this code, none of which this application can
+         | see and every one of which has an opinion about how long a request may take.
+         |
+         | Eight mebibytes, chosen against the slowest plausible uplink rather than the fastest, and
+         | against the shortest plausible timeout rather than the usual one. Sixty seconds is the
+         | common default for both `request_terminate_timeout` and `fastcgi_read_timeout`, but thirty
+         | is not unusual on a managed host - and the population with no direct-upload path at all is
+         | self-hosted operators, who are the ones most likely to be on a business ADSL line. Eight
+         | mebibytes clears thirty seconds at 2.2 Mbit/s and sixty at 1.1. Sixteen needs twice that,
+         | which is fine for a hosted site on a hundred megabits and not fine for the people this
+         | number exists to protect.
+         |
+         | A twenty-gigabyte artifact is then some two and a half thousand parts, which is fine: they
+         | are sequential, each is retried on its own, and none of them is long enough to be
+         | interesting to a proxy. The cost of a smaller part is one more signature verification and
+         | one more row update per eight megabytes, which is noise against the transfer.
+         |
+         | That is the whole point. Before this existed a backup was one request for its entire
+         | length, so a database large enough to take longer than an upstream timeout could not be
+         | uploaded at all - and the failure arrived as an HTML 502 from a web server, with no
+         | correlation id and nothing in this application's log, at the end of a multi-hour upload.
+         |
+         | Pinned onto the artifact at declare rather than read again when each part arrives. An
+         | operator changing this variable mid-upload would otherwise move every remaining offset,
+         | and the resulting file would fail its whole-file checksum - after the site had uploaded
+         | all of it.
+         |
+         | Lower it in tests, for the same reason `part_bytes` says to. Clamped so that neither a
+         | blank line nor a typo produces a part size that refuses every backup or restores the
+         | single-request failure this exists to remove.
+         */
+        'ingest_part_bytes' => (static function (): int {
+            $bytes = (int) env('MANAGER_BACKUP_INGEST_PART_BYTES', 8 * 1024 * 1024);
+
+            return $bytes > 0
+                ? max(64 * 1024, min($bytes, 256 * 1024 * 1024))
+                : 8 * 1024 * 1024;
+        })(),
 
         /*
          | Total bytes one organisation may hold, across every site. Unset by default, because an

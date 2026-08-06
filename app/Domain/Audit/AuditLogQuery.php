@@ -31,6 +31,11 @@ final class AuditLogQuery
             ->where('organisation_id', $organisation->id)
             ->when($siteExternalId, fn ($query, $site) => $query->whereHas('site', fn ($q) => $q->where('external_id', $site)))
             ->when($outcome, fn ($query, $value) => $query->where('outcome', $value))
+            // Eager loaded because a backup row offers a link to that site's backups, and a site that
+            // has since been removed must not offer one - "removing a site would not remove these
+            // rows", so the relation is genuinely sometimes absent. A query per row for fifty rows to
+            // answer that is the N+1 the audit recorder already avoids on the write side.
+            ->with('site')
             ->latest('seq')
             ->paginate($perPage)
             ->withQueryString();
@@ -44,6 +49,11 @@ final class AuditLogQuery
         return AuditEvent::query()
             ->where('site_id', $site->id)
             ->when($outcome, fn ($query, $value) => $query->where('outcome', $value))
+            // Eager loaded because a backup row offers a link to that site's backups, and a site that
+            // has since been removed must not offer one - "removing a site would not remove these
+            // rows", so the relation is genuinely sometimes absent. A query per row for fifty rows to
+            // answer that is the N+1 the audit recorder already avoids on the write side.
+            ->with('site')
             ->latest('seq')
             ->paginate($perPage)
             ->withQueryString();

@@ -30,6 +30,10 @@ use Illuminate\Support\Facades\DB;
  * @property string|null $storage_key
  * @property string|null $storage_disk
  * @property string|null $upload_reference
+ * @property int|null $staged_bytes
+ * @property int|null $ingest_part_bytes
+ * @property string|null $staged_node
+ * @property Carbon|null $staged_at
  * @property string $scheme
  * @property string $stream_header
  * @property string|null $wrapped_key
@@ -115,6 +119,7 @@ class BackupArtifact extends Model
             'expires_at' => 'datetime',
             'deleted_at' => 'datetime',
             'stage_at' => 'datetime',
+            'staged_at' => 'datetime',
 
             // Wrapped once by the key service and encrypted again here. A database dump alone does not
             // open an artifact even if object storage was taken at the same time.

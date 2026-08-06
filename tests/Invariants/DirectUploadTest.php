@@ -214,10 +214,17 @@ beforeEach(function (): void {
 it('offers no grant on an edition that does not issue them', function (): void {
     $response = ($this->declare)(($this->makeArtifact)()['declaration'])->assertOk();
 
-    // The self-hosted binding returns null and the response is the same three keys it has always
-    // carried. An operator running Manager on one box has nothing to presign and nothing to gain.
+    // The self-hosted binding returns null, so there is no grant - and in its place the response says
+    // how large a piece of the artifact this platform wants at a time. An operator running Manager on
+    // one box has nothing to presign and nothing to gain, but the bytes still have to arrive without
+    // one request having to last as long as a database takes to send.
+    //
+    // `upload` and `ingest_part_bytes` are alternatives and never both. A site that can write straight
+    // to a store should, and offering it a second way to do the same job is an invitation to pick
+    // wrong.
     expect(app(DirectUploadGrants::class))->toBeInstanceOf(NoDirectUploads::class)
-        ->and(array_keys($response->json()))->toBe(['artifact', 'already_declared', 'chunk_bytes']);
+        ->and(array_keys($response->json()))->toBe(['artifact', 'already_declared', 'chunk_bytes', 'ingest_part_bytes'])
+        ->and($response->json())->not->toHaveKey('upload');
 });
 
 /*

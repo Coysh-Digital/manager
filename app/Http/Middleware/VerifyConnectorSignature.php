@@ -66,19 +66,22 @@ final class VerifyConnectorSignature
      */
     public function handle(Request $request, Closure $next, string $bodyMode = 'body'): Response
     {
+        // Decided first because the rate limit depends on it. Artifact bytes are counted against
+        // their own allowance: a backup arriving in parts is hundreds of requests a minute, and the
+        // ordinary limit is sized for a connector that reports rather than one that uploads.
+        $streamed = $bodyMode === 'stream';
+
         // The rate limiter is backed by the same shared store as replay protection, so it fails at
         // the same time. Treated as unavailable rather than allowed to throw: the decision is
         // identical either way, but this returns a correlation identifier and a status a connector
         // can act on, instead of a 500 that tells it nothing.
         try {
-            if ($this->tooManyFrom($request->ip())) {
+            if ($this->tooManyFrom($request->ip(), $streamed)) {
                 return $this->throttled();
             }
         } catch (Throwable $e) {
             return $this->storeUnavailable($e, 'rate limiter unavailable');
         }
-
-        $streamed = $bodyMode === 'stream';
 
         // In streamed mode the body is deliberately never touched. Reading it to hash it would mean
         // accepting gigabytes from an unauthenticated caller before deciding whether to trust them,
@@ -169,7 +172,7 @@ final class VerifyConnectorSignature
         }
 
         try {
-            if ($this->tooManyFromSite($siteId)) {
+            if ($this->tooManyFromSite($siteId, $streamed)) {
                 return $this->throttled();
             }
 
@@ -258,19 +261,34 @@ final class VerifyConnectorSignature
         return abs(time() - (int) $timestamp) <= $tolerance;
     }
 
-    private function tooManyFrom(?string $ip): bool
+    /**
+     * Artifact bytes are counted under their own key, against their own allowance.
+     *
+     * A backup arriving in parts is hundreds of requests in a few minutes, which is nothing like the
+     * handful a reporting connector makes and which the ordinary allowance is sized for. Sharing one
+     * budget would mean either refusing a backup for doing what this platform asked, or handing a
+     * misbehaving site a large allowance on the reporting endpoints because uploads needed one.
+     *
+     * Separate keys rather than a larger shared number, so an upload in progress cannot exhaust what
+     * heartbeats and job claims depend on.
+     */
+    private function tooManyFrom(?string $ip, bool $streamed): bool
     {
         return $this->exceeded(
-            'connector:ip:'.($ip ?? 'unknown'),
-            (int) config('manager.connector.rate_limit_per_ip'),
+            ($streamed ? 'connector:ingest:ip:' : 'connector:ip:').($ip ?? 'unknown'),
+            (int) config($streamed
+                ? 'manager.connector.rate_limit_ingest_per_ip'
+                : 'manager.connector.rate_limit_per_ip'),
         );
     }
 
-    private function tooManyFromSite(string $siteId): bool
+    private function tooManyFromSite(string $siteId, bool $streamed): bool
     {
         return $this->exceeded(
-            'connector:site:'.$siteId,
-            (int) config('manager.connector.rate_limit_per_site'),
+            ($streamed ? 'connector:ingest:site:' : 'connector:site:').$siteId,
+            (int) config($streamed
+                ? 'manager.connector.rate_limit_ingest_per_site'
+                : 'manager.connector.rate_limit_per_site'),
         );
     }
 

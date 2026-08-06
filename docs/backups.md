@@ -45,13 +45,17 @@ On the Craft server:
 5. **Write a manifest and sign it** with the site's own key, then wrap it around the encrypted data.
    The result describes itself: everything needed to decrypt it is inside it.
 6. **Tell Manager for Craft what is coming** - sizes, checksums, the manifest. Metadata only.
-7. **Upload the bytes.**
+7. **Upload the bytes**, in bounded parts rather than as one enormous request, then ask Manager for
+   Craft to assemble them. A part that fails is retried on its own, and a connection dropped near the
+   end of a twenty-gigabyte artifact costs that part rather than the whole transfer. The file is not
+   split - it is one sealed artifact throughout, and `manager-restore` never sees a difference.
 8. **Delete both temporary files**, whether it worked or not.
 
 On Manager for Craft's side, it checks the manifest hashes to what was declared, that it was signed
 by that site's key, that each recipient's fingerprint really belongs to its key, and that the set of
 keys matches exactly what that job was issued for. Then it checks the uploaded bytes against the
-declared checksum before committing anything.
+declared checksum before committing anything - across every part, once they are assembled, and
+before a single byte reaches storage.
 
 What it cannot check is whether the sealed keys actually contain the encryption key - that would
 require opening them. That is the definition of zero-knowledge rather than a gap, and the honest
@@ -217,10 +221,11 @@ actual date rather than claiming it happened immediately.
   `manager:doctor` reports PHP's limit under **Upload path ceiling** and fails when it is below a
   ceiling you configured; it cannot see the proxy.
 
-  Above 5 GB an artifact cannot be uploaded in one request and has to arrive in parts, which requires
-  an edition that issues presigned uploads. A self-hosted installation streams every byte through the
-  application instead, so `manager:doctor` warns if the ceiling is raised past that point. Sites
-  uploading straight to their own storage are unaffected.
+  From 1.3.0 an artifact arrives in bounded parts rather than as one request, so a self-hosted
+  installation can accept one of any size without presigned uploads or an object store. A connector
+  older than 1.13 still sends the whole file in a single request, which cannot carry more than 5 GB —
+  `manager:doctor` warns when the ceiling is raised past that point, and names those sites as the
+  ones affected rather than the whole installation.
 - **Per organisation**: unset by default on self-hosted. Set `MANAGER_BACKUP_QUOTA_BYTES` if you
   want one - a single site filling a volume takes down backups for every site sharing it.
 - **On the Craft side**: `maxBackupMegabytes`, default 2048. A safety valve so an unexpectedly huge

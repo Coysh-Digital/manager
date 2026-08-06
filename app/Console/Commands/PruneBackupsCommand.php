@@ -93,10 +93,27 @@ final class PruneBackupsCommand extends Command
         // connection is not a failure - but it is not indefinite either.
         $cutoff = Carbon::now()->subSeconds((int) config('manager.backups.upload_window'));
 
+        /*
+         | Measured from the last part that arrived, when parts have been arriving.
+         |
+         | Against `created_at` alone this would write off an upload that is working. That is not
+         | hypothetical caution: the `upload_window` config comment records this platform having
+         | already made the mistake once, with an hour-long window that failed large backups "on a
+         | site that had done every part of the work correctly". Chunked ingest brings it back in a
+         | new form, because it makes an upload longer than six hours possible for the first time.
+         |
+         | An artifact with no parts keeps the old rule exactly. What the window means in both cases
+         | is the same - "nothing has happened for this long" - and only what counts as something
+         | happening has changed.
+        */
         $stale = BackupArtifact::query()
             ->with('site')
             ->where('state', BackupArtifact::STATE_PENDING)
-            ->where('created_at', '<', $cutoff)
+            ->where(function ($query) use ($cutoff): void {
+                $query
+                    ->where(fn ($sub) => $sub->whereNull('staged_at')->where('created_at', '<', $cutoff))
+                    ->orWhere(fn ($sub) => $sub->whereNotNull('staged_at')->where('staged_at', '<', $cutoff));
+            })
             ->get();
 
         foreach ($stale as $artifact) {
@@ -111,18 +128,85 @@ final class PruneBackupsCommand extends Command
             $abandoned++;
         }
 
+        $orphans = $this->sweepStaging($dryRun);
+
         $verb = $dryRun ? 'would remove' : 'removed';
 
         $this->components->info(sprintf(
-            '%s %d expired %s; %s kept by the minimum-count rule; %d %s written off as never uploaded.',
+            '%s %d expired %s; %s kept by the minimum-count rule; %d %s written off as never uploaded; %d orphaned %s cleared.',
             ucfirst($verb),
             $deleted,
             $deleted === 1 ? 'artifact' : 'artifacts',
             $kept === 0 ? 'none' : (string) $kept,
             $abandoned,
             $abandoned === 1 ? 'declaration' : 'declarations',
+            $orphans,
+            $orphans === 1 ? 'part file' : 'part files',
         ));
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Remove part files with no artifact still waiting for them.
+     *
+     * The belt to {@see BackupService::fail()}'s braces. Failing an artifact already removes its parts,
+     * and that covers every ordinary way an upload ends - but a row deleted outside the application, a
+     * crash between writing a part and recording it, or a restore of the database over a filesystem
+     * that kept its files all leave a file with nothing pointing at it. What is left behind is an
+     * encrypted copy of part of a customer's database, on the control plane, and enough of them fill
+     * the disk that monitors the whole fleet.
+     *
+     * Deletes only inside the one directory this application writes parts to, and only files matching
+     * the name it writes. A sweep that removed whatever it found in a path from anywhere else is the
+     * kind of thing that eventually gets pointed at a directory somebody cared about.
+     */
+    private function sweepStaging(bool $dryRun): int
+    {
+        $directory = storage_path('app/private/backup-staging');
+
+        if (! is_dir($directory)) {
+            return 0;
+        }
+
+        $files = glob($directory.'/*.part');
+
+        if ($files === false || $files === []) {
+            return 0;
+        }
+
+        // One query rather than one per file. A sweep over a fleet's worth of interrupted uploads
+        // should not be a round trip each.
+        $awaited = BackupArtifact::query()
+            ->where('state', BackupArtifact::STATE_PENDING)
+            ->whereNotNull('staged_bytes')
+            ->pluck('external_id')
+            ->flip();
+
+        $cleared = 0;
+
+        foreach ($files as $file) {
+            $id = basename($file, '.part');
+
+            // Written from an identifier this platform generated, so anything that is not shaped like
+            // one was not written here and is not this sweep's to delete.
+            if (preg_match('~^[0-9A-Za-z]{20,40}$~', $id) !== 1) {
+                continue;
+            }
+
+            if ($awaited->has($id)) {
+                continue;
+            }
+
+            if ($dryRun) {
+                $this->line("  would clear orphaned parts for {$id}");
+            } else {
+                @unlink($file);
+            }
+
+            $cleared++;
+        }
+
+        return $cleared;
     }
 }

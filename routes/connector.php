@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Connector\BackupAssembledController;
 use App\Http\Controllers\Connector\BackupDeclareController;
+use App\Http\Controllers\Connector\BackupPartController;
 use App\Http\Controllers\Connector\BackupProgressController;
 use App\Http\Controllers\Connector\BackupUploadController;
 use App\Http\Controllers\Connector\BackupUploadedController;
@@ -119,6 +121,17 @@ Route::middleware('connector.signed')->group(function (): void {
     Route::post('backups/{artifactId}/uploaded', BackupUploadedController::class)
         ->middleware('capability:backups:create')
         ->name('backups.uploaded');
+
+    /*
+     | A site reporting that it has sent every part of an artifact that came through this platform.
+     |
+     | Separate from `uploaded` above and not a variant of it. That one says "you never saw these
+     | bytes", and is answered by asking the storage service; this one says "you have all of them",
+     | and is answered by hashing them. Same word in English, opposite amounts of trust.
+     */
+    Route::post('backups/{artifactId}/assembled', BackupAssembledController::class)
+        ->middleware('capability:backups:create')
+        ->name('backups.assembled');
 });
 
 /*
@@ -135,3 +148,24 @@ Route::middleware('connector.signed')->group(function (): void {
 Route::put('backups/{artifactId}/content', BackupUploadController::class)
     ->middleware(['connector.signed:stream', 'capability:backups:create'])
     ->name('backups.upload');
+
+/*
+| Backups, step two again: the bytes, a part at a time.
+|
+| The route above is one request for a whole database, which is a request long enough for something in
+| front of this application to lose patience with. Nothing here can see those timeouts or raise them -
+| an nginx `fastcgi_read_timeout` or a php-fpm `request_terminate_timeout` answers with its own HTML
+| page, so the site is told the platform refused it and this platform's log has no record of anything
+| at all. The fix is not to ask for a longer request; it is to stop needing one.
+|
+| Same streaming middleware and the same reasoning: a part is authenticated from the header hash
+| before its body is touched. The signature covers the request path, and the part number is *in* the
+| path, so a captured part cannot be replayed at a different offset.
+|
+| The whole-file route stays and is not deprecated. It is what a connector too old to know about parts
+| uses, and there is nothing wrong with it on an artifact small enough to send in one go.
+*/
+Route::put('backups/{artifactId}/content/{part}', BackupPartController::class)
+    ->whereNumber('part')
+    ->middleware(['connector.signed:stream', 'capability:backups:create'])
+    ->name('backups.upload.part');

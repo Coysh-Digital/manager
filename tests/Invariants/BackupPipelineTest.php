@@ -172,7 +172,12 @@ it('tells the connector nothing about where the artifact will be stored', functi
 
     // The connector uploads to the platform it is paired with. Handing it a storage location - even a
     // harmless-looking one - would mean it could be handed a different one.
-    expect(array_keys($body))->toBe(['artifact', 'already_declared', 'chunk_bytes'])
+    //
+    // `ingest_part_bytes` is a size and never a place. It is the same category as `max_artifact_bytes`
+    // on the claim response: a number that can only ever make a connector send this platform smaller
+    // requests, and which has nowhere to put a host even if somebody wanted to. The two assertions
+    // below are the invariant, and they are what must keep passing as keys are added.
+    expect(array_keys($body))->toBe(['artifact', 'already_declared', 'chunk_bytes', 'ingest_part_bytes'])
         ->and(json_encode($body))->not->toContain('backups/')
         ->and(json_encode($body))->not->toContain('http');
 });

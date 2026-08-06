@@ -96,6 +96,22 @@ final class BackupDeclareController
 
         if ($grant !== null) {
             $payload['upload'] = $grant->toPayload($job->external_id);
+        } else {
+            /*
+             | Otherwise the bytes come through this application, and this says they may come in
+             | pieces.
+             |
+             | Only when there is no grant, because the two are alternatives rather than a choice: a
+             | site that can write straight to storage should, and offering it a second way to do the
+             | same job is an invitation to pick wrong.
+             |
+             | Present at all only from this build onwards, and that is what makes the rollout free in
+             | both directions. A connector too old to know the key ignores it and sends one request,
+             | exactly as it does today; a connector that knows it, talking to a platform that does
+             | not, sees nothing and does the same. Neither side has to be upgraded before the other,
+             | which is the same arrangement `declarations` and a grant's `parts` already use.
+            */
+            $payload['ingest_part_bytes'] = $backups->offerChunkedIngest($artifact);
         }
 
         return response()->json(

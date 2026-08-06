@@ -9,6 +9,38 @@ HTTP an enrolment code is readable by anything on the path, and so is every repo
 connector refuses a platform address that is not HTTPS, so a misconfiguration here presents as sites
 that will not pair rather than as sites reporting insecurely.
 
+## Backups arrive in pieces, which changes what you have to configure
+
+From 1.3.0, a connector sends a backup artifact to Manager for Craft in bounded parts of a few
+megabytes each rather than as one enormous request, and then asks it to assemble them. The file is
+unchanged - same encryption, same signature, same thing `manager-restore` opens - and nothing about
+restoring is affected. Only the transport is cut up.
+
+It matters here because it changes which numbers on this page are load-bearing:
+
+- **Body size.** The largest body reaching Manager for Craft is now one part, not one database. You
+  no longer have to size `client_max_body_size` or `post_max_size` against your largest customer's
+  database - eight megabytes plus headroom is enough. Generous values are still recommended below,
+  because a connector older than 1.13 sends the whole artifact in a single request as before.
+- **Timeouts.** This is the change that matters most, and it is the one the old advice could not
+  help with. A request carrying a whole database can outlive a proxy's read timeout or a PHP-FPM
+  pool's `request_terminate_timeout`, and when it does the connector is handed an HTML **502** with
+  no correlation ID and Manager for Craft logs nothing at all - because nothing ever reached it. A
+  request carrying eight megabytes does not. Configure the timeouts below anyway, for the older
+  connectors, but they stop being the thing standing between you and a working backup.
+
+`manager:doctor` reports both under **Upload path ceiling** and **Upload path timeout**. Neither can
+see your proxy, and both say so.
+
+**If you route by path, route these too.** Three URLs carry artifact bytes or settle them, and a
+rule written for the first one alone will silently exclude the others:
+
+```
+PUT  /api/connector/v1/backups/{id}/content          whole artifact, older connectors
+PUT  /api/connector/v1/backups/{id}/content/{part}    one part
+POST /api/connector/v1/backups/{id}/assembled        no body; can take a while on a large artifact
+```
+
 ## Trusted proxies: read this first
 
 Once something sits in front of Manager for Craft, every request arrives from the proxy. Manager
@@ -146,6 +178,20 @@ The platform rejected the artifact (HTTP 413). Correlation ID: unknown
 
 is telling you the response **did not come from Manager for Craft at all**. Nothing will be in the
 Laravel log, because nothing reached PHP. Look at the proxy.
+
+**Read the status code before you read the advice.** They point at different layers, and the
+connector's own message says "check the upload body size limit" for both, which is only right for
+one of them:
+
+| Status | What it is | Where to look |
+|---|---|---|
+| `413` | A body limit refused it | `client_max_body_size`, Caddy's `max_size`, `post_max_size` |
+| `502`, `503`, `504` | The upstream died or timed out **while the body was still arriving** | PHP-FPM's `request_terminate_timeout`, nginx's `fastcgi_read_timeout` / `proxy_read_timeout` |
+
+A 502 is the one that reads as a size problem and is not. `set_time_limit(0)` in Manager for Craft
+does not help: `request_terminate_timeout` is a pool setting that ends the process from outside PHP,
+and no application code can raise it. A connector new enough to upload in parts does not run into it
+at all, which is the cheapest fix available if you are seeing this.
 
 Test it directly rather than inferring, with a body larger than the one that failed:
 
