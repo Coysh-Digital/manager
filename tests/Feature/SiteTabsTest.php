@@ -621,3 +621,60 @@ it('does not present a scheduled task as an outstanding step on a silent site', 
     expect($html)->not->toContain('one more step');
     expect($html)->toContain('cron is optional');
 });
+
+/*
+|--------------------------------------------------------------------------------------------------
+| The site's public key
+|--------------------------------------------------------------------------------------------------
+|
+| Manager signs nothing about a backup's origin. The site does, with its connector key, over the
+| manifest - and `manager-restore verify --site-key` is how a customer checks that signature without
+| a Manager installation, without a network, and without taking our word for anything.
+|
+| That check had no obtainable input. The screen showed the last six characters of the key and
+| nothing else, on the reasoning that a public key shown in full invites being pasted around as
+| though it were meaningful. It is meaningful, and this is what it is for.
+*/
+
+it('prints the whole connector key, not just its tail', function (): void {
+    $connector = $this->site->activeConnector()->first();
+
+    $this->actingAs($this->user)
+        ->get(route('sites.settings', $this->site))
+        ->assertOk()
+        ->assertSee($connector->public_key);
+});
+
+it('shows the command that uses it', function (): void {
+    // Somebody reading this screen at three in the morning should not also have to work out the
+    // invocation from the restore tool's help.
+    $this->actingAs($this->user)
+        ->get(route('sites.settings', $this->site))
+        ->assertSee('manager-restore verify', false)
+        ->assertSee('--site-key=', false);
+});
+
+it('shows it to a member, not only to an administrator', function (): void {
+    // It is a public key, and the person holding the recovery key and doing the restore is not
+    // necessarily the person who can administer the site.
+    $member = User::factory()->create(['email_verified_at' => now()]);
+    Membership::factory()->for($member)->for($this->organisation)->create(['role' => Membership::ROLE_MEMBER]);
+
+    $connector = $this->site->activeConnector()->first();
+
+    $this->actingAs($member)
+        ->get(route('sites.settings', $this->site))
+        ->assertOk()
+        ->assertSee($connector->public_key);
+});
+
+it('says nothing about verification on a site that has never paired', function (): void {
+    // No connector, no key, and no signature to check. A block explaining how to verify something
+    // that cannot exist yet is noise on the screen somebody is using to pair.
+    $unpaired = Site::factory()->for($this->organisation)->create();
+
+    $this->actingAs($this->user)
+        ->get(route('sites.settings', $unpaired))
+        ->assertOk()
+        ->assertDontSee('Verifying a backup came from this site');
+});

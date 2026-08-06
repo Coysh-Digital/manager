@@ -92,6 +92,25 @@ Be clear about what that does and does not establish. It proves your key works a
 not sealed to somebody else - the failure worth catching cheaply. It does **not** prove the rest of
 the file is intact. Only `decrypt` reads all of it.
 
+### Checking it came from your own site
+
+Everything above takes the artifact at its word about where it came from. To check that too, pass the
+site's public key:
+
+```bash
+manager-restore verify --key=~/keys/acme-recovery.secret \
+                       --site-key=<the site's connector key> \
+                       ./01JZX….artifact
+```
+
+The site signs every manifest with that key, and this verifies the signature. It needs no Manager
+installation and no network, which is the point: it is the one check in this document that does not
+take our word for anything.
+
+**Where to find it:** Sites → the site → Settings → Connector, under "Verifying a backup came from
+this site". The whole key is printed there along with the command. Copy it once and keep it with your
+recovery key - if you are reading this page because Manager is gone, the screen is gone too.
+
 ## Decrypt it
 
 ```bash
