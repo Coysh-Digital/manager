@@ -6,33 +6,14 @@ Entries are written for somebody about to upgrade a running installation. Anythi
 action is under **Before you upgrade** - that section is the one to read, and `docs/upgrade.md` points
 here for exactly that reason.
 
-## 1.1.0 — 2026-08-06
+## 1.2.0 — 2026-08-06
 
-Mostly a security release, with a set of things Manager could not see about itself now visible.
+Four things about the console, and one of them makes an alert work that never has.
 
-**Read *Before you upgrade* first.** One of the changes below will stop a container that started
-yesterday from starting today, and that is deliberate - the configuration it refuses is the one the
-old install page produced.
+**Read *Before you upgrade* first.** Nothing here refuses to start, but the first hour after
+deploying will be noisier than usual, and the reason is a fix rather than a fault.
 
 ### Before you upgrade
-
-**The container now refuses to boot on three settings, unconditionally.** Following
-`docs/install.md` exactly used to produce a production control plane running with `APP_DEBUG` on,
-because the entrypoint's checks were conditional on `APP_ENV=production` and the shipped
-`.env.example` said `local`. The setting that made the configuration dangerous was the setting that
-switched off the guard against it.
-
-Check your `.env` before deploying. The image now refuses to start if:
-
-- `DB_PASSWORD` is still the default;
-- `APP_DEBUG` is true;
-- `APP_ENV` is set to anything other than `production`.
-
-`.env.example` ships `APP_ENV=production` and `APP_DEBUG=false`. Turn debug on deliberately for local
-work; ddev serves development and has its own container and entrypoint. The third refusal is not a
-security check - `Model::preventLazyLoading()` is enabled outside production, so a lazy load that is
-merely inefficient in development throws here, and nothing in the resulting stack trace points at
-`APP_ENV`.
 
 **Expect a burst of notifications shortly after upgrading, and read it as a backlog rather than an
 incident.** Findings are now swept hourly (below), so the first run raises `site_not_reporting` for
@@ -41,33 +22,11 @@ have been unmonitored the whole time; what changes today is that you are told. I
 know are decommissioned, archive or pause them before deploying and they are left out. A certificate
 that crossed its thirty-day threshold while nobody opened the screen will surface in the same run.
 
-**Backups taken before this release will still never be pruned.** `expires_at` is fixed at storage
-time by design, so the retention fix below applies to future backups only. If you had set a policy
-with no daily window - "no daily, four weeks, twelve months" - every artifact you hold has a null
-expiry and is not eligible for pruning, and nothing in this release re-dates them. A command to
-recompute them deliberately is worth having and is not here. Until then that is disk you have to
-reclaim by hand.
-
-**If you have ever run `php artisan db:seed`, delete the account it made.** The stock Laravel seeder
-created `test@example.com` through `UserFactory`, whose default password is the string `password` —
-on a control plane holding the keys to every managed installation. It also permanently closed
-first-run setup, which returns 404 as soon as any user exists. The seeder now creates nothing, but it
-cannot clean up after the version that did.
-
-**Signing out one device now signs out every remembered device.** There is one `remember_token` per
-user rather than one per device, so revoking a session rotates it for the account. The screen and the
-flash message both say so. Tell anyone who uses the sessions list.
-
-**Somebody who already belongs to another organisation can no longer be invited.** An account reaches
-exactly one organisation and there is no switcher, so this was previously accepted, listed on the
-team screen as having access, and silently ineffective. It is now refused with a message. This is a
-product limit rather than a rule, and `SecondOrganisationRefused` names it so the two places to
-revisit are findable when a switcher exists.
-
-**Self-hosted installations lose the email catalogue screen and get nothing back.** It answered an
-operator's question on a tab strip belonging to a customer, and it moves to the hosting layer's
-back-office, which is the only place the wording can be edited from. The registry stays and
-`EmailCatalogueTest` still fails the build on a notification class added without an entry.
+**Security findings have moved off the Findings screen.** They are on a new **Security** screen in
+the sidebar, listed by site rather than by rule. Nothing is hidden and nothing is deleted -
+Findings states how many are outstanding and links to them - but anyone who has bookmarked Findings
+as "the list of what is wrong" should know there are now two, and which is which. Acknowledgements
+are untouched; they are keyed on the rule, and no rule key changed.
 
 ### Added
 
@@ -78,7 +37,7 @@ back-office, which is the only place the wording can be edited from. The registr
   which interleaved "this client is exposed" with "this one needs a plugin update" and answered
   neither well. Nothing disappears in the split - Findings states how many security findings are
   outstanding and links to them, the two sidebar badges are disjoint by construction, and a rule key
-  belonging to no category still appears on Findings rather than on nothing.  Sites with no security
+  belonging to no category still appears on Findings rather than on nothing. Sites with no security
   findings are listed too, saying whether every rule ran or some were skipped for want of a
   capability, because an empty list is not automatically a clean bill of health. An invariant test
   fails the build if a rule is ever added without a category.
@@ -114,6 +73,71 @@ back-office, which is the only place the wording can be edited from. The registr
   active site, well inside the rule's own six-hour threshold. It also gives every other
   time-dependent rule a clock to move against, and lets a fixed problem close itself without waiting
   for somebody to open a page. See *Before you upgrade*.
+
+### Migrations
+
+One, additive, with no backfill: `notification_destination_site`. It records which sites a
+notification destination is scoped to, and **no rows means every site** - so every destination that
+exists today keeps behaving exactly as it does, and there is no data step to run.
+
+## 1.1.0 — 2026-08-06
+
+Mostly a security release, with a set of things Manager could not see about itself now visible.
+
+**Read *Before you upgrade* first.** One of the changes below will stop a container that started
+yesterday from starting today, and that is deliberate - the configuration it refuses is the one the
+old install page produced.
+
+### Before you upgrade
+
+**The container now refuses to boot on three settings, unconditionally.** Following
+`docs/install.md` exactly used to produce a production control plane running with `APP_DEBUG` on,
+because the entrypoint's checks were conditional on `APP_ENV=production` and the shipped
+`.env.example` said `local`. The setting that made the configuration dangerous was the setting that
+switched off the guard against it.
+
+Check your `.env` before deploying. The image now refuses to start if:
+
+- `DB_PASSWORD` is still the default;
+- `APP_DEBUG` is true;
+- `APP_ENV` is set to anything other than `production`.
+
+`.env.example` ships `APP_ENV=production` and `APP_DEBUG=false`. Turn debug on deliberately for local
+work; ddev serves development and has its own container and entrypoint. The third refusal is not a
+security check - `Model::preventLazyLoading()` is enabled outside production, so a lazy load that is
+merely inefficient in development throws here, and nothing in the resulting stack trace points at
+`APP_ENV`.
+
+**Backups taken before this release will still never be pruned.** `expires_at` is fixed at storage
+time by design, so the retention fix below applies to future backups only. If you had set a policy
+with no daily window - "no daily, four weeks, twelve months" - every artifact you hold has a null
+expiry and is not eligible for pruning, and nothing in this release re-dates them. A command to
+recompute them deliberately is worth having and is not here. Until then that is disk you have to
+reclaim by hand.
+
+**If you have ever run `php artisan db:seed`, delete the account it made.** The stock Laravel seeder
+created `test@example.com` through `UserFactory`, whose default password is the string `password` —
+on a control plane holding the keys to every managed installation. It also permanently closed
+first-run setup, which returns 404 as soon as any user exists. The seeder now creates nothing, but it
+cannot clean up after the version that did.
+
+**Signing out one device now signs out every remembered device.** There is one `remember_token` per
+user rather than one per device, so revoking a session rotates it for the account. The screen and the
+flash message both say so. Tell anyone who uses the sessions list.
+
+**Somebody who already belongs to another organisation can no longer be invited.** An account reaches
+exactly one organisation and there is no switcher, so this was previously accepted, listed on the
+team screen as having access, and silently ineffective. It is now refused with a message. This is a
+product limit rather than a rule, and `SecondOrganisationRefused` names it so the two places to
+revisit are findable when a switcher exists.
+
+**Self-hosted installations lose the email catalogue screen and get nothing back.** It answered an
+operator's question on a tab strip belonging to a customer, and it moves to the hosting layer's
+back-office, which is the only place the wording can be edited from. The registry stays and
+`EmailCatalogueTest` still fails the build on a notification class added without an entry.
+
+### Added
+
 - **Manager can see its own failures.** Three things it could not: `failed_jobs` had been written to
   since the first migration and nothing ever read it; the stalled-queue check answered only for
   `database` while `.env.example` ships `QUEUE_CONNECTION=redis`, so on a stock installation a
