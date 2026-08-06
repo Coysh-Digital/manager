@@ -7,6 +7,7 @@ namespace App\Console\Commands;
 use App\Domain\Audit\AuditChainVerifier;
 use App\Models\Organisation;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Walks every audit chain and reports any break.
@@ -32,6 +33,7 @@ final class VerifyAuditChainCommand extends Command
         }
 
         $intact = true;
+        $broken = [];
 
         foreach ($chains as $label => $organisationId) {
             $result = $verifier->verify($organisationId);
@@ -43,6 +45,7 @@ final class VerifyAuditChainCommand extends Command
             }
 
             $intact = false;
+            $broken[$label] = $result->problems;
 
             $this->components->error("{$label}: chain verification FAILED after {$result->eventsChecked} events.");
 
@@ -52,6 +55,27 @@ final class VerifyAuditChainCommand extends Command
         }
 
         if (! $intact) {
+            /*
+             | Written to the log as well as to the terminal, because on the run that matters there is
+             | no terminal.
+             |
+             | This command is scheduled (routes/console.php), and a scheduled command's output goes
+             | nowhere by default. So the one execution most likely to find a broken chain - the
+             | unattended nightly one - reported it to nobody, while docs/troubleshooting.md tells the
+             | reader what to do "if this fails" as though they would find out.
+             |
+             | `critical` rather than `error`, and that is the whole reason for choosing a level here:
+             | a broken audit chain is not a failed job to retry, it is evidence that history has been
+             | rewritten. Every log aggregator worth having alerts on critical and samples error.
+             |
+             | The problems themselves are included. An alert saying "the chain is broken" and making
+             | somebody open a shell to find out where is an alert that gets acknowledged and left.
+            */
+            Log::critical('Audit chain verification failed.', [
+                'chains' => $broken,
+                'remedy' => 'The audit history can no longer be trusted. Follow the runbook in docs/security.md.',
+            ]);
+
             $this->newLine();
             $this->components->warn('A broken chain means the audit history can no longer be trusted. Treat this as a security incident and follow the runbook in docs/security.md.');
         }
