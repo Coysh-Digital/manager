@@ -225,7 +225,24 @@ final class FindingsEvaluator
                 subject: $match->title,
                 summary: $match->detail,
                 site: $site,
-                context: ['severity' => $match->severity, 'rule' => $rule->key()],
+
+                /*
+                 | The category rides along rather than becoming an event type of its own.
+                 |
+                 | Splitting `finding.opened` into a security variant was the obvious alternative and
+                 | is the wrong trade: the event strings are wire contract for every webhook receiver
+                 | already deployed, and the catalogue is short on purpose - see NotificationEvent.
+                 | A receiver that wants only exposures can now filter on this without a second
+                 | subscription, and one that does not care is unaffected.
+                 |
+                 | Still a conclusion rather than evidence: a rule key and its category say nothing
+                 | about the site that the summary above does not already say.
+                 */
+                context: [
+                    'severity' => $match->severity,
+                    'rule' => $rule->key(),
+                    'category' => $rule->category(),
+                ],
             ));
         }
 

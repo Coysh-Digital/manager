@@ -17,6 +17,7 @@ import './palette.js';
 import './schedule.js';
 import './backups.js';
 import './changelog.js';
+import './bulk.js';
 
 const STORAGE_KEY = 'manager.theme';
 

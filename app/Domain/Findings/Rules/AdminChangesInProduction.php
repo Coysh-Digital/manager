@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Findings\Rules;
 
 use App\Domain\Findings\Rule;
+use App\Domain\Findings\RuleCategory;
 use App\Domain\Findings\RuleMatch;
 use App\Domain\Findings\Severity;
 use App\Domain\Findings\Snapshot;
@@ -14,6 +15,11 @@ final class AdminChangesInProduction implements Rule
     public function key(): string
     {
         return 'admin_changes_in_production';
+    }
+
+    public function category(): string
+    {
+        return RuleCategory::SECURITY;
     }
 
     public function requiresCapability(): string

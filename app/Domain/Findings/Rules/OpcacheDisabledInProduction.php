@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Findings\Rules;
 
 use App\Domain\Findings\Rule;
+use App\Domain\Findings\RuleCategory;
 use App\Domain\Findings\RuleMatch;
 use App\Domain\Findings\Severity;
 use App\Domain\Findings\Snapshot;
@@ -25,6 +26,11 @@ final class OpcacheDisabledInProduction implements Rule
     public function key(): string
     {
         return 'opcache_disabled_in_production';
+    }
+
+    public function category(): string
+    {
+        return RuleCategory::OPERATIONAL;
     }
 
     public function requiresCapability(): string

@@ -34,6 +34,13 @@ security check - `Model::preventLazyLoading()` is enabled outside production, so
 merely inefficient in development throws here, and nothing in the resulting stack trace points at
 `APP_ENV`.
 
+**Expect a burst of notifications shortly after upgrading, and read it as a backlog rather than an
+incident.** Findings are now swept hourly (below), so the first run raises `site_not_reporting` for
+every site that has already gone quiet and notifies every destination subscribed to it. Those sites
+have been unmonitored the whole time; what changes today is that you are told. If you have sites you
+know are decommissioned, archive or pause them before deploying and they are left out. A certificate
+that crossed its thirty-day threshold while nobody opened the screen will surface in the same run.
+
 **Backups taken before this release will still never be pruned.** `expires_at` is fixed at storage
 time by design, so the retention fix below applies to future backups only. If you had set a policy
 with no daily window - "no daily, four weeks, twelve months" - every artifact you hold has a null
@@ -64,6 +71,49 @@ back-office, which is the only place the wording can be edited from. The registr
 
 ### Added
 
+- **A Security screen, and a Findings screen that is no longer two things at once.** Every rule now
+  declares a category, and the category decides the screen: the nine security rules are on
+  **Security**, grouped by site and worst first; the nine maintenance and operational ones stay on
+  **Findings**, grouped by rule. Both questions were being asked of one list ordered by severity,
+  which interleaved "this client is exposed" with "this one needs a plugin update" and answered
+  neither well. Nothing disappears in the split - Findings states how many security findings are
+  outstanding and links to them, the two sidebar badges are disjoint by construction, and a rule key
+  belonging to no category still appears on Findings rather than on nothing.  Sites with no security
+  findings are listed too, saying whether every rule ran or some were skipped for want of a
+  capability, because an empty list is not automatically a clean bill of health. An invariant test
+  fails the build if a rule is ever added without a category.
+- **Back up several sites at once.** Tick-boxes on the fleet screen, with a select-all in the header
+  and one per group, and a **Back up selected** button. Each site is asked separately through the
+  same readiness check and the same idempotency key as the single-site button, so one site refusing
+  changes nothing about the others - and what was skipped is named, with the reason, rather than
+  folded into a count that says "requested". The selection survives the recent-authentication gate.
+  Administrators only, like every other way of asking for a backup.
+- **The site's domain is a link.** On every tab of a site, `expected_domain` now opens the actual
+  site in a new tab, over HTTPS and with `rel="noopener noreferrer"`. It was inert text everywhere in
+  the interface, so getting from a finding to the site it is about meant copying a hostname.
+  Deliberately not on the fleet table: forty outbound links in a column people scan is forty chances
+  to leave the screen by accident.
+- **Notification destinations can be scoped to particular sites.** "All sites" stays the default and
+  includes anything added later, so every existing destination behaves exactly as it did. Narrowing
+  one is what makes "this client's alerts go to this client" possible without telling them about
+  anybody else's fleet. Scope is a different question from subscription and does not narrow it: a
+  scoped destination still hears about everything it asked for, and still hears anything that is
+  about the installation rather than about a site. Re-checked at delivery time as well as at
+  dispatch, so narrowing a destination also stops whatever was already queued. A scope that resolves
+  to no recognisable site is refused rather than written, because no rows means every site and a
+  scope that silently widened is the one failure worth being loud about.
+- **`finding.opened` payloads carry the rule's category** alongside its severity, so a webhook
+  receiver can act on exposures and file the rest without a second subscription. No new event type:
+  the event strings are wire contract for receivers already deployed.
+- **Findings are now evaluated on a schedule, which is what makes the "a site stops reporting" alert
+  work at all.** It has been subscribable since notifications shipped and could not fire. Findings
+  were only ever evaluated when a site sent a report or when somebody opened a screen, and a site
+  that has stopped reporting does neither - so the one alert whose entire subject is silence was
+  raised only by code paths that silence prevents from running. A destination could be correctly
+  configured for it for a year and receive nothing. `manager:findings:sweep` runs hourly over every
+  active site, well inside the rule's own six-hour threshold. It also gives every other
+  time-dependent rule a clock to move against, and lets a fixed problem close itself without waiting
+  for somebody to open a page. See *Before you upgrade*.
 - **Manager can see its own failures.** Three things it could not: `failed_jobs` had been written to
   since the first migration and nothing ever read it; the stalled-queue check answered only for
   `database` while `.env.example` ships `QUEUE_CONNECTION=redis`, so on a stock installation a

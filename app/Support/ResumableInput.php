@@ -77,6 +77,30 @@ final class ResumableInput
             'label' => 'add a site',
             'fields' => ['name', 'expected_domain', 'environment', 'capabilities'],
         ],
+
+        /*
+         | Which sites were ticked before the gate interrupted.
+         |
+         | The docblock above lists `sites.refresh-all` among the routes deliberately absent because
+         | they are bare buttons with nothing typed to give back. This one looks like that and is
+         | not: the selection *is* the input, and on a fleet of forty it is the most tedious thing in
+         | the interface to reconstruct - which is the exact complaint that produced this class.
+         |
+         | Nothing here is a secret or a confirmation. A list of site identifiers is what the person
+         | just ticked on a screen they were already allowed to read, so neither reason for
+         | withholding applies; and nothing is replayed, so the button still has to be pressed again
+         | with the password freshly proved.
+         |
+         | MAX_BYTES caps this at roughly two hundred and fifty selected sites, beyond which the
+         | selection is dropped rather than restored. That is the same answer as before this entry
+         | existed, for a fleet size nobody has, and it fails towards forgetting rather than towards
+         | a session full of somebody's estate.
+         */
+        'backups.store-many' => [
+            'return' => 'sites.index',
+            'label' => 'back up several sites',
+            'fields' => ['sites'],
+        ],
         'sites.settings.update' => [
             'return' => 'sites.settings',
             'label' => "change a site's details",

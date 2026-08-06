@@ -15,6 +15,7 @@ use App\Contracts\ProductLabel;
 use App\Contracts\Provisioner;
 use App\Contracts\ServerAccess;
 use App\Contracts\StorageQuota;
+use App\Domain\Findings\RuleCategory;
 use App\Domain\Notifications\EmailCatalogue;
 use App\Models\Finding;
 use App\Models\Organisation;
@@ -197,15 +198,26 @@ class AppServiceProvider extends ServiceProvider
                 ->whereIn('site_id', $sites->clone()->select('id'))
                 ->whereIn('state', [Finding::STATE_OPEN, Finding::STATE_ACKNOWLEDGED]);
 
+            // One badge per screen, and the two are disjoint: every rule declares exactly one
+            // category, so a finding counted here is not counted there. A shared total would go up by
+            // one and leave the reader unable to tell which screen to open.
+            $securityKeys = RuleCategory::keysFor(RuleCategory::SECURITY);
+
+            $security = $outstanding->clone()->whereIn('rule', $securityKeys);
+            $other = $outstanding->clone()->whereNotIn('rule', $securityKeys);
+
             $view->with([
                 'siteCount' => $view->getData()['siteCount'] ?? $sites->clone()->count(),
                 'updateCount' => $sites->clone()->sum('available_updates'),
                 'securityUpdates' => $sites->clone()->where('has_security_release', true)->exists(),
-                'findingCount' => $outstanding->clone()->count(),
+
+                'securityFindingCount' => $security->clone()->count(),
+                'findingCount' => $other->clone()->count(),
 
                 // Red only for critical or high. Amber for the rest, so the badge distinguishes
                 // "look now" from "there is a list".
-                'severeFindings' => $outstanding->clone()->whereIn('severity', ['critical', 'high'])->exists(),
+                'severeSecurityFindings' => $security->clone()->whereIn('severity', ['critical', 'high'])->exists(),
+                'severeFindings' => $other->clone()->whereIn('severity', ['critical', 'high'])->exists(),
             ]);
         });
     }

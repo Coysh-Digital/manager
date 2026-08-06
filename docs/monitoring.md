@@ -22,28 +22,67 @@ A site that goes quiet is the most important thing on this screen, because every
 on reports. A site that has stopped reporting has silently stopped being monitored, and would
 otherwise sit there looking fine.
 
+### Backing up several sites at once
+
+Tick the sites you want and press **Back up selected**. There is a tick-box in each group heading and
+one in the table header, so "back up everything needing attention" is one click rather than eleven.
+
+Each site is asked separately. Nothing is bulk about it beyond the selection: a backup is requested
+per site, runs when that site next checks in, and one site refusing changes nothing about the others.
+
+**It tells you what it skipped.** A site with no recovery key, no connector, no `backups:create`
+permission, or a backup already on its way is left out and named in the amber band, with the reason.
+Reporting "requested" over a fleet where half the sites refused is the kind of half-truth you would
+only discover when you needed the backup.
+
+Backups need recent authentication, so you may be asked for your password. The selection survives
+that - you come back to the same ticked boxes and press the button again.
+
 ## Findings
 
 Findings are conclusions, not raw data. Manager for Craft applies a set of rules to what a site
 reported and tells you what it thinks is wrong.
 
-Currently eighteen rules, covering roughly:
+Currently eighteen rules, and every one of them declares a category. The category decides which
+screen it appears on, so nothing is ever on both and nothing is on neither:
 
 **Security** - dev mode on in production, HTTPS not enforced, admin changes allowed in production,
-security releases available for Craft or a plugin, repeated failed sign-ins, accounts locked out,
-TLS certificates expiring.
+updates allowed in production, security releases available for Craft or a plugin, repeated failed
+sign-ins, accounts locked out, TLS certificates expiring. These are on the **Security** screen.
 
-**Maintenance** - updates available, abandoned plugins, PHP approaching end of life, pending
-migrations, invalid or trial licences.
+**Maintenance** - abandoned plugins, PHP approaching end of life, pending migrations, invalid or
+trial licences.
 
 **Operational** - disk nearly full, failed queue jobs, opcache disabled in production, slow
 responses, sites not reporting.
+
+Maintenance and operational findings are on the **Findings** screen, grouped by rule - so one
+misconfigured deploy template is a single heading with twelve sites under it rather than twelve
+identical cards. When any security findings are outstanding, Findings says how many and links to
+them, so nothing disappears by being filed elsewhere.
 
 Several rules only fire in production, which is why setting a site's environment correctly matters.
 "Dev mode is on" is a finding on a live site and completely normal on a staging one.
 
 Acknowledge a finding and it drops out of the list without being deleted. Reopen it if it comes
 back. The point is that the list should be short enough to actually read.
+
+Findings are re-evaluated whenever a site reports, and **hourly regardless**. The hourly pass is what
+makes a site going quiet noticeable: a site that has stopped reporting cannot trigger anything by
+reporting, so a check that only ran on ingest could never see it. The same pass lets a finding
+resolve itself once the problem is fixed, without waiting for anyone to open a screen.
+
+## Security
+
+Every site, worst first, with its security findings underneath it.
+
+Grouped by site rather than by rule, which is the opposite of Findings and the reason both screens
+exist. Findings answers "what is wrong across the fleet". Security answers "is this site safe", and
+that is a question asked one client at a time.
+
+**Sites with nothing wrong are listed too.** An empty list is not automatically a clean bill of
+health: a rule whose capability is not granted is skipped rather than passed, so each site says
+which of the two it is, and names the checks that could not run.
 
 ## Updates
 
@@ -161,11 +200,23 @@ What they cannot do is quietly change one line.
 
 ## Notifications
 
-Email or webhook, per organisation, for the events worth waking up for: a site stops reporting, a
-security release lands, a backup fails, a finding opens.
+Email or webhook, for the events worth waking up for: a site stops reporting, a security release
+lands, a backup fails, a finding opens.
+
+**Each destination is either for every site or for the ones you choose.** "All sites" is the default
+and includes anything added later, which is what you want for your own operations mailbox. Narrowing
+one to particular sites is what makes "send this client's alerts to this client" possible without
+telling them about anybody else's fleet.
+
+Narrowing a destination does not narrow what it is subscribed to. It still hears about everything it
+asked for - just not about sites it is not responsible for. Anything that is about the installation
+rather than about a site reaches every destination regardless.
 
 Webhook deliveries are signed with a per-destination secret you are shown once. Verify it, and
 reject anything whose timestamp is not recent, or a captured delivery can be replayed at you.
+
+A `finding.opened` payload carries the rule's category alongside its severity, so a receiver can act
+on security findings and file the rest without needing a second subscription.
 
 Destinations are checked before anything is sent. A webhook pointing at a private or metadata
 address is refused, for the same reason certificate checks are guarded.

@@ -7,6 +7,7 @@ namespace App\Domain\Notifications;
 use App\Jobs\DeliverNotification;
 use App\Models\NotificationDestination;
 use App\Models\Organisation;
+use App\Models\Site;
 use Illuminate\Support\Collection;
 
 /**
@@ -33,7 +34,7 @@ final class Notifier
             return 0;
         }
 
-        $destinations = $this->destinationsFor($organisation, $event->type);
+        $destinations = $this->destinationsFor($organisation, $event->type, $event->site);
 
         foreach ($destinations as $destination) {
             DeliverNotification::dispatch($destination, $event);
@@ -54,9 +55,19 @@ final class Notifier
     }
 
     /**
+     * Who asked for this event, about this site.
+     *
+     * Two filters, and they are different questions. `wants()` is the subscription - which kinds of
+     * thing this destination cares about. `covers()` is the scope - which sites it is responsible
+     * for. A destination narrowed to one client's sites still subscribes to backup failures; it
+     * simply should not hear about somebody else's.
+     *
+     * The scope is eager-loaded so that a fleet-wide event over a dozen destinations is one extra
+     * query rather than a dozen.
+     *
      * @return Collection<int, NotificationDestination>
      */
-    private function destinationsFor(Organisation $organisation, string $type): Collection
+    private function destinationsFor(Organisation $organisation, string $type, ?Site $site): Collection
     {
         return NotificationDestination::query()
             ->where('organisation_id', $organisation->id)
@@ -64,8 +75,10 @@ final class Notifier
             // A destination that has failed too often is skipped rather than retried forever. The
             // failures stay on the record; it simply stops consuming workers.
             ->where('consecutive_failures', '<', NotificationDestination::FAILURE_LIMIT)
+            ->with('sites:id')
             ->get()
-            ->filter(fn (NotificationDestination $destination): bool => $destination->wants($type))
+            ->filter(fn (NotificationDestination $destination): bool => $destination->wants($type)
+                && $destination->covers($site))
             ->values();
     }
 }

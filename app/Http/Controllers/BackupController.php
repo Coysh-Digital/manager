@@ -211,6 +211,144 @@ final class BackupController
     }
 
     /**
+     * Ask several sites for a backup at once.
+     *
+     * The fleet equivalent of the button above, and it queues exactly what that queues, per site,
+     * through the same readiness check and the same idempotency key. Nothing here is a bulk code
+     * path: a request for twelve backups is twelve independent requests, so one site refusing
+     * changes nothing about the other eleven.
+     *
+     * **What it will not do is report success for sites it skipped.** Modelled on
+     * {@see SiteController::refreshAll()}, which learned the same lesson: silently backing up four
+     * of twelve and flashing "requested" is a half-truth an operator discovers at the worst possible
+     * moment. The count that was queued goes in the status band; everything that did not, and why,
+     * goes in the warning band beside it.
+     *
+     * Outside `site.scoped`, which binds a single {site}. The scoping is done here instead, in the
+     * query - a ULID belonging to another organisation matches nothing rather than 404ing the whole
+     * request, because one stale identifier in a form should not cancel eleven good ones.
+     */
+    public function storeMany(Request $request, Organisation $organisation): RedirectResponse
+    {
+        abort_unless(app(Membership::class)->canAdminister(), 403);
+
+        $validated = $request->validate([
+            'sites' => ['required', 'array', 'max:200'],
+
+            // Length rather than a ULID rule: the value is looked up against this organisation's own
+            // rows, so a malformed one finds nothing. The bound is here to keep a large paste out of
+            // the query, not to validate the format.
+            'sites.*' => ['required', 'string', 'max:64'],
+        ]);
+
+        $requested = array_unique($validated['sites']);
+
+        $sites = Site::query()
+            ->where('organisation_id', $organisation->id)
+            ->whereIn('external_id', $requested)
+            ->active()
+            ->with(['organisation', 'capabilityGrants'])
+            ->orderBy('name')
+            ->get();
+
+        $queued = 0;
+
+        /** @var array<string, int> $skipped reason => how many sites gave it */
+        $skipped = [];
+
+        foreach ($sites as $site) {
+            $readiness = $this->readiness->for($site);
+
+            if (! $readiness['ready']) {
+                $skipped[$readiness['blockers'][0]] = ($skipped[$readiness['blockers'][0]] ?? 0) + 1;
+
+                continue;
+            }
+
+            try {
+                $job = $this->jobs->enqueue(
+                    $site,
+                    Jobs::BACKUP_CREATE,
+                    actor: $request->user(),
+                    idempotencyKey: 'backup:manual',
+                );
+            } catch (JobRejectedException $e) {
+                // The same race the single-site button catches: a connector or a key can go away
+                // between the checkbox being ticked and the button being pressed. Counted as a skip
+                // rather than thrown, because eleven other sites are mid-loop.
+                $reason = match ($e->reason) {
+                    JobRejectedException::SITE_NOT_CONNECTED => 'This site has no active connector, so there is nothing to ask.',
+                    JobRejectedException::CAPABILITY_NOT_GRANTED => 'This site has not granted permission to create backups.',
+                    JobRejectedException::NO_RECOVERY_KEY => 'This organisation has no active recovery key, so there is nothing to encrypt a backup to.',
+                    default => 'This site could not be asked for a backup.',
+                };
+
+                $skipped[$reason] = ($skipped[$reason] ?? 0) + 1;
+
+                continue;
+            }
+
+            $this->timeline->platform(
+                event: BackupEvent::REQUESTED,
+                site: $site,
+                job: $job,
+                detail: 'Requested from the sites screen.',
+            );
+
+            $queued++;
+        }
+
+        // Asked for and not found: archived, removed, or belonging to somebody else. Reported rather
+        // than ignored - a form that silently drops identifiers is one nobody can debug.
+        $missing = count($requested) - $sites->count();
+
+        if ($missing > 0) {
+            $skipped['This site is no longer in your fleet.'] = $missing;
+        }
+
+        $response = $queued === 0
+            ? back()->withErrors(['sites' => 'Nothing was requested. '.$this->skippedSentence($skipped)])
+            : back()->with('status', sprintf(
+                'Backup requested for %d %s. Each will run when that site next checks in.',
+                $queued,
+                $queued === 1 ? 'site' : 'sites',
+            ));
+
+        if ($queued > 0 && $skipped !== []) {
+            $response->with('warning', $this->skippedSentence($skipped));
+        }
+
+        return $response;
+    }
+
+    /**
+     * Why some sites were left out, in their own words.
+     *
+     * The blockers are reused verbatim rather than translated into short labels. A second vocabulary
+     * for the same conditions is a second thing to keep in step, and the sentence somebody reads here
+     * should be the sentence they will read on the site itself when they go and look.
+     *
+     * @param  array<string, int>  $skipped
+     */
+    private function skippedSentence(array $skipped): string
+    {
+        $total = array_sum($skipped);
+
+        $clauses = [];
+
+        foreach ($skipped as $reason => $count) {
+            $clauses[] = sprintf('%d %s: %s', $count, $count === 1 ? 'site' : 'sites', $reason);
+        }
+
+        return sprintf(
+            '%d %s skipped. %s',
+            $total,
+            $total === 1 ? 'site was' : 'sites were',
+            implode(' ', $clauses),
+        );
+    }
+
+    /**
      * Stop waiting for a backup that was asked for.
      *
      * Reported from use: a backup sitting at "Collected by site" with no way to call it off. Until

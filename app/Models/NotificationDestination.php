@@ -10,6 +10,7 @@ use Database\Factories\NotificationDestinationFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
@@ -81,6 +82,51 @@ class NotificationDestination extends Model
     public function deliveries(): HasMany
     {
         return $this->hasMany(NotificationDelivery::class);
+    }
+
+    /**
+     * The sites this destination is for, if it is for particular ones.
+     *
+     * @return BelongsToMany<Site, $this>
+     */
+    public function sites(): BelongsToMany
+    {
+        return $this->belongsToMany(Site::class);
+    }
+
+    /**
+     * Whether this destination is scoped to particular sites at all.
+     */
+    public function isScoped(): bool
+    {
+        return $this->sites()->exists();
+    }
+
+    /**
+     * Whether an event about this site should reach this destination.
+     *
+     * Three cases, and the defaults matter more than the logic:
+     *
+     *  - **No scope** - every site, which is what every destination created before scoping existed
+     *    has, and what "All sites" writes. The absence of rows is the whole of that state; see the
+     *    migration for why there is no column saying so.
+     *  - **Scoped, and this is one of them** - deliver.
+     *  - **A fleet-wide event, with no site attached** - deliver regardless of scope. Somebody who
+     *    narrowed a destination to one client's sites was answering "which sites", not asking to
+     *    stop hearing about the installation itself.
+     *
+     * Reads the relation rather than a cached flag, and callers eager-load it. A stale copy of who
+     * is in scope is a notification sent to the wrong customer about the wrong site.
+     */
+    public function covers(?Site $site): bool
+    {
+        if ($site === null) {
+            return true;
+        }
+
+        $scope = $this->relationLoaded('sites') ? $this->sites : $this->sites()->get();
+
+        return $scope->isEmpty() || $scope->contains('id', $site->id);
     }
 
     public function isWebhook(): bool

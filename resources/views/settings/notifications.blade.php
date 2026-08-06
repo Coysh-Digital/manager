@@ -48,6 +48,17 @@
                                 <span class="font-mono text-[11px] text-text-3">
                                     {{ implode(', ', $destination->events) }}
                                 </span>
+
+                                {{-- Which sites, stated on every destination rather than only on the
+                                     narrowed ones. "All sites" is a decision somebody made and the
+                                     one worth seeing beside a target that goes to a client. --}}
+                                <span class="text-[11.5px] text-text-3">
+                                    @if ($destination->sites->isEmpty())
+                                        All sites, including any added later
+                                    @else
+                                        {{ $destination->sites->pluck('name')->join(', ') }}
+                                    @endif
+                                </span>
                             </div>
 
                             @if ($membership->isOwner())
@@ -124,6 +135,61 @@
                                     {{ $description }}
                                 </label>
                             @endforeach
+                        </fieldset>
+
+                        {{--
+                            Which sites this destination is for.
+
+                            "All sites" is the default and writes nothing, so a destination created
+                            without touching this behaves exactly as every destination did before
+                            scoping existed - including for sites added afterwards, which is the
+                            behaviour somebody who never opened this control expects to keep.
+
+                            A radio pair rather than "leave empty for all". An empty checkbox list
+                            reading as "everything" is the kind of control people get wrong in the
+                            direction that tells one client about another.
+                        --}}
+                        <fieldset class="flex flex-col gap-1.5 border-t border-border pt-3">
+                            <legend class="mb-1 text-[12.5px] font-medium">For which sites</legend>
+
+                            <label class="flex items-center gap-2 text-[12.5px] text-text-2">
+                                <input type="radio" name="scope" value="all"
+                                       @checked(old('scope', 'all') === 'all')
+                                       class="accent-[var(--primary)]">
+                                All sites, including any added later
+                            </label>
+
+                            <label class="flex items-center gap-2 text-[12.5px] text-text-2">
+                                <input type="radio" name="scope" value="some"
+                                       @checked(old('scope') === 'some')
+                                       class="accent-[var(--primary)]">
+                                Only the sites ticked below
+                            </label>
+
+                            @if ($sites->isEmpty())
+                                <p class="mt-1 text-[11.5px] text-text-3">
+                                    No sites yet, so there is nothing to narrow this to. A destination
+                                    added now covers whatever is added later.
+                                </p>
+                            @else
+                                <div class="mt-1 flex max-h-[220px] flex-col gap-1.5 overflow-y-auto rounded-[7px] border border-border bg-surface-2 p-2.5">
+                                    @foreach ($sites as $site)
+                                        <label class="flex items-center gap-2 text-[12.5px] text-text-2">
+                                            <input type="checkbox" name="sites[]" value="{{ $site->external_id }}"
+                                                   @checked(in_array($site->external_id, (array) old('sites', []), true))
+                                                   class="flex-none accent-[var(--primary)]">
+                                            <span class="truncate">{{ $site->name }}</span>
+                                            <span class="truncate font-mono text-[11px] text-text-3">{{ $site->expected_domain }}</span>
+                                        </label>
+                                    @endforeach
+                                </div>
+                            @endif
+
+                            <p class="text-[11.5px] text-text-3">
+                                Narrowing a destination does not narrow what it is subscribed to. It
+                                still hears about everything ticked above - just not about sites it is
+                                not responsible for.
+                            </p>
                         </fieldset>
 
                         <button type="submit"

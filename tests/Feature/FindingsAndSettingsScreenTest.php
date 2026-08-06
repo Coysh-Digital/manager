@@ -47,7 +47,10 @@ it('lists outstanding findings worst first', function (): void {
 });
 
 it('shows acknowledged findings rather than hiding them', function (): void {
-    Finding::factory()->for($this->site)->acknowledged()->create(['title' => 'Known problem']);
+    // Named rather than left to the factory, which defaults to dev_mode_in_production - a security
+    // rule, and therefore on the Security screen rather than this one. The behaviour under test is
+    // acknowledgement display, which is the same on both; the rule only decides which URL to open.
+    Finding::factory()->for($this->site)->rule('pending_migrations')->acknowledged()->create(['title' => 'Known problem']);
 
     $this->actingAs($this->owner)
         ->get('/findings')
@@ -60,7 +63,7 @@ it('shows acknowledged findings rather than hiding them', function (): void {
 });
 
 it('hides resolved findings unless asked for', function (): void {
-    Finding::factory()->for($this->site)->resolved()->create(['title' => 'Fixed already']);
+    Finding::factory()->for($this->site)->rule('pending_migrations')->resolved()->create(['title' => 'Fixed already']);
 
     $this->actingAs($this->owner)->get('/findings')->assertOk()->assertDontSee('Fixed already');
     $this->actingAs($this->owner)->get('/findings?resolved=1')->assertOk()->assertSee('Fixed already');
@@ -92,18 +95,22 @@ it('gives each site its own numbers rather than the first site\'s', function ():
 
 it('still states a shared description once', function (): void {
     // The other half of the same rule, and the reason the fix is conditional rather than a blanket
-    // "render it per row". Development mode being on is a fact about a config flag: the sentence is
-    // identical everywhere, and repeating it per site is the noise the grouping was built to remove.
+    // "render it per row". OPcache being off is a fact about a config flag: the sentence is identical
+    // everywhere, and repeating it per site is the noise the grouping was built to remove.
+    //
+    // This used dev_mode_in_production, which says the same thing about the same kind of flag and
+    // now lives on the Security screen. The rule was swapped rather than the assertion moved,
+    // because what is under test is this screen's hoisting and not that rule.
     $second = Site::factory()->for($this->organisation)->connected()->create(['name' => 'Second Site']);
 
-    $detail = 'Development mode is on, which exposes stack traces to visitors.';
+    $detail = 'OPcache is disabled, so every request recompiles every file it touches.';
 
-    Finding::factory()->for($this->site)->rule('dev_mode_in_production')->create([
-        'title' => 'Development mode is on in production',
+    Finding::factory()->for($this->site)->rule('opcache_disabled_in_production')->create([
+        'title' => 'OPcache is disabled in production',
         'detail' => $detail,
     ]);
-    Finding::factory()->for($second)->rule('dev_mode_in_production')->create([
-        'title' => 'Development mode is on in production',
+    Finding::factory()->for($second)->rule('opcache_disabled_in_production')->create([
+        'title' => 'OPcache is disabled in production',
         'detail' => $detail,
     ]);
 
