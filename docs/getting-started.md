@@ -25,7 +25,7 @@ Get the source and start the stack. Every command in this section runs from `dep
 where the compose file lives — there is none at the top of the repository.
 
 ```bash
-git clone --branch v1.0.0 https://github.com/Coysh-Digital/manager.git /opt/manager
+git clone --branch v1.1.0 https://github.com/Coysh-Digital/manager.git /opt/manager
 cd /opt/manager/deploy/docker
 cp ../../.env.example .env
 ```
@@ -35,12 +35,14 @@ Open `.env` and set at minimum:
 ```dotenv
 APP_URL=https://manager.example.com
 DB_PASSWORD=            # something long and random
-MANAGER_VERSION=1.0.0   # which release this is; the interface says "unreleased build" without it
+MANAGER_VERSION=1.1.0   # which release this is; the interface says "unreleased build" without it
 ```
 
-The container will refuse to start if `APP_KEY` is empty, if `APP_DEBUG` is on in production, or if
-`DB_PASSWORD` is one of the obvious ones. That is deliberate - those are the three that turn up in
-every post-mortem.
+The container will refuse to start if `APP_KEY` is empty, if `APP_DEBUG` is on, if `DB_PASSWORD` is
+one of the obvious ones, or if `APP_ENV` is set to anything but `production`. That is deliberate —
+those are the ones that turn up in every post-mortem, and since 1.1.0 none of them is conditional on
+`APP_ENV`. They used to be, which meant copying a `.env.example` that shipped `APP_ENV=local` skipped
+every one of them; [install.md](install.md) has the detail.
 
 Now generate the three secrets. Do this once, and keep the output somewhere that is **not** your
 database backup:

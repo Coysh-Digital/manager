@@ -137,6 +137,45 @@ copy. Decrypting proves a file is intact, not that the SQL loads.
 **Do not weaken a check because it went red.** Both `verify-invariants.php` and the Invariants suite
 are written to fail rather than warn, and every one of them exists because something went wrong once.
 
+**Never open a pull request without its changelog entry.** See the section below. And never bump a
+version in a commit that does not contain the change it describes - that is how `connector` came to
+publish 1.12.1 without the fix its own release notes credit it with.
+
+## Every pull request carries its changelog
+
+**No pull request here is complete without a `CHANGELOG.md` entry, in the same commit as the change
+it describes.** Not a follow-up, not a `release:` commit afterwards. Somebody is about to run this
+against a production database on the strength of what that file says.
+
+Whether the version moves as well:
+
+> Look at the top heading in `CHANGELOG.md`. If `git tag` does not have it, `main` is already
+> carrying an unreleased number - write under that heading and change nothing else. If it *is*
+> tagged, that number is spent: open a new heading and bump the version everywhere it is stated.
+
+So the first pull request after a release bumps, the ones behind it accumulate, and the number `main`
+declares is always a number that could be tagged this minute.
+
+**Prefer patch. When hesitating between patch and minor, take the patch.** Patch is the default and
+covers anything an existing installation can take without being told - fixes, docs, CI, chores,
+refactors, a tightened check. Minor is a statement that there is something new to go and use: a
+screen, a health check, a configuration key with a safe default. Major is reserved for something an
+installation must *act on* to keep working. A long run of patch releases is the honest shape of a
+product that works, and tagging often is the point - twenty commits behind one untagged number is
+twenty fixes that have reached nobody.
+
+**Where this repository states its version.** `CHANGELOG.md`, and the worked examples in
+`docs/getting-started.md` and `docs/upgrade.md`. Not `composer.json` - Composer derives the version
+from the tag, and a manifest disagreeing with a tag is the failure `manager-protocol` and
+`manager-restore` both carry tests against. What Manager has instead is `MANAGER_VERSION`, which an
+operator sets and Settings reports, so the documentation's examples are the version somebody will
+actually install. `docs/rollback.md` names an *older* tag on purpose; leave it behind.
+
+**Nothing enforces any of this here.** `connector`, `protocol` and `restore` each have a check
+comparing their version statements; this repository has none, because it makes none of its
+statements in code. Anything under **Before you upgrade** is the part with real consequences: it is
+what `docs/upgrade.md` sends the reader here for.
+
 ## Release order
 
 The packages depend on each other, so releases have an order:
