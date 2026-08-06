@@ -26,6 +26,7 @@ use Laravel\Passkeys\PasskeyAuthenticatable;
  * @property string $email
  * @property string|null $totp_secret decrypted transparently by the cast
  * @property Carbon|null $totp_confirmed_at
+ * @property int|null $totp_last_used_step the last TOTP step accepted, so a code cannot be reused
  * @property Carbon|null $email_verified_at
  * @property Carbon|null $last_authenticated_at
  * @property string|null $timezone IANA identifier; null means use the organisation's

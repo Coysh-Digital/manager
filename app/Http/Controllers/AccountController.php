@@ -115,7 +115,13 @@ final class AccountController
             return back()->with('warning', 'Start enrolment again - that setup expired.');
         }
 
-        if (! $this->totp->verify($secret, $validated['code'])) {
+        // The step, not just a yes. Enrolment is the first code this account has ever accepted, so
+        // recording it here is what stops somebody walking straight from this screen to a login
+        // challenge and reusing the same six digits - the window is roughly ninety seconds and the
+        // two screens are one click apart.
+        $step = $this->totp->verifyAndStep($secret, $validated['code']);
+
+        if ($step === false) {
             throw ValidationException::withMessages(['code' => __('That code is not valid. Check your device clock and try again.')]);
         }
 
@@ -127,6 +133,7 @@ final class AccountController
         $user->forceFill([
             'totp_secret' => $secret,
             'totp_confirmed_at' => now(),
+            'totp_last_used_step' => $step,
         ])->save();
 
         $request->session()->forget('totp.pending');

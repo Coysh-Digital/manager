@@ -38,13 +38,65 @@ final class TotpService
      */
     public function verify(#[SensitiveParameter] string $secret, string $code): bool
     {
-        $code = preg_replace('/\s+/', '', $code) ?? '';
+        return $this->verifyAndStep($secret, $code) !== false;
+    }
 
-        if (! preg_match('/^\d{6}$/', $code)) {
+    /**
+     * Verify a code for an account, and refuse one that has already been used.
+     *
+     * A code is valid for its own 30-second step and for one step either side, so any given code is
+     * accepted for roughly ninety seconds. Nothing recorded that a code had been spent, so within
+     * that window the same six digits worked again - shoulder-surfed, read off a lock-screen
+     * notification, or captured by anything sitting in front of the login form. The second factor
+     * stopped being something you have and became something briefly observable.
+     *
+     * The last accepted step is recorded and every later attempt must be strictly newer. That is the
+     * property {@see self::verify()} cannot have on its own: it takes a secret and a code and has
+     * nowhere to remember anything.
+     *
+     * Written before the caller acts on the result, so a code cannot be spent twice by two requests
+     * arriving together.
+     */
+    public function verifyOnce(User $user, string $code): bool
+    {
+        $step = $this->verifyAndStep((string) $user->totp_secret, $code, $user->totp_last_used_step);
+
+        if ($step === false) {
             return false;
         }
 
-        return $this->google2fa->verifyKey($secret, $code, window: 1);
+        $user->forceFill(['totp_last_used_step' => $step])->save();
+
+        return true;
+    }
+
+    /**
+     * The step a code is valid for, or false.
+     *
+     * A one-step window either side absorbs ordinary clock drift between a phone and the server.
+     * Wider than that and a captured code stays usable for long enough to be worth capturing.
+     *
+     * `$lastUsedStep` is what makes a code single-use, and the library does the work rather than
+     * this class comparing afterwards: given an old step it starts its search at `$lastUsedStep + 1`
+     * instead of at `now - window`, so a code from a step already spent is not merely rejected on
+     * comparison - it is never a candidate.
+     *
+     * Zero rather than null when nothing has been used yet, and the distinction is not cosmetic.
+     * `verifyKey()` returns a **bool** when the old step is null and the **step** when it is not, so
+     * passing null would lose the very thing this method exists to return. Zero is far enough in the
+     * past that `max(now - window, 1)` leaves the ordinary window search exactly as it was.
+     */
+    public function verifyAndStep(#[SensitiveParameter] string $secret, string $code, ?int $lastUsedStep = null): int|false
+    {
+        $code = preg_replace('/\s+/', '', $code) ?? '';
+
+        if (! preg_match('/^\d{6}$/', $code) || $secret === '') {
+            return false;
+        }
+
+        $step = $this->google2fa->verifyKeyNewer($secret, $code, $lastUsedStep ?? 0, 1);
+
+        return is_int($step) ? $step : false;
     }
 
     /**
