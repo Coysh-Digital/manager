@@ -1145,11 +1145,15 @@ final class BackupService
      */
     public function expiryFor(int $siteId): ?Carbon
     {
-        // The site's own window, not its organisation's. Read as a scalar rather than through the
-        // model because this runs on the connector's upload path, where one column is all it needs.
-        $days = (int) (Site::query()->whereKey($siteId)->value('backup_retention_days') ?? 30);
+        // The site's own policy, not its organisation's, and all three windows rather than the daily
+        // one. This used to read `backup_retention_days` alone as a scalar, on the grounds that one
+        // column was all the upload path needed - which was true of the query and false of the
+        // question. A site with `days = 0` and weeks or months set got a null expiry, and nothing
+        // with a null expiry is ever eligible for pruning, so its weekly and monthly windows never
+        // applied to anything.
+        $site = Site::query()->whereKey($siteId)->first();
 
-        return $days <= 0 ? null : Carbon::now()->addDays($days);
+        return $site === null ? null : RetentionPolicy::forSite($site)->horizon(Carbon::now());
     }
 
     /**

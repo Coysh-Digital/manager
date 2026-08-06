@@ -273,12 +273,76 @@ it('never deletes an artifact belonging to another organisation', function (): v
     expect($theirs->fresh()->state)->toBe(BackupArtifact::STATE_STORED);
 });
 
-it('honours a retention of zero days as keep indefinitely', function (): void {
+it('honours a policy of every window zero as keep indefinitely', function (): void {
+    // Every window, not just the daily one - see the test below for why that distinction matters.
+    // beforeEach already sets weeks and months to zero.
     $this->site->forceFill(['backup_retention_days' => 0])->save();
 
     // expires_at is computed at storage time from the policy then in force, so an artifact stored under
     // an indefinite policy simply has no expiry rather than one in the past.
     expect(app(BackupService::class)->expiryFor($this->site->id))->toBeNull();
+});
+
+it('still applies the weekly and monthly windows when the daily window is zero', function (): void {
+    /*
+     | The case the settings form invites and the sweep ignored.
+     |
+     | `days = 0` is offered by the form and described on screen as "no window of this kind". It gave
+     | every future artifact a null expiry, and nothing with a null expiry is ever eligible for
+     | pruning - so a site asking for "no daily window, four weeks, twelve months" got a policy of
+     | keep everything for ever, while the screen read back the policy it thought it had set.
+     |
+     | Expiry now comes from the widest window rather than the daily one.
+    */
+    $this->site->forceFill([
+        'backup_retention_days' => 0,
+        'backup_retention_weeks' => 4,
+        'backup_retention_months' => 0,
+    ])->save();
+
+    $expiry = app(BackupService::class)->expiryFor($this->site->id);
+
+    expect($expiry)->not->toBeNull()
+        ->and($expiry->toDateString())->toBe(now()->addWeeks(4)->toDateString());
+});
+
+it('takes the widest window, not the first one set', function (): void {
+    // A month is not a fixed number of days, so the edges are compared as dates rather than
+    // converted to a common unit.
+    $this->site->forceFill([
+        'backup_retention_days' => 90,
+        'backup_retention_weeks' => 4,
+        'backup_retention_months' => 12,
+    ])->save();
+
+    expect(app(BackupService::class)->expiryFor($this->site->id)?->toDateString())
+        ->toBe(now()->addMonths(12)->toDateString());
+});
+
+it('prunes under a weeks-only policy, which it could not do before', function (): void {
+    // The consequence, asserted through the sweep rather than through expiryFor(), because the
+    // defect was never in the arithmetic - it was that nothing became eligible.
+    $this->site->forceFill([
+        'backup_retention_days' => 0,
+        'backup_retention_weeks' => 4,
+        'backup_retention_months' => 0,
+    ])->save();
+
+    $service = app(BackupService::class);
+
+    // Two recent ones so the "never leave an organisation with nothing" rule is not what saves the
+    // third, and one well outside every window.
+    ($this->artifact)(['taken_at' => now()->subDays(1), 'expires_at' => $service->expiryFor($this->site->id)]);
+    ($this->artifact)(['taken_at' => now()->subDays(2), 'expires_at' => $service->expiryFor($this->site->id)]);
+
+    $stale = ($this->artifact)([
+        'taken_at' => now()->subMonths(8),
+        'expires_at' => now()->subMonths(7),
+    ]);
+
+    $this->artisan('manager:backups:prune')->assertSuccessful();
+
+    expect($stale->fresh()?->state)->not->toBe(BackupArtifact::STATE_STORED);
 });
 
 /*
