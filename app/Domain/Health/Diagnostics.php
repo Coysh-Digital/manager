@@ -20,6 +20,7 @@ use coyshdigital\managerprotocol\Protocol;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
 
@@ -388,6 +389,7 @@ final class Diagnostics
             $this->nonceStore(),
             $this->storageWritable(),
             $this->queue(),
+            $this->failedJobs(),
             $this->mail(),
         ];
     }
@@ -731,19 +733,73 @@ final class Diagnostics
     }
 
     /**
+     * Jobs that ran, failed every attempt, and were written off.
+     *
+     * Nothing read this table. Laravel has written to it since the first migration, and a failed job
+     * is the shape of failure with no other symptom at all: the request that queued it succeeded, the
+     * screen said so, and the work never happened. A notification never delivered, a backup never
+     * fetched, an artifact never pruned - each one silent, each one recorded here, and nobody looking.
+     *
+     * A warning rather than a failure, at any count. One failed job is not a reason to pull an
+     * instance out of rotation, and a check that fails the whole diagnostic on a single transient
+     * error is one people learn to skip. The number is the point.
+     */
+    private function failedJobs(): Check
+    {
+        try {
+            $count = DB::table((string) config('queue.failed.table', 'failed_jobs'))->count();
+        } catch (Throwable) {
+            // Before migrations this table does not exist, which the migrations check already says.
+            return Check::pass('Failed jobs', 'No failed-job table yet.');
+        }
+
+        if ($count === 0) {
+            return Check::pass('Failed jobs', 'None.');
+        }
+
+        $oldest = null;
+
+        try {
+            $oldest = DB::table((string) config('queue.failed.table', 'failed_jobs'))->min('failed_at');
+        } catch (Throwable) {
+            // Not worth failing the check over; the count is the part that matters.
+        }
+
+        return Check::warn(
+            'Failed jobs',
+            $oldest === null
+                ? "{$count} job(s) have failed every attempt and been written off."
+                : "{$count} job(s) written off, the oldest at {$oldest}.",
+            'Read them with `php artisan queue:failed`. Each one is work that was asked for and never '
+                .'happened - a notification, a backup fetch, a prune - with no other symptom.',
+        );
+    }
+
+    /**
      * How long the oldest waiting job has been waiting, in minutes.
      *
-     * Only the database driver can answer this: the jobs table carries available_at, so the question
-     * is a query. Redis holds an opaque list and would need every payload decoded to find out, which
-     * is not worth doing on a health check - so this returns null there and the caller reports the
-     * depth without judging it.
+     * Both shipped drivers now, and the second one is the one that mattered: this answered only for
+     * `database` while `.env.example` ships `QUEUE_CONNECTION=redis`, so on a stock installation the
+     * stall check reported the depth and never judged it. The check existed and did nothing.
+     *
+     * Redis holds an opaque list, which is why this was skipped - but only the *oldest* entry has to
+     * be read, not every payload, and Laravel pushes with `rpush` and pops from the left, so index 0
+     * is the oldest waiting job. Its payload carries `createdAt`. One LINDEX, one json_decode.
+     *
+     * Returns null on anything unexpected. A health check that throws because a queue payload had a
+     * shape it did not recognise would be worse than the gap it is closing.
      */
     private function oldestQueuedJobMinutes(): ?int
     {
-        if ((string) config('queue.default') !== 'database') {
-            return null;
-        }
+        return match ((string) config('queue.default')) {
+            'database' => $this->oldestDatabaseJobMinutes(),
+            'redis' => $this->oldestRedisJobMinutes(),
+            default => null,
+        };
+    }
 
+    private function oldestDatabaseJobMinutes(): ?int
+    {
         try {
             $availableAt = DB::table((string) config('queue.connections.database.table', 'jobs'))
                 ->min('available_at');
@@ -756,6 +812,33 @@ final class Diagnostics
         } catch (Throwable) {
             // The table not existing is not a queue fault - a fresh installation before migrations
             // looks exactly like this, and the migrations check already reports that.
+            return null;
+        }
+    }
+
+    private function oldestRedisJobMinutes(): ?int
+    {
+        try {
+            $connection = (string) (config('queue.connections.redis.connection') ?: 'default');
+            $queue = (string) (config('queue.connections.redis.queue') ?: 'default');
+
+            // The same key Laravel's RedisQueue builds, and the same client, so the configured key
+            // prefix is applied identically rather than guessed at here.
+            $payload = Redis::connection($connection)->lindex('queues:'.$queue, 0);
+
+            if (! is_string($payload)) {
+                return null;
+            }
+
+            $decoded = json_decode($payload, true);
+            $createdAt = is_array($decoded) ? ($decoded['createdAt'] ?? null) : null;
+
+            if (! is_numeric($createdAt)) {
+                return null;
+            }
+
+            return (int) floor((time() - (int) $createdAt) / 60);
+        } catch (Throwable) {
             return null;
         }
     }
