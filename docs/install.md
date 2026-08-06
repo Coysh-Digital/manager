@@ -53,8 +53,13 @@ cp ../../.env.example .env
 ```
 
 Edit `.env`. At minimum set `APP_KEY`, `APP_URL` and `DB_PASSWORD` - the container refuses to start
-without them, and refuses to start in production on a well-known default password or with
-`APP_DEBUG` on. Every variable is documented in [env.md](env.md).
+without them, and refuses to start at all on a well-known default password, with `APP_DEBUG` on, or
+with `APP_ENV` set to anything but `production`. Every variable is documented in [env.md](env.md).
+
+Those three refusals used to be conditional on `APP_ENV=production`, which meant copying this file —
+which ships `APP_ENV=local` - skipped all of them. Both the file and the checks have been corrected:
+the example now carries the safe values, and the checks no longer depend on the setting that made
+them necessary.
 
 Generate a key:
 
