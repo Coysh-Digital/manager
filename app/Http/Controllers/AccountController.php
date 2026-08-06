@@ -14,6 +14,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -337,6 +338,19 @@ final class AccountController
 
     /**
      * End another session.
+     *
+     * Deleting the session row is not enough on its own, and for a long time it was all this did.
+     * "Stay signed in on this device" issues a recaller cookie which is checked against
+     * `users.remember_token` and is entirely independent of the session table - so a device signed
+     * out here simply re-authenticated on its next request, silently, and skipped the second factor
+     * on the way through. The button reported success and the device stayed signed in.
+     *
+     * So the token is rotated as well. There is one per user rather than one per device, which means
+     * this ends every remembered device rather than only the one named - and that is why the message
+     * below says so. Overreaching and saying nothing would be worse than overreaching: somebody
+     * signing a device out is answering a security question, and the answer has to be true.
+     *
+     * The same rotation already happens on a password reset, for the same reason.
      */
     public function revokeSession(Request $request, string $id): RedirectResponse
     {
@@ -348,17 +362,31 @@ final class AccountController
             ->where('user_id', $user->id)
             ->delete();
 
-        if ($deleted > 0) {
-            $this->audit->record(
-                action: 'user.session.revoked',
-                actor: $user,
-                targetType: 'session',
-                // A truncated identifier: enough to correlate, not enough to reuse.
-                targetId: substr($id, 0, 8),
-            );
+        if ($deleted === 0) {
+            return back()->with('status', 'That session had already ended.');
         }
 
-        return back()->with('status', 'That session has been signed out.');
+        $user->forceFill(['remember_token' => Str::random(60)])->save();
+
+        // Re-issue this device's cookie against the new token when the current request is itself
+        // riding on one. Without this, signing out another device signs out the device doing it —
+        // not on the next visit, but on the very next request, which reads as the page breaking.
+        if (Auth::viaRemember()) {
+            Auth::login($user, true);
+        }
+
+        $this->audit->record(
+            action: 'user.session.revoked',
+            actor: $user,
+            targetType: 'session',
+            // A truncated identifier: enough to correlate, not enough to reuse.
+            targetId: substr($id, 0, 8),
+        );
+
+        return back()->with(
+            'status',
+            'That session has been signed out. Any device set to stay signed in will have to sign in again.',
+        );
     }
 
     /**
