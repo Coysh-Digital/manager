@@ -9,6 +9,7 @@ use App\Http\Middleware\EnsureSiteBelongsToOrganisation;
 use App\Http\Middleware\RequirePasswordConfirmation;
 use App\Http\Middleware\RequiresCapability;
 use App\Http\Middleware\ResolveOrganisation;
+use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\VerifyConnectorSignature;
 use App\Support\CorrelationId;
 use Illuminate\Foundation\Application;
@@ -58,6 +59,19 @@ return Application::configure(basePath: dirname(__DIR__))
             // action should have to remember.
             'site.scoped' => EnsureSiteBelongsToOrganisation::class,
         ]);
+
+        /*
+         | Applied to everything, including the connector API and the health endpoints.
+         |
+         | Globally rather than on the web group, because "which responses need these" has exactly
+         | one right answer and it is "all of them". A JSON error from the connector API is still
+         | rendered by a browser if somebody opens the URL, and /up is still a page.
+         |
+         | Three of these already existed in deploy/docker/nginx.conf, whose comment claimed the
+         | application set its own. It did not - and the Cloud console, which deploys through Ploi
+         | and never reads that file, therefore served none of them.
+         */
+        $middleware->append(SecurityHeaders::class);
 
         // Declared empty, and deliberately so. See the connector route group above: this exists to
         // be appended to, not to carry anything by default.

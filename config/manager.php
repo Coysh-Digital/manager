@@ -303,6 +303,27 @@ return [
 
     /*
     |---------------------------------------------------------------------------------------------
+    | Response headers
+    |---------------------------------------------------------------------------------------------
+    |
+    | How long a browser should refuse to reach this installation over plain HTTP, in seconds. Sent
+    | only when APP_URL is already HTTPS - on an installation served over HTTP it would be a promise
+    | the operator has not made.
+    |
+    | Configurable because sending it once commits every browser that saw it for this long, and an
+    | operator moving a host back to HTTP has no way to withdraw it early. A year is the usual
+    | answer; zero switches it off.
+    |
+    | The `?:` rather than a plain default is the blank-versus-absent trap: env() returns the default
+    | only when the key is absent, and a blank line in .env would otherwise make this zero.
+    |
+    */
+    'security' => [
+        'hsts_seconds' => (int) (env('MANAGER_HSTS_SECONDS') ?: 31536000),
+    ],
+
+    /*
+    |---------------------------------------------------------------------------------------------
     | Diagnostics
     |---------------------------------------------------------------------------------------------
     |
