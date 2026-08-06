@@ -79,6 +79,30 @@ final class TeamController
             ])->withInput();
         }
 
+        /*
+         | Somebody who already belongs to another organisation, refused rather than half-admitted.
+         |
+         | An account reaches exactly one organisation: ResolveOrganisation takes the lowest-id live
+         | membership and there is no switcher. So inviting a person who already belongs elsewhere
+         | used to *succeed* - a membership row was written, the invitation email went out, and this
+         | screen listed them as having access - while they carried on seeing only the organisation
+         | they joined first. The person who invited them had no way to tell, because everything they
+         | could see said it had worked.
+         |
+         | Refusing is the honest half of that. It is a real limitation of the product and it is
+         | stated here rather than discovered later by two people who cannot work out why one of them
+         | sees nothing.
+        */
+        if ($existing !== null && $existing->memberships()
+            ->where('organisation_id', '!=', $organisation->id)
+            ->whereNull('revoked_at')
+            ->exists()) {
+            return back()->withErrors([
+                'email' => 'That address already belongs to another organisation on this installation, '
+                    .'and an account can only reach one. Invite them on a different address.',
+            ])->withInput();
+        }
+
         ['membership' => $membership] = $this->team->invite(
             organisation: $organisation,
             email: $validated['email'],

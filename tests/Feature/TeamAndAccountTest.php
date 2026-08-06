@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Domain\Team\SecondOrganisationRefused;
+use App\Domain\Team\TeamService;
 use App\Models\AuditEvent;
 use App\Models\Membership;
 use App\Models\Organisation;
@@ -169,6 +171,99 @@ it('refuses to invite an address that already has access', function (): void {
             'role' => Membership::ROLE_ADMIN,
         ])
         ->assertSessionHasErrors('email');
+});
+
+/*
+|--------------------------------------------------------------------------------------------------
+| One account, one organisation
+|--------------------------------------------------------------------------------------------------
+|
+| A limitation rather than a rule, and it is refused out loud because the alternative failed
+| silently. ResolveOrganisation takes the lowest-id live membership and there is no switcher, so a
+| second membership grants nothing: the row is written, the invitation arrives, this screen lists the
+| person as having access - and they carry on seeing the organisation they joined first. Nothing the
+| inviting owner could see said otherwise.
+|
+| That is the ordinary agency case for this product, one person working across two clients, and it is
+| the case that broke.
+*/
+
+it('refuses to invite somebody who already belongs to another organisation', function (): void {
+    $elsewhere = Organisation::factory()->create();
+    $person = User::factory()->create(['email' => 'shared@example.org']);
+    Membership::factory()->for($person)->for($elsewhere)->create();
+
+    $this->actingAs($this->owner)
+        ->withSession($this->confirmed)
+        ->post(route('team.invite'), [
+            'name' => 'Shared Person',
+            'email' => 'shared@example.org',
+            'role' => Membership::ROLE_MEMBER,
+        ])
+        ->assertSessionHasErrors('email');
+
+    // Nothing half-written: no membership here, and the one they had is untouched.
+    expect($person->memberships()->where('organisation_id', $this->organisation->id)->exists())->toBeFalse()
+        ->and($person->memberships()->whereNull('revoked_at')->count())->toBe(1);
+});
+
+it('says what to do instead rather than only refusing', function (): void {
+    $elsewhere = Organisation::factory()->create();
+    $person = User::factory()->create(['email' => 'shared2@example.org']);
+    Membership::factory()->for($person)->for($elsewhere)->create();
+
+    $response = $this->actingAs($this->owner)
+        ->withSession($this->confirmed)
+        ->post(route('team.invite'), [
+            'name' => 'Shared Person',
+            'email' => 'shared2@example.org',
+            'role' => Membership::ROLE_MEMBER,
+        ]);
+
+    // Refusing is only half of it. An owner who is told "no" and not told why goes looking for a
+    // setting that does not exist, so the copy itself is the thing being asserted.
+    $response->assertSessionHasErrors([
+        'email' => 'That address already belongs to another organisation on this installation, '
+            .'and an account can only reach one. Invite them on a different address.',
+    ]);
+});
+
+it('still invites somebody whose membership elsewhere was revoked', function (): void {
+    // Revoked is not access, so it is not a second organisation. Somebody who left one client and
+    // joined another must not be locked out by a row nobody uses any more.
+    Notification::fake();
+
+    $elsewhere = Organisation::factory()->create();
+    $person = User::factory()->create(['email' => 'moved@example.org']);
+    Membership::factory()->for($person)->for($elsewhere)->create(['revoked_at' => now()]);
+
+    $this->actingAs($this->owner)
+        ->withSession($this->confirmed)
+        ->post(route('team.invite'), [
+            'name' => 'Moved Person',
+            'email' => 'moved@example.org',
+            'role' => Membership::ROLE_MEMBER,
+        ])
+        ->assertRedirect()
+        ->assertSessionHasNoErrors();
+
+    expect($person->memberships()->where('organisation_id', $this->organisation->id)->exists())->toBeTrue();
+});
+
+it('refuses a second organisation in the service, not only on the form', function (): void {
+    // The backstop. The controller's refusal is the message; this is the property, and it is what a
+    // future caller that is not this form will meet.
+    $elsewhere = Organisation::factory()->create();
+    $person = User::factory()->create(['email' => 'service@example.org']);
+    Membership::factory()->for($person)->for($elsewhere)->create();
+
+    expect(fn () => app(TeamService::class)->invite(
+        organisation: $this->organisation,
+        email: 'service@example.org',
+        name: 'Service Person',
+        role: Membership::ROLE_MEMBER,
+        actor: $this->owner,
+    ))->toThrow(SecondOrganisationRefused::class);
 });
 
 it('revokes access and signs the person out immediately', function (): void {

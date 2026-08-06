@@ -73,6 +73,34 @@ final class TeamService
                 ]);
             }
 
+            /*
+             | One account, one organisation - enforced here rather than only on the form.
+             |
+             | ResolveOrganisation takes the lowest-id live membership and there is no switcher, so a
+             | second membership is not access: it is a row that makes this screen say somebody has
+             | access while they carry on seeing the organisation they joined first. The inviter has
+             | no way to notice, because everything they can see says it worked.
+             |
+             | TeamController refuses this with a message that tells the owner what to do instead.
+             | This is the backstop, so the property holds for any caller rather than for one form —
+             | and so that a future organisation switcher has one place to remove the restriction
+             | from rather than two.
+             |
+             | Inside the transaction, so a user account created moments earlier is rolled back with
+             | it rather than left behind as an account nobody can sign into.
+            */
+            $elsewhere = Membership::query()
+                ->where('user_id', $user->id)
+                ->where('organisation_id', '!=', $organisation->id)
+                ->whereNull('revoked_at')
+                ->exists();
+
+            if ($elsewhere) {
+                throw new SecondOrganisationRefused(
+                    'That account already belongs to another organisation, and an account can only reach one.'
+                );
+            }
+
             // Re-inviting somebody whose access was revoked reinstates the same membership rather
             // than creating a second one. Two membership rows for one person in one organisation is
             // a state every access check would then have to have an opinion about.
