@@ -71,9 +71,13 @@ final class TwoFactorChallengeController
         // has just died to first find the right form is a bad moment to add a step.
         $usedRecoveryCode = RecoveryCodeService::looksLikeRecoveryCode($validated['code']);
 
+        // verifyOnce, not verify: a TOTP code is accepted for roughly ninety seconds across its own
+        // step and one either side, and until this recorded the step nothing stopped the same six
+        // digits being used twice inside that window. Recovery codes were already single-use; this
+        // makes the two halves of the second factor behave the same way.
         $accepted = $usedRecoveryCode
             ? $this->recoveryCodes->consume($user, $validated['code'])
-            : $this->totp->verify((string) $user->totp_secret, $validated['code']);
+            : $this->totp->verifyOnce($user, $validated['code']);
 
         if (! $accepted) {
             RateLimiter::hit($key, (int) config('manager.auth.login_decay_seconds'));

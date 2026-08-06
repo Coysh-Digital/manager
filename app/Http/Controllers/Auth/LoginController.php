@@ -51,7 +51,7 @@ final class LoginController
             : Hash::check($credentials['password'], '$2y$12$'.str_repeat('x', 53));
 
         if ($user === null || ! $passwordMatches) {
-            RateLimiter::hit($this->throttleKey($request, $credentials['email']), (int) config('manager.auth.login_decay_seconds'));
+            $this->recordFailure($request, $credentials['email']);
 
             $this->audit->record(
                 action: 'auth.login.failed',
@@ -68,7 +68,7 @@ final class LoginController
             ]);
         }
 
-        RateLimiter::clear($this->throttleKey($request, $credentials['email']));
+        $this->clearFailures($request, $credentials['email']);
 
         if ($user->hasSecondFactor()) {
             // Not logged in yet. Only the intent to log in is remembered.
@@ -157,29 +157,87 @@ final class LoginController
 
     private function assertNotThrottled(Request $request, string $email): void
     {
-        $key = $this->throttleKey($request, $email);
         $max = (int) config('manager.auth.max_login_attempts');
 
-        if (! RateLimiter::tooManyAttempts($key, $max)) {
-            return;
+        foreach ($this->throttleKeys($request, $email) as $key => $limit) {
+            if (RateLimiter::tooManyAttempts($key, $limit === 0 ? $max : $limit)) {
+                throw ValidationException::withMessages([
+                    'email' => __('Too many attempts. Try again in :seconds seconds.', [
+                        'seconds' => RateLimiter::availableIn($key),
+                    ]),
+                ]);
+            }
         }
-
-        throw ValidationException::withMessages([
-            'email' => __('Too many attempts. Try again in :seconds seconds.', [
-                'seconds' => RateLimiter::availableIn($key),
-            ]),
-        ]);
     }
 
     /**
-     * Keyed on address and source together.
+     * Every bucket a failed attempt counts against, and what each one is for.
      *
-     * On the address alone, anyone could lock a known user out by failing on purpose. On the
-     * address only within one source, a distributed attempt would slip past. Both is the compromise
-     * that fails in the safer direction for the account whose password is being guessed.
+     * The composite key was here first, and its reasoning was sound as far as it went: on the
+     * address alone anyone could lock a known user out by failing on purpose, and on the source
+     * alone a shared office address would lock out colleagues. Both together fails in the safer
+     * direction for the account being guessed.
+     *
+     * What it does not do is bound either axis on its own, and both single-axis attacks are the
+     * ordinary ones:
+     *
+     *  - **Spraying** - one common password against many addresses from one source. Every address
+     *    is a fresh composite bucket, so the source was never limited at all.
+     *  - **Credential stuffing** - one address from many sources. Every source is a fresh composite
+     *    bucket, so the account was never limited either.
+     *
+     * So all three exist, and the composite keeps its original job of being the tightest of them.
+     * The two wider buckets are deliberately looser: they have to sit above the traffic a busy
+     * office or a person with several accounts produces legitimately, and their purpose is to bound
+     * the attack rather than to catch a typo.
+     *
+     * The account bucket is still a lockout somebody can inflict on a known address. That is the
+     * trade the composite was written to avoid and it cannot be avoided entirely - what can be done
+     * is to set it high enough that reaching it takes deliberate effort, which is why it is a
+     * multiple rather than the same number.
+     *
+     * @return array<string, int> key => limit, where 0 means "use the configured attempt limit"
      */
-    private function throttleKey(Request $request, string $email): string
+    private function throttleKeys(Request $request, string $email): array
     {
-        return 'login:'.Str::lower($email).'|'.$request->ip();
+        $max = (int) config('manager.auth.max_login_attempts');
+        $address = Str::lower($email);
+        $source = (string) $request->ip();
+
+        return [
+            // Tightest, and unchanged: this address from this source.
+            'login:'.$address.'|'.$source => 0,
+
+            // This address from anywhere - bounds credential stuffing.
+            'login-account:'.$address => $max * 4,
+
+            // This source against anything - bounds spraying.
+            'login-source:'.$source => $max * 10,
+        ];
+    }
+
+    /**
+     * Record a failure against every bucket.
+     */
+    private function recordFailure(Request $request, string $email): void
+    {
+        $decay = (int) config('manager.auth.login_decay_seconds');
+
+        foreach (array_keys($this->throttleKeys($request, $email)) as $key) {
+            RateLimiter::hit($key, $decay);
+        }
+    }
+
+    /**
+     * Clear only the buckets a successful sign-in should clear.
+     *
+     * The composite and the account, never the source. Somebody spraying an installation will
+     * eventually guess a password that works, and clearing the source bucket on that success would
+     * hand them a reset of the limit that exists to stop them.
+     */
+    private function clearFailures(Request $request, string $email): void
+    {
+        RateLimiter::clear('login:'.Str::lower($email).'|'.(string) $request->ip());
+        RateLimiter::clear('login-account:'.Str::lower($email));
     }
 }
