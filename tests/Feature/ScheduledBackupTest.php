@@ -430,9 +430,18 @@ it('refuses a schedule change from somebody who is not an administrator', functi
     expect($site->fresh()->backup_schedule)->toBe('off');
 });
 
-it('keeps the recent-authentication gate the schedule had before it moved', function (): void {
-    // Moving a control must not quietly drop a gate it was behind. This decides that a production
-    // database is dumped on a repeating schedule, which is the same act "Back up now" performs.
+it('keeps whatever gate the schedule had before it moved', function (): void {
+    /*
+     | Moving a control must not quietly drop a gate it was behind, and this test was written to say
+     | so. It still does - the gate simply moved underneath it.
+     |
+     | Setting a schedule is the same act "Back up now" performs, said once for every night rather
+     | than once now, and it is gated the same way: not at all. The line inside backups is that
+     | creating them is routine and destroying them is not, so what this test is really pinning is
+     | that the schedule tracks the button rather than drifting away from it in either direction.
+     | `sites.backups.retention` on the same screen kept its gate, because shortening retention
+     | deletes artifacts.
+     */
     $site = ($this->makeSite)(['backup_schedule' => 'off']);
 
     $admin = User::factory()->create(['email_verified_at' => now()]);
@@ -444,7 +453,7 @@ it('keeps the recent-authentication gate the schedule had before it moved', func
             'backup_schedule_hour' => 3,
             'backup_schedule_day' => 1,
             'timezone' => 'Europe/London',
-        ])->assertRedirect(route('password.confirm'));
+        ])->assertRedirect();
 
-    expect($site->fresh()->backup_schedule)->toBe('off');
+    expect($site->fresh()->backup_schedule)->toBe('daily');
 });

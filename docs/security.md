@@ -108,7 +108,16 @@ once the factor is satisfied, so no window exists in which one factor was enough
 
 Sensitive actions need the password to have been confirmed within the last fifteen minutes:
 changing capabilities, revoking a connector, disabling a second factor, reading out fresh recovery
-codes. A session left open on an unlocked machine is not enough.
+codes, deleting a site, deleting a backup, and shortening how long backups are kept. A session left
+open on an unlocked machine is not enough.
+
+The rule is narrower than "anything that writes", and deliberately so: **the gate is for changing
+what Manager is, not for using it.** Adding a site, asking for a backup, setting a backup schedule,
+downloading an artifact and acknowledging a finding do not ask for a password. Each is authorised by
+role and audited, and each is something the person whose job this is does several times a week — a
+prompt in front of the routine work trains people to type their password without reading why, which
+costs more than it protects. What kept the gate is the half that destroys something, plus everything
+that changes who may reach the control plane or what a connector is permitted to do.
 
 Resetting a password does not bypass the second factor, and it ends every other session.
 

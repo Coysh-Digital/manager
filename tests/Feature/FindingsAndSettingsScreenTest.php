@@ -172,14 +172,16 @@ it('withdraws an acknowledgement', function (): void {
         ->and($finding->fresh()->acknowledgement_reason)->toBeNull();
 });
 
-it('requires recent authentication to acknowledge', function (): void {
+it('acknowledges without asking for the password again', function (): void {
+    // Was the opposite. Acknowledging is triage: it changes which screen a conclusion appears on and
+    // nothing whatsoever about the site the conclusion was drawn from.
     $finding = Finding::factory()->for($this->site)->create();
 
     $this->actingAs($this->owner)
         ->post(route('findings.acknowledge', $finding), ['reason' => 'whatever'])
-        ->assertRedirect(route('password.confirm'));
+        ->assertRedirect();
 
-    expect($finding->fresh()->state)->toBe(Finding::STATE_OPEN);
+    expect($finding->fresh()->state)->toBe(Finding::STATE_ACKNOWLEDGED);
 });
 
 it('hides findings belonging to another organisation', function (): void {

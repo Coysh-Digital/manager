@@ -187,11 +187,59 @@
         @endif
 
         @if ($artifacts->isNotEmpty())
-            <div class="overflow-hidden rounded-[10px] border border-border bg-surface shadow-[var(--shadow)]">
+            @php
+                /*
+                 | Owners get the column, matching the per-row Delete and Remove buttons and the
+                 | guard in BackupController::destroyMany(). Administrators may ask for backups and
+                 | download them; destroying one has always been a step above that.
+                 */
+                $bulk = $membership->isOwner();
+                $restored = $bulk ? (array) old('artifacts', []) : [];
+            @endphp
+
+            <div class="overflow-hidden rounded-[10px] border border-border bg-surface shadow-[var(--shadow)]"
+                 @if ($bulk) data-bulk-scope @endif>
+                @if ($bulk)
+                    {{--
+                        The bulk form, empty, and it has to stay empty.
+
+                        This table already carries a form per row for single deletion and forms
+                        cannot nest, so the trick the fleet screen uses - wrap the table - is not
+                        available here. Instead the form sits beside the table and the checkboxes
+                        join it by id, with `form="bulk-delete-artifacts"`. That is ordinary HTML,
+                        honoured with no JavaScript at all, and it leaves every per-row form and
+                        every per-row confirm sentence exactly as it was.
+
+                        It is also why the id is written out literally rather than interpolated: the
+                        association is by name, so a renamed or duplicated id detaches the checkboxes
+                        from the form silently, with the boxes still drawn and the button still
+                        there. BulkBackupDeleteTest posts to the route and renders this screen for
+                        that reason.
+
+                        Before the table rather than inside it: a <form> parsed inside <table> is
+                        foster-parented out by the HTML parser and would end up somewhere else.
+                    --}}
+                    <form id="bulk-delete-artifacts" method="POST" action="{{ route('backups.destroy-many') }}"
+                          onsubmit="return confirm('Delete the selected backups? Any that were stored have their encryption keys destroyed with them and cannot be recovered.');">
+                        @csrf
+                        @method('DELETE')
+                    </form>
+                @endif
+
                 <div class="relative overflow-x-auto">
                     <table class="w-full border-collapse text-[13px]">
                         <thead class="sticky top-0 bg-surface-2">
                             <tr>
+                                @if ($bulk)
+                                    <th class="w-[38px] border-b border-border py-2.5 pl-4 pr-1 text-left">
+                                        {{-- Unchecked and inert without JavaScript, where it would
+                                             have nothing to toggle. The per-row boxes work
+                                             regardless. --}}
+                                        <input type="checkbox" data-bulk-all
+                                               aria-label="Select every backup shown"
+                                               class="align-middle accent-[var(--primary)]">
+                                    </th>
+                                @endif
                                 <th class="border-b border-border px-4 py-2.5 text-left font-mono text-[9.5px] uppercase tracking-[0.07em] text-text-3">Site</th>
                                 <th class="border-b border-border px-4 py-2.5 text-left font-mono text-[9.5px] uppercase tracking-[0.07em] text-text-3">Taken</th>
                                 <th class="border-b border-border px-4 py-2.5 text-right font-mono text-[9.5px] uppercase tracking-[0.07em] text-text-3">Size</th>
@@ -204,6 +252,39 @@
                         <tbody>
                             @foreach ($artifacts as $artifact)
                                 <tr class="hover:bg-row-hover">
+                                    @if ($bulk)
+                                        <td class="border-b border-border py-2.5 pl-4 pr-1 align-top">
+                                            {{--
+                                                Only on rows that have something to delete, which is
+                                                the same condition the action cell uses to draw a
+                                                button at all.
+
+                                                This deliberately departs from the fleet screen,
+                                                whose comment argues the opposite - that a checkbox
+                                                belongs on every row, because disabling some lets a
+                                                fleet look fully covered while half of it is quietly
+                                                unselectable. The question is different here. A site
+                                                that cannot be backed up today can be tomorrow, so
+                                                its row is worth offering; a row with no bytes and no
+                                                removable record has no operation to perform at all,
+                                                and its own action cell three columns to the right is
+                                                already empty. A checkbox beside a blank cell, whose
+                                                only possible outcome is a line in the skipped
+                                                sentence, contradicts the row it sits in.
+                                            --}}
+                                            @if ($artifact->isRetrievable() || $artifact->neverStored())
+                                                {{-- The site name alone is not unique down this
+                                                     table, so the label carries the age too. --}}
+                                                <input type="checkbox" name="artifacts[]"
+                                                       value="{{ $artifact->external_id }}"
+                                                       form="bulk-delete-artifacts"
+                                                       data-bulk-item
+                                                       @checked(in_array($artifact->external_id, $restored, true))
+                                                       aria-label="Select the backup {{ $artifact->site->name }} took {{ $artifact->taken_at->diffForHumans(short: true) }}"
+                                                       class="align-middle accent-[var(--primary)]">
+                                            @endif
+                                        </td>
+                                    @endif
                                     <td class="border-b border-border px-4 py-2.5">
                                         <div class="flex items-center gap-2">
                                             <a href="{{ route('sites.show', $artifact->site) }}" class="no-underline hover:underline">
@@ -277,6 +358,33 @@
                         </tbody>
                     </table>
                 </div>
+
+                @if ($bulk)
+                    {{-- Rendered visible, and bulk.js hides it once there is a selection to hide it
+                         against. The other way round - hidden in Blade, shown by script - would mean
+                         no button at all with JavaScript switched off, which is exactly the case
+                         this markup is arranged to keep working. --}}
+                    <div data-bulk-bar
+                         class="flex flex-wrap items-center gap-3 border-t border-border bg-surface-2 px-4 py-3">
+                        <button type="submit" form="bulk-delete-artifacts"
+                                class="h-8 rounded-[7px] border border-danger-line bg-danger-bg px-3 text-[12.5px] font-medium text-danger hover:border-danger">
+                            Delete selected
+                        </button>
+
+                        <span class="text-[12.5px] text-text-2">
+                            <span data-bulk-count class="font-medium text-text">0</span> selected
+                        </span>
+
+                        {{-- The dialog says the part that cannot be undone. This says the rest,
+                             where there is room for it: that the two words on the rows above are two
+                             different acts, and that the selection is allowed to hold both. --}}
+                        <span class="basis-full text-[12px] text-text-3">
+                            Stored backups are deleted and their keys destroyed with them. Rows for
+                            backups that stored nothing are removed outright, and the activity log
+                            keeps the record either way.
+                        </span>
+                    </div>
+                @endif
             </div>
 
             {{-- Download hands over ciphertext and nothing else. This panel used to say there was no

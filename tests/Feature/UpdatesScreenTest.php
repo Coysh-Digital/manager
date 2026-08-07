@@ -104,12 +104,15 @@ it('explains itself when the capability is missing rather than failing silently'
         ->and(RemoteJob::query()->count())->toBe(0);
 });
 
-it('requires recent authentication to request a check', function (): void {
+it('requests a check without asking for the password again', function (): void {
+    // Was the opposite. Refreshing enqueues a job and waits for the site to come and ask - the
+    // platform cannot contact a connector - which makes it the least privileged useful action here
+    // and a strange thing to have been demanding a password for.
     $this->actingAs($this->user)
         ->post(route('updates.refresh', $this->site))
-        ->assertRedirect(route('password.confirm'));
+        ->assertRedirect();
 
-    expect(RemoteJob::query()->count())->toBe(0);
+    expect(RemoteJob::query()->count())->toBe(1);
 });
 
 it('hides another organisation site from the refresh action', function (): void {

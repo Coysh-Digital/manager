@@ -8,9 +8,29 @@ here for exactly that reason.
 
 ## 1.4.0 — 2026-08-07
 
-Email that looks like it came from Manager, and says what actually happened.
+Email that looks like it came from Manager, and says what actually happened. A password gate that
+asks only when it matters.
 
 ### Before you upgrade
+
+**Read this one before you upgrade if you have written anything down about who can do what.** The
+recent-authentication gate has been narrowed, and a set of actions that used to demand a password
+confirmation no longer do: adding a site, issuing an enrolment code, asking for a backup (one site or
+several), setting a backup schedule, acknowledging or reopening a finding, asking a site to re-check
+for updates, and **downloading a backup artifact**.
+
+Nothing changed about *who* may do any of these. Every one is still restricted by role and still
+audited; what changed is only whether the password has to have been proved in the last fifteen
+minutes. If your internal documentation describes the password prompt as part of one of these flows,
+it is now wrong.
+
+**The download is the one to weigh.** It hands over a complete copy of a site's database. The bytes
+are ciphertext this platform cannot decrypt, sealed to recovery keys that exist only where you put
+them, and the caller is still an administrator — but a session left open on an unlocked machine can
+now take every artifact the organisation holds without being asked for a password. That was weighed
+against the moment the button is actually pressed, which is when a site is already broken. If you
+would rather it stayed gated, `MANAGER_RECENT_AUTH_MINUTES` does not help — the route is out of the
+group entirely, and re-gating it is a change to `routes/web.php`.
 
 **Nothing is required, and one thing is worth knowing.** Notification emails now arrive as HTML with
 a plain-text alternative attached, where before they were plain text only. If you have a mail rule,
@@ -22,7 +42,42 @@ parsing the body of a message that is now `multipart/alternative` may not.
 The subject line is unchanged, including its `[Manager]` prefix, on purpose: it is what most filters
 actually match on.
 
+### Added
+
+- **Delete several backups at once.** Tick the boxes on the Backups screen and press **Delete
+  selected**, with a tick-box in the header for all of them. Owners only, like the per-row button,
+  and behind the password confirmation for the same reason — a hundred destroyed encryption keys is
+  not a smaller act than one.
+
+  It keeps the distinction the two per-row buttons make rather than flattening it. A backup that
+  stored bytes is deleted and tombstoned with its key destroyed; a row for a backup that never stored
+  anything is removed outright. A selection may hold both, and the summary reports the two counts
+  separately instead of adding them together. Anything that had already gone by the time the button
+  was pressed is named in the amber band rather than counted as done.
+
+  The reason recorded against a bulk deletion says that it was one, so the audit log can still tell a
+  backup that was chosen from one swept up with thirty-nine others.
+
+  The per-row Delete and Remove buttons are unchanged and stay where they are. Deleting the one bad
+  backup in a list should not become tick-then-press.
+
 ### Changed
+
+- **The password gate is for changing what Manager is, not for using it.** It sat in front of one
+  flat list of forty-five routes, from revoking a team member to pressing "Back up now", and the
+  justification written above that list had been composed for the first kind of action and inherited
+  by the second. The effect was a password prompt on the first thing anybody does with the product
+  and on the thing they do most often, which is not security so much as training people to type their
+  password without reading why.
+
+  What kept the gate: settings, people, credentials, capabilities — including granting
+  `backups:create`, which still also wants the site's name typed and a reason — deleting a site,
+  deleting a backup, and shortening retention. The line inside backups is that creating them is
+  routine and destroying them is not, so the schedule is open and retention is not.
+
+  `tests/Invariants/RecentAuthenticationTest.php` now asserts this in both directions. It only ever
+  checked that the gate had not been lost; it now also checks it has not been quietly reapplied,
+  because re-gating a route is a one-word change that reads, in a diff, like somebody being careful.
 
 - **Notification emails are branded, and this reverses a decision.** The monitoring and backup alerts
   were sent as plain text through `Mail::raw`, deliberately, on the argument that an HTML mail about

@@ -35,11 +35,13 @@
             {{-- A details element rather than a modal. No JavaScript, and the form is linkable and
                  keyboard-navigable for free. --}}
             {{-- z-20 so the panel sits above the table's sticky header, which is z-1. --}}
-            {{-- Open when there is something in it to see: fields handed back after the recent-
-                 authentication gate interrupted the submission, or a validation error. Both used to
-                 land here collapsed, so the errors banner referred to a form nobody could see and a
-                 restored form looked like nothing had happened. --}}
-            <details class="group relative z-20" {{ $reopenAddSite || $errors->any() ? 'open' : '' }}>
+            {{-- Open when there is something in it to see. This used to land collapsed after a
+                 failed submission, so the errors banner referred to a form nobody could see.
+
+                 It also reopened after the recent-authentication gate interrupted the submission.
+                 That half is gone with the gate: adding a site no longer asks for a password, so
+                 there is nothing to be interrupted by and nothing to hand back. --}}
+            <details class="group relative z-20" {{ $errors->any() ? 'open' : '' }}>
                 <summary class="flex h-8 cursor-pointer list-none items-center rounded-[7px] border border-primary bg-primary px-3 text-[12.5px] font-medium text-primary-fg hover:bg-primary-hover">
                     Add a site
                 </summary>
@@ -187,17 +189,22 @@
                 last restore this" is closer to that question than a PHP version is.
             --}}
             {{--
-                The table lives inside the bulk-backup form.
+                The table lives inside the bulk-backup form, which is also the selection's scope.
 
                 A form rather than a script collecting ticked boxes and posting JSON: the checkboxes
                 are the form's own state, so selecting sites and asking for backups works with
-                JavaScript switched off, and the recent-authentication gate can carry the selection
-                across the confirm-password screen the same way it carries "Add a site".
+                JavaScript switched off, and a validation error hands the selection back through
+                old('sites') rather than losing it.
 
                 Wrapping the table rather than the whole card, because the filter controls above are
                 already a GET form and forms cannot nest.
+
+                `data-bulk-scope` marks the region bulk.js reads, and here it sits on the form itself
+                because the two happen to be the same element. They are not on the backups screen —
+                see that file, and the note at the top of bulk.js for why the attribute names a
+                region rather than a form.
             --}}
-            <form method="POST" action="{{ route('backups.store-many') }}" data-bulk-form>
+            <form method="POST" action="{{ route('backups.store-many') }}" data-bulk-scope>
                 @csrf
 
                 @php
@@ -318,7 +325,7 @@
                                     @if ($bulk)
                                         <td class="py-3 pl-3.5 pr-1 align-middle">
                                             <input type="checkbox" name="sites[]" value="{{ $site->external_id }}"
-                                                   data-bulk-site="{{ $loop->parent->index }}"
+                                                   data-bulk-item="{{ $loop->parent->index }}"
                                                    @checked(in_array($site->external_id, $restoredSites, true))
                                                    aria-label="Select {{ $site->name }}"
                                                    class="align-middle accent-[var(--primary)]">

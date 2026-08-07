@@ -25,6 +25,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 /**
  * The backups screen.
@@ -57,6 +58,25 @@ final class BackupController
         private readonly RecoveryKeyService $recoveryKeys,
         private readonly AuditRecorder $audit,
     ) {}
+
+    /**
+     * The tombstone reason a bulk deletion writes.
+     *
+     * Not a field, and deliberately not the same sentence the single-row button writes.
+     *
+     * Not a field, because the screen has never asked anybody to type a reason - both per-row buttons
+     * hand `destroy()` a canned "Deleted by hand" - so a free-text box here would be the first place
+     * in the product that did, on the least deliberate gesture in it. And one typed sentence
+     * stretched across forty artifacts is a blanket claim about forty separate acts, which is the
+     * kind of half-truth {@see storeMany()} was built to refuse.
+     *
+     * Different wording, because the tombstone is the record and "was this one chosen, or swept up
+     * with thirty-nine others" is a question somebody reading an audit log a year from now is
+     * entitled to an answer to. That answer costs one string here and is unrecoverable later. It is
+     * also the reason `destroyMany()` writes no summary audit row: the distinction it would carry is
+     * already carried here, in the per-artifact entries that were going to be written anyway.
+     */
+    private const BULK_DELETE_REASON = 'Deleted by hand, as one of several selected together.';
 
     public function index(Organisation $organisation): View
     {
@@ -328,22 +348,28 @@ final class BackupController
      * for the same conditions is a second thing to keep in step, and the sentence somebody reads here
      * should be the sentence they will read on the site itself when they go and look.
      *
+     * `$noun` is what was skipped. It defaults to `site` so that the fleet-wide backup button reads
+     * exactly as it always has, and `destroyMany()` passes `backup` rather than growing a second
+     * copy of this method - the argument against a second vocabulary applies just as well to a
+     * second sentence.
+     *
      * @param  array<string, int>  $skipped
      */
-    private function skippedSentence(array $skipped): string
+    private function skippedSentence(array $skipped, string $noun = 'site'): string
     {
         $total = array_sum($skipped);
 
         $clauses = [];
 
         foreach ($skipped as $reason => $count) {
-            $clauses[] = sprintf('%d %s: %s', $count, $count === 1 ? 'site' : 'sites', $reason);
+            $clauses[] = sprintf('%d %s: %s', $count, Str::plural($noun, $count), $reason);
         }
 
         return sprintf(
-            '%d %s skipped. %s',
+            '%d %s %s skipped. %s',
             $total,
-            $total === 1 ? 'site was' : 'sites were',
+            Str::plural($noun, $total),
+            $total === 1 ? 'was' : 'were',
             implode(' ', $clauses),
         );
     }
@@ -439,6 +465,141 @@ final class BackupController
         $this->backups->delete($artifact, $validated['reason'], $request->user());
 
         return back()->with('status', 'Backup deleted. Its encryption key was destroyed with it.');
+    }
+
+    /**
+     * Several artifacts at once, from the checkboxes on the backups screen.
+     *
+     * The bulk sibling of {@see destroy()}, and it makes the same two-way split for the same reason:
+     * a stored artifact is deleted and leaves a tombstone, a declaration that stored nothing is
+     * discarded outright. A selection may hold both, so the summary reports both counts rather than
+     * adding them together - "four deleted" would be false about the row that had nothing to delete.
+     *
+     * Owners, matching `destroy()` rather than {@see storeMany()}. Batching an act does not lower the
+     * privilege it needs, and the two bulk routes disagreeing about the role is correct: asking for a
+     * backup and destroying one were never the same permission.
+     *
+     * **Synchronous, and bounded at a hundred by validation.** A hundred sequential deletes against
+     * an object store is real latency, and moving it to a queue was considered and rejected: the
+     * single-row button is synchronous, and somebody who has just confirmed their password to destroy
+     * forty encryption keys is owed a page saying they are gone rather than one saying they will be.
+     * The bound comes from `index()`, which renders at most a hundred rows - so the ceiling is what
+     * the screen can offer rather than a number picked to sound safe.
+     *
+     * Outside `site.scoped`, like `storeMany()`, and scoped in the query for the same reason: an
+     * identifier belonging to another organisation matches nothing rather than 404ing the whole
+     * request, because one stale checkbox should not cancel thirty-nine good ones.
+     *
+     * **No summary audit row.** {@see BackupService::delete()} and {@see BackupService::discard()}
+     * already write one entry per artifact, keyed to its external id and carrying the reason, the
+     * bytes and the checksum. A summary on top would be a second account of the same events that can
+     * disagree with the first. That a deletion was part of a sweep is carried by the reason itself —
+     * see {@see self::BULK_DELETE_REASON}.
+     */
+    public function destroyMany(Request $request, Organisation $organisation): RedirectResponse
+    {
+        abort_unless(app(Membership::class)->isOwner(), 403);
+
+        $validated = $request->validate([
+            // A hundred, not `storeMany()`'s two hundred: `index()` renders `limit(100)`, so the
+            // screen cannot offer more than this and a larger bound would describe nothing.
+            'artifacts' => ['required', 'array', 'max:100'],
+
+            // Length rather than a ULID rule, as above: the value is looked up against this
+            // organisation's own rows, so a malformed one finds nothing.
+            'artifacts.*' => ['required', 'string', 'max:64'],
+        ]);
+
+        // Unique first, so a checkbox that somehow posts twice is one deletion rather than one
+        // success and one phantom miss in the count below.
+        $requested = array_unique($validated['artifacts']);
+
+        $artifacts = BackupArtifact::query()
+            ->where('organisation_id', $organisation->id)
+            ->whereIn('external_id', $requested)
+
+            // Both service calls audit against the site, and a hundred artifacts would otherwise be
+            // a hundred queries for it.
+            ->with('site')
+            ->get();
+
+        $deleted = 0;
+        $removed = 0;
+
+        /** @var array<string, int> $skipped reason => how many artifacts gave it */
+        $skipped = [];
+
+        foreach ($artifacts as $artifact) {
+            if ($artifact->neverStored()) {
+                $this->backups->discard($artifact, $request->user());
+
+                $removed++;
+
+                continue;
+            }
+
+            if (! $artifact->isRetrievable()) {
+                /*
+                 | Neither branch applies: already deleted, already expired, or still uploading.
+                 |
+                 | `destroy()` has no equivalent guard and does not need one - the view draws no
+                 | button on such a row, so the only way to reach it there is a hand-made request.
+                 | Here the row is one of a hundred and the screen may have gone stale between being
+                 | rendered and the button being pressed, which is an ordinary thing to happen and
+                 | should be reported rather than counted as a success.
+                 */
+                $reason = 'This backup had already gone, so there was nothing left to destroy.';
+
+                $skipped[$reason] = ($skipped[$reason] ?? 0) + 1;
+
+                continue;
+            }
+
+            $this->backups->delete($artifact, self::BULK_DELETE_REASON, $request->user());
+
+            $deleted++;
+        }
+
+        // Asked for and not found: already gone, or belonging to somebody else. Reported rather than
+        // ignored, for the reason storeMany() gives - a form that silently drops identifiers is one
+        // nobody can debug.
+        $missing = count($requested) - $artifacts->count();
+
+        if ($missing > 0) {
+            $skipped['This backup is no longer in your list.'] = $missing;
+        }
+
+        $done = [];
+
+        if ($deleted > 0) {
+            $done[] = sprintf(
+                '%d %s deleted, and %s destroyed with %s.',
+                $deleted,
+                $deleted === 1 ? 'backup was' : 'backups were',
+                $deleted === 1 ? 'its encryption key was' : 'their encryption keys were',
+                $deleted === 1 ? 'it' : 'them',
+            );
+        }
+
+        if ($removed > 0) {
+            $done[] = sprintf(
+                '%d %s removed for %s that stored nothing; the audit log still records %s.',
+                $removed,
+                $removed === 1 ? 'row was' : 'rows were',
+                $removed === 1 ? 'a backup' : 'backups',
+                $removed === 1 ? 'it' : 'them',
+            );
+        }
+
+        $response = $done === []
+            ? back()->withErrors(['artifacts' => 'Nothing was deleted. '.$this->skippedSentence($skipped, 'backup')])
+            : back()->with('status', implode(' ', $done));
+
+        if ($done !== [] && $skipped !== []) {
+            $response->with('warning', $this->skippedSentence($skipped, 'backup'));
+        }
+
+        return $response;
     }
 
     /**

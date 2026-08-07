@@ -152,35 +152,24 @@ it('refuses a member who cannot administer', function (): void {
     expect(RemoteJob::query()->count())->toBe(0);
 });
 
-it('requires recent authentication', function (): void {
+it('asks for several backups without asking for the password again', function (): void {
+    /*
+     | Was the opposite, and so was a second test beside it that asserted the selection came back
+     | across the confirm-password screen through ResumableInput. That second test is gone rather
+     | than inverted: there is no gate here to carry anything across any more, so it was asserting
+     | the behaviour of a mechanism that no longer runs on this route.
+     |
+     | The selection still survives a validation error through old('sites'), which is what the fleet
+     | screen's checkboxes read - that is a different mechanism and it is exercised by the screen
+     | test below rather than here.
+     */
     $site = ($this->readySite)('Ready');
 
     $this->actingAs($this->owner)
         ->post('/backups/sites', ['sites' => [$site->external_id]])
-        ->assertRedirect(route('password.confirm'));
+        ->assertRedirect();
 
-    expect(RemoteJob::query()->count())->toBe(0);
-});
-
-it('hands the selection back across the recent-authentication gate', function (): void {
-    /*
-     | The selection is the input here. On a fleet of forty it is the most tedious thing in the
-     | interface to reconstruct, and reconstructing it was exactly the complaint that produced
-     | ResumableInput in the first place.
-     */
-    $one = ($this->readySite)('One');
-    $two = ($this->readySite)('Two');
-
-    $this->actingAs($this->owner)
-        ->post('/backups/sites', ['sites' => [$one->external_id, $two->external_id]])
-        ->assertRedirect(route('password.confirm'));
-
-    $pending = ResumableInput::pending();
-
-    expect($pending)->not->toBeNull()
-        ->and($pending['route'])->toBe('backups.store-many')
-        ->and($pending['url'])->toBe(route('sites.index'))
-        ->and($pending['input']['sites'])->toBe([$one->external_id, $two->external_id]);
+    expect(RemoteJob::query()->count())->toBe(1);
 });
 
 it('needs at least one site', function (): void {

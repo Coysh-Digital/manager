@@ -176,14 +176,26 @@ it('does not mark a first pairing as a replacement', function (): void {
     expect(EnrolmentCode::query()->sole()->authorisesReplacement())->toBeFalse();
 });
 
-it('needs recent authentication', function (): void {
+it('adds a site without asking for the password again', function (): void {
+    // The inverse of a test that used to assert the opposite, and it is written as an assertion
+    // rather than deleted for that reason: adding a site was let out of the recent-authentication
+    // group deliberately - a new site is inert, grants nothing, and cannot do anything at all until
+    // somebody pairs a connector with it - and re-gating it is a one-word change in a route file.
+    //
+    // No session priming here at all. That absence is the whole test.
     $this->actingAs($this->owner)->post('/sites', [
         'name' => 'Opportunistic',
         'expected_domain' => 'example.org',
         'environment' => 'production',
-    ])->assertRedirect(route('password.confirm'));
+    ])->assertRedirect();
 
-    expect(Site::query()->count())->toBe(0);
+    // Straight to the site it created, with its enrolment code on the screen - which is the point:
+    // this is the first thing anybody does with Manager, and it used to open with a password prompt.
+    expect(Site::query()->count())->toBe(1);
+
+    $this->actingAs($this->owner)
+        ->get(route('sites.show', Site::query()->sole()))
+        ->assertOk();
 });
 
 it('refuses a member who is not an administrator', function (): void {

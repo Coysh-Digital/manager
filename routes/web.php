@@ -156,6 +156,25 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
     Route::get('backups/status', [BackupController::class, 'status'])->name('backups.status');
 
     /*
+     | Asking for a backup, and saying when to ask for one automatically.
+     |
+     | These used to sit behind recent authentication, on the argument that asking a production site
+     | for a copy of its database is a serious act. It is - but it is also the product's main verb,
+     | performed several times a week by the person whose job this is, and a gate in front of the
+     | main verb is not security so much as a tax on using the thing at all. The gate was narrowed
+     | to actions that change what Manager *is*: settings, people, credentials, capabilities, and
+     | anything that destroys.
+     |
+     | Note where the line falls inside backups, because it is the sentence that makes the split
+     | defensible: the schedule *creates* backups and is open; retention and deletion *destroy* them
+     | and are not. `sites.backups.retention` and `backups.destroy` are still in the group below.
+     |
+     | Administrators either way. Nothing here changed about who may press the button - only about
+     | how recently they proved they are still the person holding the session.
+     */
+    Route::post('backups/sites', [BackupController::class, 'storeMany'])->name('backups.store-many');
+
+    /*
      | Clearing a "Did not complete" notice.
      |
      | Outside the recent-authentication group deliberately, and for the same reason notes are: this
@@ -179,6 +198,26 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
         ->name('backups.failures.clear');
 
     /*
+     | Downloading an artifact's ciphertext.
+     |
+     | The one item on this list where the trade is real, and it should be recorded as such rather
+     | than filed under routine work. This hands over a complete copy of a customer's database, and
+     | it used to sit behind recent authentication for exactly that reason.
+     |
+     | What makes it defensible to open: the bytes are ciphertext this platform cannot decrypt, they
+     | are sealed to recovery keys that exist only where the customer put them, and the person
+     | reaching this route is already an administrator with a live session. What makes it a real
+     | trade rather than a free one: a session left open on an unlocked machine can now take every
+     | artifact the organisation holds, and no password is asked for on the way.
+     |
+     | That was weighed and accepted. Downloading is the one thing somebody does under pressure, at
+     | the moment a site is already broken, and a password prompt between them and the backup is
+     | worst exactly when it matters most.
+     */
+    Route::get('backups/{artifact}/ciphertext', BackupDownloadController::class)
+        ->name('backups.download');
+
+    /*
      | Notes.
      |
      | Any member may write one - it changes nothing about the site, and the value comes entirely
@@ -190,7 +229,52 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
         Route::post('sites/{site}/notes', [SiteNoteController::class, 'store'])->name('sites.notes.store');
         Route::post('sites/{site}/notes/{note}/pin', [SiteNoteController::class, 'pin'])->name('sites.notes.pin');
         Route::delete('sites/{site}/notes/{note}', [SiteNoteController::class, 'destroy'])->name('sites.notes.destroy');
+
+        // The single-site half of "Back up now", gated exactly as the fleet-wide button above is -
+        // which is to say not at all. See the comment there for why.
+        Route::post('backups/sites/{site}', [BackupController::class, 'store'])->name('backups.store');
+
+        // Deciding that a production database is dumped on a repeating schedule, which is the same
+        // act the button above performs and is now open for the same reason. It kept whatever gate
+        // the button had when it moved off the site settings form, and it keeps it now by losing
+        // one alongside it.
+        Route::post('sites/{site}/backups/schedule', [SiteBackupController::class, 'updateSchedule'])
+            ->name('sites.backups.schedule');
+
+        // Enqueues a job rather than reaching into the site: the platform cannot contact a
+        // connector, so this waits for the site to come and ask. That makes it the same kind of act
+        // as `sites.refresh` below, and it is gated the same way.
+        Route::post('updates/{site}/refresh', [UpdateController::class, 'refresh'])->name('updates.refresh');
+
+        /*
+         | Issuing an enrolment code for a site that already exists.
+         |
+         | A code is a bearer secret until it is consumed, which is the argument that put this behind
+         | recent authentication. What removed it is that the same code is minted by the button that
+         | adds the site in the first place - "Add site and issue a code" - and that button is now
+         | open. Two spellings of one act cannot sensibly disagree about whether they need a
+         | password, and gating only the second would mean the way to avoid the gate is to delete the
+         | site and add it again.
+         |
+         | The code remains short-lived, single-use, and useless without a site that has not paired.
+         */
+        Route::post('sites/{site}/enrolment-code', [SiteController::class, 'issueCode'])
+            ->name('sites.enrolment-code');
     });
+
+    /*
+     | Adding a site.
+     |
+     | Open, and this is the change most worth explaining. A new site is inert: it holds no
+     | credentials, reports nothing, and can do nothing at all until a connector pairs with it using
+     | a code and the site's own operator installs the plugin. Nothing is granted by creating one -
+     | in particular `backups:create` is deliberately not offered on this form, and has to be granted
+     | afterwards from the site's Capabilities screen, behind the gate, with the site's name typed.
+     |
+     | So the act being gated was "write a row that does nothing yet", and the cost was a password
+     | prompt on the first thing anybody does with Manager. Administrators only, as before.
+     */
+    Route::post('sites', [SiteController::class, 'store'])->name('sites.store');
 
     // Refreshing asks a site to re-send what it already sends on a schedule. No recent-auth gate and no
     // administrator requirement: it is the least privileged useful action here, and gating it would
@@ -199,6 +283,12 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
     Route::post('sites/{site}/refresh', [SiteController::class, 'refresh'])
         ->middleware('site.scoped')
         ->name('sites.refresh');
+
+    // Acknowledging a finding and reopening one are triage: they change which screen a conclusion
+    // appears on and nothing about the site it was drawn from. Administrators, outside the gate with
+    // the rest of the routine fleet work.
+    Route::post('findings/{finding}/acknowledge', [FindingController::class, 'acknowledge'])->name('findings.acknowledge');
+    Route::post('findings/{finding}/reopen', [FindingController::class, 'reopen'])->name('findings.reopen');
 
     Route::get('activity', [ActivityController::class, 'index'])->name('activity.index');
 
@@ -251,62 +341,53 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
      | lists changing connector capabilities among the actions needing recent authentication, and
      | the same reasoning covers disabling a second factor or reading out fresh recovery codes: a
      | session left open on an unlocked machine must not be enough.
+     |
+     | This group used to hold the routine work as well - adding a site, asking for a backup,
+     | acknowledging a finding - and the argument above was written for the actions below and then
+     | inherited by those. The rule now is narrower and easier to hold in the head:
+     |
+     |   the gate is for changing what Manager *is*, not for using it.
+     |
+     | Settings, people, credentials, capabilities, and anything that destroys something. Everything
+     | that is simply the day's work sits above, each with the reason it is there. A route arriving
+     | in this file should be able to answer which of those two it is; if the answer is "both", it is
+     | the destroying half that decides.
      */
     Route::middleware('password.confirm')->group(function (): void {
-        // Requesting a backup and deleting one both need recent authentication: one asks a production
-        // site for a copy of its database, the other destroys one irrecoverably.
-        // Adding a site and issuing a code both sit behind recent authentication. A code is a bearer
-        // secret until it is consumed, so a stale session must not be able to mint one.
-        Route::post('sites', [SiteController::class, 'store'])->name('sites.store');
+        // Deleting a backup destroys its encryption key with it, and nothing brings either back.
+        // This is the half of "anything backup related" that kept its gate when the rest lost one:
+        // the line inside backups is that creating them is routine and destroying them is not.
         Route::delete('backups/{artifact}', [BackupController::class, 'destroy'])->name('backups.destroy');
 
         /*
-         | Several sites at once, from the fleet screen.
+         | Several artifacts at once, from the backups screen.
          |
-         | Not inside the `site.scoped` group below: that middleware binds one {site}, and this takes
-         | a list. The controller scopes the list to the organisation itself, in the query.
+         | The collection rather than a member, which is the only reason it can be a DELETE beside
+         | the line above without the router being told which is which: `backups/{artifact}` takes a
+         | segment and this does not. A `backups/selected` would have had to be registered before
+         | that line or be swallowed by the binding, and a route whose correctness depends on where
+         | it sits in a file is one that breaks the day somebody sorts them.
          |
-         | Behind recent authentication with the single-site button, and for the same reason - this
-         | asks production sites for a copy of their database, and asking twelve of them at once is
-         | not a smaller act than asking one.
+         | Behind recent authentication with the single-row button, and for a stronger version of the
+         | same reason: that one destroys an encryption key irrecoverably, and this destroys up to a
+         | hundred. Owners only, in the controller, matching `destroy()` rather than `storeMany()` —
+         | batching an act does not lower the privilege it needs.
          */
-        Route::post('backups/sites', [BackupController::class, 'storeMany'])->name('backups.store-many');
-
-        /*
-         | Downloading an artifact's ciphertext.
-         |
-         | Behind recent authentication with the other two, and for the same reason: this hands over a
-         | complete copy of a customer's database, encrypted, and a session left open on an unlocked
-         | machine must not be enough. It decrypts nothing - see the controller for why that
-         | distinction is the whole design, and why this route can exist when a plaintext one still
-         | should not.
-        */
-        Route::get('backups/{artifact}/ciphertext', BackupDownloadController::class)
-            ->name('backups.download');
+        Route::delete('backups', [BackupController::class, 'destroyMany'])->name('backups.destroy-many');
 
         // Everything below acts on one named site, so all of it is tenant-scoped by the same
         // middleware the read screens use.
         Route::middleware('site.scoped')->group(function (): void {
-            Route::post('sites/{site}/enrolment-code', [SiteController::class, 'issueCode'])
-                ->name('sites.enrolment-code');
-
             // Renaming a site, or changing the domain it is expected to pair from, is a change to
             // what Manager believes about a production install. Administrators only, recently
             // authenticated, and audited with the previous value.
             Route::post('sites/{site}/settings', [SiteSettingsController::class, 'update'])
                 ->name('sites.settings.update');
 
-            Route::post('backups/sites/{site}', [BackupController::class, 'store'])->name('backups.store');
-
-            // Deciding that a production database is dumped on a repeating schedule, which is the
-            // same act the button above performs and gated the same way. It kept this gate when it
-            // moved off the site settings form, rather than losing one by being relocated.
-            Route::post('sites/{site}/backups/schedule', [SiteBackupController::class, 'updateSchedule'])
-                ->name('sites.backups.schedule');
-
             // How far back this site's backups are kept. Owner-level rather than administrator,
             // because shortening it decides how far back this site can be recovered from - which is
-            // a different kind of decision from asking for a backup.
+            // a different kind of decision from asking for a backup, and the reason this kept its
+            // gate while the schedule beside it lost one. Shortening retention deletes artifacts.
             Route::post('sites/{site}/backups/retention', [SiteBackupController::class, 'updateRetention'])
                 ->name('sites.backups.retention');
 
@@ -321,14 +402,7 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
             Route::post('sites/{site}/connector/revoke', [CapabilityController::class, 'revokeConnector'])
                 ->name('sites.connector.revoke');
             Route::delete('sites/{site}', [SiteController::class, 'destroy'])->name('sites.destroy');
-
-            // Enqueues a job rather than reaching into the site: the platform cannot contact a
-            // connector, so this waits for the site to come and ask.
-            Route::post('updates/{site}/refresh', [UpdateController::class, 'refresh'])->name('updates.refresh');
         });
-
-        Route::post('findings/{finding}/acknowledge', [FindingController::class, 'acknowledge'])->name('findings.acknowledge');
-        Route::post('findings/{finding}/reopen', [FindingController::class, 'reopen'])->name('findings.reopen');
 
         Route::post('settings/mfa', [SettingsController::class, 'updateMfa'])->name('settings.mfa');
         Route::post('settings/connectors/rotate', [SettingsController::class, 'rotateAllConnectors'])

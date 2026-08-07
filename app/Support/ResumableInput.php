@@ -11,9 +11,15 @@ use Illuminate\Http\Request;
  *
  * The gate redirects a POST to the confirm-password screen, and Laravel's `Redirector::guest()`
  * cannot preserve a POST: it records `previous()` - the Referer - as the intended URL and discards
- * the body. So somebody who filled in "Add a site", pressed the button and was asked for their
- * password arrived back at an empty, collapsed panel with no indication that anything had been
- * typed. Reported from live use, where the answer was to type it all again.
+ * the body. So somebody who renamed a site, pressed the button and was asked for their password
+ * arrived back at a form showing the old values, with no indication that anything had been typed.
+ * Reported from live use, where the answer was to type it all again.
+ *
+ * The example that produced this class was "Add a site", which no longer sits behind the gate at
+ * all - the gate was narrowed to actions that change what Manager is, rather than actions that use
+ * it. That removed most of the pain by removing most of the interruptions, and left this class
+ * covering the ones that remain: renaming a site, shortening how long its backups are kept,
+ * inviting somebody, changing how mail is sent, and deleting several backups at once.
  *
  * The obvious fix is to stash the request and replay it after the password is proved. That is
  * rejected, and not narrowly:
@@ -72,34 +78,27 @@ final class ResumableInput
      * @var array<string, array{return: string, label: string, fields: list<string>}>
      */
     private const RESUMABLE = [
-        'sites.store' => [
-            'return' => 'sites.index',
-            'label' => 'add a site',
-            'fields' => ['name', 'expected_domain', 'environment', 'capabilities'],
-        ],
-
         /*
-         | Which sites were ticked before the gate interrupted.
+         | Which backups were ticked before the gate interrupted.
          |
          | The docblock above lists `sites.refresh-all` among the routes deliberately absent because
          | they are bare buttons with nothing typed to give back. This one looks like that and is
-         | not: the selection *is* the input, and on a fleet of forty it is the most tedious thing in
-         | the interface to reconstruct - which is the exact complaint that produced this class.
+         | not: the selection *is* the input, and on a hundred-row table it is the most tedious thing
+         | on the screen to reconstruct - which is the exact complaint that produced this class.
          |
-         | Nothing here is a secret or a confirmation. A list of site identifiers is what the person
-         | just ticked on a screen they were already allowed to read, so neither reason for
+         | Nothing here is a secret or a confirmation. A list of artifact identifiers is what the
+         | person just ticked on a screen they were already allowed to read, so neither reason for
          | withholding applies; and nothing is replayed, so the button still has to be pressed again
          | with the password freshly proved.
          |
-         | MAX_BYTES caps this at roughly two hundred and fifty selected sites, beyond which the
-         | selection is dropped rather than restored. That is the same answer as before this entry
-         | existed, for a fleet size nobody has, and it fails towards forgetting rather than towards
-         | a session full of somebody's estate.
+         | The field is `artifacts` rather than anything naming the keys these destroy. FORBIDDEN_KEY
+         | matches /key/, so a field called `backup_keys` would be stripped by layer two and the
+         | selection would be lost again with nothing at all to see.
          */
-        'backups.store-many' => [
-            'return' => 'sites.index',
-            'label' => 'back up several sites',
-            'fields' => ['sites'],
+        'backups.destroy-many' => [
+            'return' => 'backups.index',
+            'label' => 'delete several backups',
+            'fields' => ['artifacts'],
         ],
         'sites.settings.update' => [
             'return' => 'sites.settings',
@@ -110,11 +109,6 @@ final class ResumableInput
             // value that was already saved. Somebody set staging, confirmed their password, and was
             // shown production with no indication anything had been dropped.
             'fields' => ['name', 'expected_domain', 'environment'],
-        ],
-        'sites.backups.schedule' => [
-            'return' => 'sites.backups',
-            'label' => 'change when a site is backed up',
-            'fields' => ['backup_schedule', 'backup_schedule_hour', 'backup_schedule_day', 'timezone'],
         ],
         'sites.backups.retention' => [
             'return' => 'sites.backups',
