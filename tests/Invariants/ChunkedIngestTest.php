@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Domain\Backup\BackupService;
+use App\Domain\Job\JobService;
 use App\Models\BackupArtifact;
 use App\Models\CapabilityGrant;
 use App\Models\Connector;
@@ -14,6 +15,7 @@ use coyshdigital\managerprotocol\Jobs;
 use coyshdigital\managerprotocol\Keys;
 use coyshdigital\managerprotocol\Protocol;
 use coyshdigital\managerprotocol\Sealing;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -70,6 +72,7 @@ beforeEach(function (): void {
     $this->job = RemoteJob::factory()->for($this->site)->create([
         'type' => Jobs::BACKUP_CREATE,
         'state' => Jobs::STATE_CLAIMED,
+        'claimed_by_connector_id' => $this->connector->id,
     ]);
 
     $plaintext = '-- MySQL dump'.str_repeat("\nINSERT INTO entries VALUES (1);", 300);
@@ -370,4 +373,94 @@ it('refuses parts for an artifact that was never offered them', function (): voi
     BackupArtifact::query()->sole()->forceFill(['ingest_part_bytes' => null])->save();
 
     ($this->sendPart)($artifactId, 1)->assertStatus(422);
+});
+
+// --------------------------------------------------------------------------------------------------
+// The race that lost a finished upload
+// --------------------------------------------------------------------------------------------------
+
+it('does not settle an artifact the platform is still assembling', function (): void {
+    /*
+     | Reported live, and it cost a backup that had worked.
+     |
+     | `assembled` hashes a whole database before it answers. A connector on the ordinary ten-second
+     | budget gave up waiting, reported the job failed, and this platform then settled the artifact and
+     | deleted its staged parts - while its own assembly was still running and about to store them.
+     | Both sides agreed to throw away an upload that had succeeded.
+     |
+     | The connector waiting removes the common cause. This removes the class: any client disconnect,
+     | at any point, can report a failure for work the platform is mid-way through finishing.
+    */
+    $artifactId = ($this->declare)()->assertOk()->json('artifact');
+
+    for ($part = 1; $part <= ($this->partCount)(); $part++) {
+        ($this->sendPart)($artifactId, $part)->assertOk();
+    }
+
+    // What an assembly in progress looks like from another request.
+    $held = Cache::lock('backup-part:'.$artifactId, 60);
+    expect($held->get())->toBeTrue();
+
+    app(JobService::class)->report(
+        site: $this->site,
+        connector: $this->connector,
+        jobExternalId: $this->job->external_id,
+        succeeded: false,
+        failureReason: 'the connector stopped waiting',
+    );
+
+    $artifact = BackupArtifact::query()->sole();
+
+    // The job is failed, because it was. The artifact is left alone for the assembly to settle.
+    expect($artifact->state)->toBe(BackupArtifact::STATE_PENDING)
+        ->and($artifact->staged_bytes)->not->toBeNull()
+        ->and(is_file(storage_path('app/private/backup-staging/'.$artifactId.'.part')))->toBeTrue();
+
+    $held->release();
+
+    // And it still completes, which is the whole point of not having touched it.
+    ($this->assemble)($artifactId)->assertOk()->assertJson(['stored' => true]);
+});
+
+it('settles the artifact as usual when nothing is assembling it', function (): void {
+    // The guard above must not become "never settle an artifact", which would undo the fix that put
+    // a reason on the backups screen instead of leaving it reading "Uploading" for eight hours.
+    $artifactId = ($this->declare)()->assertOk()->json('artifact');
+
+    ($this->sendPart)($artifactId, 1)->assertOk();
+
+    app(JobService::class)->report(
+        site: $this->site,
+        connector: $this->connector,
+        jobExternalId: $this->job->external_id,
+        succeeded: false,
+        failureReason: 'the site reported the backup failed',
+    );
+
+    $artifact = BackupArtifact::query()->sole();
+
+    expect($artifact->state)->toBe(BackupArtifact::STATE_FAILED)
+        ->and($artifact->failure_reason)->toBe('the site reported the backup failed')
+        ->and(is_file(storage_path('app/private/backup-staging/'.$artifactId.'.part')))->toBeFalse();
+});
+
+it('refuses to store an artifact whose parts vanished mid-assembly', function (): void {
+    // The other half of the same race, and the one that produced an fopen warning in production
+    // rather than an answer. It is a rejection now: the connector is told something it can act on,
+    // and the artifact is left pending rather than failed by a technicality.
+    $artifactId = ($this->declare)()->assertOk()->json('artifact');
+
+    for ($part = 1; $part <= ($this->partCount)(); $part++) {
+        ($this->sendPart)($artifactId, $part)->assertOk();
+    }
+
+    $artifact = BackupArtifact::query()->sole();
+    $staging = storage_path('app/private/backup-staging/'.$artifactId.'.part');
+
+    // Removed underneath it, exactly as a concurrent fail() did.
+    unlink($staging);
+
+    ($this->assemble)($artifactId)->assertStatus(422);
+
+    expect(Storage::disk('backups')->allFiles())->toBe([]);
 });
