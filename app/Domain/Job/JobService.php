@@ -22,7 +22,9 @@ use coyshdigital\managerprotocol\Protocol;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * The whole life of a remote job.
@@ -442,7 +444,32 @@ final class JobService
                 ->where('state', BackupArtifact::STATE_PENDING)
                 ->first();
 
-            if ($artifact !== null) {
+            /*
+             | Not while the platform is still storing it.
+             |
+             | Reported live, and it cost a backup that had worked. A connector gave up waiting for
+             | `assembled` - which hashes a whole database before it answers - and reported the job
+             | failed. This branch then settled the artifact and deleted its staged parts, while the
+             | assembly was still running and about to store them. Both sides agreed to throw away an
+             | upload that had succeeded.
+             |
+             | The connector now waits, which removes the common cause. This removes the class: any
+             | client disconnect, at any point, can still report a failure for work the platform is
+             | mid-way through finishing. If the lock is held, something is actively assembling and it
+             | will settle the artifact itself - as stored if it completes, as failed if it does not.
+             |
+             | The job is still recorded as failed above, because it was. Only the artifact is left
+             | alone, and if the assembly does die the nightly sweep writes it off.
+            */
+            $assembling = $artifact !== null
+                && ! Cache::lock('backup-part:'.$artifact->external_id, 10)->get();
+
+            if ($assembling) {
+                Log::info('Left a backup artifact alone because it is being assembled.', [
+                    'artifact' => $artifact?->external_id,
+                    'job' => $job->external_id,
+                ]);
+            } elseif ($artifact !== null) {
                 // The reporting connector, so the artifact's audit row names the same actor as the
                 // `job.failed` row written a few lines above it. One failure, two objects, and until
                 // this argument existed the two rows said "Connector 1.12.1" and "Connector" - which
