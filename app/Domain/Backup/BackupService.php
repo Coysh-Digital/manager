@@ -1048,6 +1048,10 @@ final class BackupService
             throw new BackupPartOutOfOrderException(intdiv($staged, $partBytes) + 1, $staged);
         }
 
+        // Same reason as in commitStaged: another worker may have removed this file, and a cached
+        // stat would let the guard below pass on a file that is no longer there.
+        clearstatcache(true, $staging);
+
         if (! is_file($staging) || filesize($staging) !== $staged) {
             /*
              | The row and the disk disagree, and this one is not retryable.
@@ -1497,10 +1501,30 @@ final class BackupService
     {
         $key = $this->storageKeyFor($artifact);
 
-        $handle = fopen($staging, 'rb');
+        /*
+         | Cleared because the answer is about to be acted on.
+         |
+         | PHP caches stat results per process, and the file this is about can be removed by a
+         | different php-fpm worker - that is exactly the race below. A cached `is_file` from an
+         | earlier request in this worker would say the file is there and the open would then fail.
+        */
+        clearstatcache(true, $staging);
+
+        $handle = @fopen($staging, 'rb');
 
         if ($handle === false) {
-            throw new RuntimeException('Could not reopen the staged artifact.');
+            /*
+             | Gone between verifying it and storing it, which is a race rather than a fault in the
+             | artifact - and it happened. A connector that gave up waiting for this request reported
+             | the job failed, `fail()` deleted the staged parts, and this line was still holding the
+             | path to them. The upload had succeeded; both sides then agreed to throw it away.
+             |
+             | Rejected rather than thrown, so the connector is told something it can act on instead
+             | of a 500, and so the artifact is left pending rather than being failed twice over. The
+             | connector fix is that it waits; this is the half that holds when a client disconnects
+             | for any other reason.
+            */
+            throw new BackupRejectedException('The parts of that artifact were removed while it was being stored.');
         }
 
         try {

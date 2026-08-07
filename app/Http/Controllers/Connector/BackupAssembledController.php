@@ -13,8 +13,10 @@ use App\Models\BackupEvent;
 use App\Models\Site;
 use App\Support\CorrelationId;
 use coyshdigital\managerprotocol\Protocol;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * A site reporting that it has sent every part.
@@ -74,8 +76,32 @@ final class BackupAssembledController
             artifact: $artifact,
         );
 
+        /*
+         | The same lock the parts take, held for the whole of the assembly.
+         |
+         | Two things must not happen while this runs: a part arriving and rewriting the file being
+         | hashed, and - the one that was reported live - the job being reported failed, which settles
+         | the artifact and deletes the staged parts underneath a store that is already in progress.
+         | {@see \App\Domain\Job\JobService} takes this lock before it settles an artifact for
+         | exactly that reason.
+         |
+         | Blocking rather than refusing. A connector that retries `assembled` after a timeout should
+         | wait for the answer the first attempt is still producing, not be told its backup failed.
+        */
+        $lock = Cache::lock('backup-part:'.$artifact->external_id, 21600);
+
         try {
-            $assembled = $backups->assembleStaged($artifact);
+            $lock->block(30);
+        } catch (LockTimeoutException) {
+            return response()->json([
+                'error' => 'assembly_in_progress',
+                'reason' => 'that artifact is already being assembled',
+                'correlation_id' => $correlationId->get(),
+            ], 409, [Protocol::HEADER_CORRELATION_ID => $correlationId->get()]);
+        }
+
+        try {
+            $assembled = $backups->assembleStaged($artifact->refresh());
         } catch (BackupPartOutOfOrderException $e) {
             /*
              | Asked before the last part arrived.
@@ -94,6 +120,8 @@ final class BackupAssembledController
             ], 409, [Protocol::HEADER_CORRELATION_ID => $correlationId->get()]);
         } catch (BackupRejectedException $e) {
             return $this->rejected($e->getMessage(), $correlationId);
+        } finally {
+            $lock->release();
         }
 
         if (! $assembled->isStored()) {

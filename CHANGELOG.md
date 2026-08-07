@@ -6,6 +6,35 @@ Entries are written for somebody about to upgrade a running installation. Anythi
 action is under **Before you upgrade** - that section is the one to read, and `docs/upgrade.md` points
 here for exactly that reason.
 
+## 1.3.1 — 2026-08-07
+
+One race in 1.3.0, found within hours of it reaching a live console, which threw away a backup that
+had uploaded correctly.
+
+### Fixed
+
+- **A job reported as failed no longer settles an artifact the platform is still assembling.**
+  `POST .../assembled` hashes the whole reassembled artifact before it answers, which on a large
+  database takes longer than a connector was willing to wait. The connector gave up, reported the job
+  failed, and this platform then marked the artifact failed and deleted its staged parts — while its
+  own assembly was still running and about to store them. Both sides agreed to discard an upload that
+  had succeeded.
+
+  Connector 1.13.1 waits, which removes the common cause. This removes the class: any client
+  disconnect, at any point, can report a failure for work this platform is mid-way through finishing.
+  Assembly now holds the same per-artifact lock the parts take, and the job-result path leaves an
+  artifact alone while that lock is held — the assembly settles it either way, as stored if it
+  completes and as failed if it does not. The job is still recorded as failed, because it was.
+
+  The guard is deliberately narrow. An artifact nobody is assembling is settled exactly as before,
+  which is what puts a reason on the backups screen instead of leaving it reading "Uploading".
+
+- **An artifact whose parts vanish mid-assembly is refused rather than throwing.** The same race
+  produced `fopen(...): No such file or directory` in the log and a 500 on the wire. It is now a
+  stated rejection, the artifact is left pending rather than failed by a technicality, and the stat
+  cache is cleared before the check that decides — because the file can be removed by a different
+  worker, and a cached answer would let the check pass on a file that is already gone.
+
 ## 1.3.0 — 2026-08-06
 
 Backups no longer arrive as one enormous request, which is the difference between a large database
