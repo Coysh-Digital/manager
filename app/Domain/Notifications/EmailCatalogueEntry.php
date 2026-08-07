@@ -94,10 +94,9 @@ final class EmailCatalogueEntry
      * entry marked editable with no template would offer an empty editor, and one carrying a
      * template but marked uneditable would be wording nothing can reach.
      *
-     * The emails that deliberately have no template: the monitoring alerts, which go out through
-     * Mail::raw as plain text because an HTML mail about a security finding is a phishing template
-     * somebody has been trained to click; and the password reset, which is the framework's and not
-     * ours to reword.
+     * The emails that deliberately have no template: the monitoring alerts, because every sentence
+     * in one is generated from the event that caused it and there is no fixed wording to offer an
+     * editor; and the test message, whose whole value is being the same every time.
      */
     public function editable(): bool
     {

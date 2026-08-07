@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Notifications\PasswordReset;
 use App\Support\Concerns\HasExternalId;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
@@ -128,5 +129,17 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     public function unusedRecoveryCodeCount(): int
     {
         return $this->recoveryCodes()->whereNull('used_at')->count();
+    }
+
+    /**
+     * Send the reset in Manager's words rather than the framework's.
+     *
+     * Overridden here rather than registered with `ResetPassword::toMailUsing()` in a service
+     * provider, so the mechanism sits on the model it belongs to and does not depend on boot order.
+     * The broker, the token and its expiry are unchanged - see {@see PasswordReset}.
+     */
+    public function sendPasswordResetNotification(#[\SensitiveParameter] $token): void
+    {
+        $this->notify(new PasswordReset($token));
     }
 }

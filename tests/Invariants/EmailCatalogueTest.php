@@ -135,17 +135,22 @@ it('advertises the same wording the sending class actually uses', function (): v
     }
 });
 
-it('refuses to make the monitoring alerts or the password reset editable', function (): void {
+it('refuses to make the monitoring alerts editable', function (): void {
     /*
      | Pinned, because "let's make all the copy editable" is the obvious next instruction and these
      | are the exceptions to it.
      |
-     | The alerts go out through EmailTransport as plain text, and its docblock gives the reason: an
-     | HTML mail about a security finding is a phishing template somebody has been trained to click.
-     | There is also no MailMessage to override — Mail::raw builds the body itself.
+     | An alert has no wording to edit. Every sentence in it is either the event's own summary,
+     | which the code that detected the problem wrote, or a row of facts about a site — see
+     | App\Domain\Notifications\EmailTransport. An editor here would offer somebody a box in which
+     | to rewrite a sentence that is generated afresh for every send.
      |
-     | The password reset is the framework's own notification. Rewording it here would mean either
-     | reimplementing it or pretending we had.
+     | The test message is the other one, and for a different reason: it exists to prove a relay
+     | works, so its text has to be the same every time or it stops being evidence.
+     |
+     | The password reset used to be listed here, and the reason given was that it was the
+     | framework's own notification and rewording it would mean reimplementing it. It has been
+     | reimplemented — see App\Notifications\PasswordReset — so it is editable now, deliberately.
      */
     $uneditable = collect(app(EmailCatalogue::class)->all())
         ->filter(fn (EmailCatalogueEntry $entry): bool => ! $entry->editable())
@@ -157,8 +162,8 @@ it('refuses to make the monitoring alerts or the password reset editable', funct
         expect($uneditable)->toContain($label);
     }
 
-    expect($uneditable)->toContain('Password reset')
-        ->and($uneditable)->toContain('Test message');
+    expect($uneditable)->toContain('Test message')
+        ->and($uneditable)->not->toContain('Password reset');
 });
 
 it('reads its wording through the resolver in every class that has some', function (): void {

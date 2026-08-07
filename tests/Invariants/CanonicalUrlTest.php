@@ -3,8 +3,8 @@
 declare(strict_types=1);
 
 use App\Models\User;
+use App\Notifications\PasswordReset;
 use App\Providers\AppServiceProvider;
-use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\URL;
 
@@ -72,7 +72,10 @@ it('does not email a password-reset link on a host the request asked for', funct
 
     $this->post(route('password.email'), ['email' => $user->email], ['Host' => 'attacker.example']);
 
-    Notification::assertSentTo($user, ResetPassword::class, function (ResetPassword $notification) use ($user): bool {
+    // App\Notifications\PasswordReset rather than the framework's, since User overrides
+    // sendPasswordResetNotification. The property under test is unchanged: the broker still issues
+    // the token, and the link still has to be built on the canonical host.
+    Notification::assertSentTo($user, PasswordReset::class, function (PasswordReset $notification) use ($user): bool {
         $body = $notification->toMail($user)->render();
 
         // The whole point: the token is fine, and where it is sent is not.

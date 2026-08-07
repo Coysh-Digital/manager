@@ -1,15 +1,16 @@
 /*
  * The Manager email theme.
  *
- * Applies to every MailMessage this installation sends: password resets, invitations, and — where a
- * hosting layer is installed — everything about a subscription. Without it those arrive in Laravel's
- * stock styling, which is recognisably a framework default rather than a product, and a
- * password-reset email that looks generic is the one people are most right to distrust.
+ * Applies to every email this installation sends: password resets, invitations, the monitoring
+ * alerts, and — where a hosting layer is installed — everything about a subscription. Without it
+ * those arrive in Laravel's stock styling, which is recognisably a framework default rather than a
+ * product, and a password-reset email that looks generic is the one people are most right to
+ * distrust.
  *
- * Not out of scope, and worth saying which: App\Domain\Notifications\EmailTransport sends the
- * monitoring and findings alerts as plain text through Mail::raw, deliberately, and none of this
- * reaches them. Its docblock has the argument — an HTML mail about a security finding is a phishing
- * template somebody has been trained to click.
+ * This header used to carve out an exception, and it is worth knowing it existed: the monitoring
+ * alerts were sent as plain text through Mail::raw, on the argument that an HTML mail about a
+ * security finding is a phishing template somebody has been trained to click. They are not any
+ * more, and App\Domain\Notifications\EmailTransport says what changed our mind.
  *
  * ==================================================================================================
  * Why these are literal hex values and not var(--token)

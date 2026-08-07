@@ -122,18 +122,19 @@ return [
     | Markdown Mail
     |--------------------------------------------------------------------------
     |
-    | What every MailMessage looks like: password resets, invitations, and any
-    | notification a hosting layer adds. Without a theme here they arrive in
-    | Laravel's stock styling, which reads as a framework rather than a product
-    | - and a password-reset email that looks generic is the one somebody is
-    | most right to distrust.
+    | What every email this installation sends looks like: password resets,
+    | invitations, the monitoring alerts, and any notification a hosting layer
+    | adds. Without a theme here they arrive in Laravel's stock styling, which
+    | reads as a framework rather than a product - and a password-reset email
+    | that looks generic is the one somebody is most right to distrust.
     |
     | The theme resolves to resources/views/vendor/mail/html/themes/manager.css,
     | which explains why its colours are literal hex values rather than the
     | design tokens every other surface uses.
     |
-    | This does not touch the findings and backup alerts. Those are plain text
-    | through Mail::raw, deliberately - see App\Domain\Notifications\EmailTransport.
+    | The alerts were plain text through Mail::raw until they were not; the
+    | argument for that, and for reversing it, is in
+    | App\Domain\Notifications\EmailTransport.
     |
     */
 

@@ -6,6 +6,7 @@ namespace App\Notifications;
 
 use App\Domain\Notifications\EmailCopy;
 use App\Domain\Notifications\EmailCopyTemplate;
+use App\Domain\Notifications\Greeting;
 use App\Domain\Team\TeamService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -112,7 +113,7 @@ final class TeamInvitation extends Notification implements ShouldQueue
 
         $message = (new MailMessage)
             ->subject($copy->subject(self::COPY_KEY, $replacements))
-            ->greeting('Hello');
+            ->greeting(Greeting::for($notifiable));
 
         foreach ($copy->lines(self::COPY_KEY, $replacements) as $line) {
             $message->line($line);
