@@ -56,6 +56,14 @@ beforeEach(function (): void {
     $this->atScheduledHour = fn () => Carbon::setTestNow(
         Carbon::parse('2026-08-05 03:30', 'Europe/London')->utc(),
     );
+
+    // Somebody who may change a schedule, for the screen tests at the foot of this file.
+    $this->administrator = function (): User {
+        $admin = User::factory()->create(['email_verified_at' => now()]);
+        Membership::factory()->for($admin)->for($this->organisation)->admin()->create();
+
+        return $admin;
+    };
 });
 
 afterEach(function (): void {
@@ -573,4 +581,80 @@ it('does not promise a run on a day the scheduled hour does not exist', function
     expect(collect($runs)->map(fn ($run) => $run->toDateString())->all())->not->toContain('2027-03-28');
 
     Carbon::setTestNow();
+});
+
+/*
+ | Saying so on the site's own screen
+ |-------------------------------------------------------------------------------------------------
+ |
+ | The setting was on this tab from the day it was built; when it would next act was not. So the
+ | fleet Backups screen could answer "when is this site next backed up" and the site's own page
+ | could not, which is the wrong way round - the site page is where somebody goes to check.
+ */
+
+it('says when the next backup is due, not only how often', function (): void {
+    $site = ($this->makeSite)(['backup_schedule' => 'weekly', 'backup_schedule_day' => 6]);
+
+    Carbon::setTestNow(Carbon::parse('2026-08-05 09:00', 'Europe/London'));
+
+    $next = app(BackupSchedule::class)->nextRun($site);
+
+    $this->actingAs(($this->administrator)())->get(route('sites.backups', $site))
+        ->assertOk()
+        ->assertSee('Next runs')
+        ->assertSee($next->format('j M Y, H:i T'));
+});
+
+it('names the zone with the time, because an hour without one is a guess', function (): void {
+    // And the guess is usually the reader's own zone rather than the site's, which is the one the
+    // scheduler reads.
+    $site = ($this->makeSite)(['timezone' => 'Pacific/Auckland', 'backup_schedule_hour' => 3]);
+
+    $html = $this->actingAs(($this->administrator)())->get(route('sites.backups', $site))->assertOk()->getContent();
+
+    expect($html)->toMatch('/03:00 NZ[DS]T/');
+});
+
+it('shows a member when the next backup is due as well', function (): void {
+    /*
+     * The read-only branch stopped at the cadence, so an administrator saw a date and everybody else
+     * got "Every day at 03:00" and a calendar. The comment on that branch already argued the
+     * principle - "when is this backed up is not privileged information" - and then did not apply it
+     * to the one part of the answer that needs arithmetic.
+     */
+    $site = ($this->makeSite)();
+
+    $member = User::factory()->create();
+    Membership::factory()->for($this->organisation)->for($member)->create();
+
+    $this->actingAs($member)->get(route('sites.backups', $site))
+        ->assertOk()
+        ->assertSee(app(BackupSchedule::class)->nextRun($site)->format('j M Y, H:i T'))
+        // Still cannot change it.
+        ->assertDontSee('name="backup_schedule"', false);
+});
+
+it('says nothing about future runs for a site with no schedule', function (): void {
+    // Rather than an empty heading, or worse a date derived from a schedule that is off.
+    $site = ($this->makeSite)(['backup_schedule' => 'off']);
+
+    $this->actingAs(($this->administrator)())->get(route('sites.backups', $site))
+        ->assertOk()
+        ->assertDontSee('Next runs');
+});
+
+it('describes the saved schedule rather than whatever is typed into the form', function (): void {
+    // The list is a statement about what the scheduler will do. Showing a preview of unsaved selects
+    // would make it a claim about a schedule that does not exist yet.
+    $site = ($this->makeSite)(['backup_schedule' => 'daily', 'backup_schedule_hour' => 3]);
+
+    $this->actingAs(($this->administrator)())->get(route('sites.backups', $site))
+        ->assertOk()
+        ->assertSee('03:00');
+
+    $site->forceFill(['backup_schedule_hour' => 21])->save();
+
+    $this->actingAs(($this->administrator)())->get(route('sites.backups', $site))
+        ->assertOk()
+        ->assertSee('21:00');
 });

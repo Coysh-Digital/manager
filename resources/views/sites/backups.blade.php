@@ -88,6 +88,14 @@
                                 <span class="text-[12.5px] text-text-2">
                                     {{ $site->backup_schedule === 'daily' ? 'Daily' : 'Weekly' }},
                                     {{ sprintf('%02d:00', $site->backup_schedule_hour) }}
+
+                                    {{-- The next one, beside the cadence. "Weekly, 03:00" is the
+                                         setting; when it next fires is the question somebody opened
+                                         this tab with, and it was answerable everywhere except
+                                         here. --}}
+                                    @if ($next = ($nextRuns[0] ?? null))
+                                        <span class="text-text-3">· next {{ $next->diffForHumans(short: true) }}</span>
+                                    @endif
                                 </span>
                             @else
                                 <x-status-badge tone="grey" label="Off" />
@@ -226,6 +234,18 @@
                                     organisation has no recovery key to encrypt it to.
                                 </span>
                             </p>
+
+                            {{-- Three rather than one, and this is the reason: a single date is a
+                                 fact you either believe or do not, and three is a pattern. Somebody
+                                 who has just set "weekly on Tuesday" and meant Thursday sees it
+                                 here, now, rather than a month later when they go looking for a
+                                 backup that was never taken.
+
+                                 From the saved schedule, so it describes what the scheduler will do
+                                 rather than what is currently typed into the form above. Editing the
+                                 selects does not move these until Save is pressed - they are a
+                                 statement about the system, not a preview of the form. --}}
+                            <x-backup-next-runs :runs="$nextRuns" />
                         </form>
                     </div>
                     {{-- Retention, beside the schedule that produces what it keeps.
@@ -295,10 +315,16 @@
 
                 @elseif ($site->hasBackupSchedule())
                     {{-- A member cannot change it, but "when is this backed up" is not privileged
-                         information and leaving it blank reads as "never". --}}
-                    <p class="border-b border-border px-4 py-3 text-[12.5px] text-text-2">
-                        {{ $site->backupScheduleSentence() }}
-                    </p>
+                         information and leaving it blank reads as "never".
+
+                         The next runs are here for the same reason, and by the same argument. This
+                         branch used to stop at the cadence, so an administrator could see when the
+                         next backup was due and everybody else got "Every Tuesday at 03:00" and a
+                         calendar. --}}
+                    <div class="flex flex-col gap-2 border-b border-border px-4 py-3">
+                        <p class="text-[12.5px] text-text-2">{{ $site->backupScheduleSentence() }}</p>
+                        <x-backup-next-runs :runs="$nextRuns" compact />
+                    </div>
                 @endif
 
                 @if ($inFlight->isNotEmpty())

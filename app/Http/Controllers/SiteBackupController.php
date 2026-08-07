@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Domain\Audit\AuditRecorder;
 use App\Domain\Backup\BackupReadiness;
+use App\Domain\Backup\BackupSchedule;
 use App\Domain\Backup\BackupService;
 use App\Domain\Backup\FailedBackupJobs;
 use App\Domain\Backup\InFlightBackups;
@@ -44,6 +45,7 @@ final class SiteBackupController
         private readonly BackupReadiness $readiness,
         private readonly RecoveryKeyService $recoveryKeys,
         private readonly AuditRecorder $audit,
+        private readonly BackupSchedule $schedule,
     ) {}
 
     /**
@@ -229,6 +231,20 @@ final class SiteBackupController
             'defaultTimezone' => $site->backup_schedule === 'off'
                 ? ViewerTimezone::for()
                 : $site->timezone,
+
+            /*
+             | When the schedule will actually fire, rather than only what it is set to.
+             |
+             | "Weekly, 03:00" is the setting. "Saturday 15 August, 03:00 BST, in 7 days" is the
+             | answer to the question somebody opens this tab with, and until now the fleet Backups
+             | screen could give it and the site's own page could not - which is the wrong way round.
+             |
+             | Projected by the same object ScheduleBackupsCommand asks, so this cannot name a time
+             | the scheduler will not act on. Three, matching what the schedule form offers to change:
+             | one date is a fact, three is a pattern, and a pattern is what makes a wrong weekday
+             | obvious before it has been wrong for a month.
+            */
+            'nextRuns' => $this->schedule->nextRuns($site, 3),
 
             'retention' => RetentionPolicy::forSite($site),
             'artifacts' => $artifacts,

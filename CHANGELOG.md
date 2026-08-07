@@ -22,6 +22,12 @@ change to what a connector sends.
   whoever owns the site.
 - **A status column.** The state of an artifact was previously implied by which of the other columns
   were filled in.
+- **When the next backup is due, on the site's own Backups tab.** The next three runs, as dates, with
+  the zone named. The tab has always said *how often* a site is backed up and never *when next*, so
+  the fleet screen could answer the question and the page somebody actually opens to check could not.
+  Three rather than one because three is a pattern: somebody who set "weekly on Tuesday" and meant
+  Thursday sees it immediately rather than a month later. Members see it too — a member cannot change
+  a schedule, but when a site is backed up is not privileged.
 - **Scheduled runs.** When each schedule will next fire, and what the last few produced -
   successes as well as failures. The two panels above it are each scoped to what still needs
   somebody, so a fleet whose schedule had quietly stopped firing looked identical to a fleet with
