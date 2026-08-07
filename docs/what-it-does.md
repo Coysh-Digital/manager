@@ -60,8 +60,9 @@ checkout at 5pm on a Friday you would turn it off for good.
 **It would need the one thing Manager for Craft refuses to hold.** Installing anything means write
 access to the filesystem and the ability to run commands. That means SSH or an equivalent, and once
 Manager for Craft holds that for forty sites, Manager becomes the most attractive target in your
-infrastructure. The whole security model here - outbound only, no credentials, nothing executable -
-exists because it holds nothing worth stealing. Auto-updating would trade all of it for convenience.
+infrastructure. The whole security model here - no credentials, nothing executable, and no way to tell
+a site to do anything it has not already agreed to - exists because it holds nothing worth stealing.
+Auto-updating would trade all of it for convenience.
 
 **A compromised platform would become a supply chain.** If Manager for Craft could install packages
 on every site it manages, then whoever compromised Manager could install whatever they liked,

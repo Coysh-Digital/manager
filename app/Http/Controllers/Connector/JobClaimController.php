@@ -8,6 +8,7 @@ use App\Contracts\BackupSizeLimit;
 use App\Domain\Backup\BackupKeypair;
 use App\Domain\Backup\BackupService;
 use App\Domain\Backup\RecoveryKeyService;
+use App\Domain\Connector\NudgePath;
 use App\Domain\Connector\PlatformKeypair;
 use App\Domain\Connector\ResponseSigner;
 use App\Domain\Job\JobService;
@@ -47,7 +48,14 @@ final class JobClaimController
 
         $validated = $request->validate([
             'limit' => ['nullable', 'integer', 'min:1', 'max:'.Jobs::MAX_CLAIM_BATCH],
+
+            // Where to knock so this site checks in sooner than its own schedule would. Bounded here
+            // and understood in full by NudgePath, which returns null rather than repairing anything
+            // it does not recognise.
+            'nudge_path' => ['nullable', 'string', 'max:'.NudgePath::MAX_LENGTH],
         ]);
+
+        $this->rememberNudgePath($connector, $validated['nudge_path'] ?? null);
 
         $envelopes = $jobs->claimFor($site, $connector, (int) ($validated['limit'] ?? Jobs::MAX_CLAIM_BATCH));
 
@@ -149,5 +157,38 @@ final class JobClaimController
             siteExternalId: $site->external_id,
             requestNonce: (string) $request->attributes->get('manager.nonce'),
         );
+    }
+
+    /**
+     * Keep where this site says to knock, if it is a path this platform fully understands.
+     *
+     * Written on every claim rather than once at pairing, because pairing happens once and this does
+     * not: a rename of Craft's action trigger, a move into a subfolder or a connector upgrade would
+     * otherwise break nudging silently and permanently. Re-stating it means a site that becomes
+     * reachable again heals without anybody noticing it had stopped.
+     *
+     * A connector omitting it - too old to know, or configured to refuse nudges - clears the stored
+     * path rather than leaving the last one behind. Turning nudges off at the site must actually stop
+     * them, not merely stop them being answered.
+     *
+     * Any restatement resets the failure count. The site is talking to us, so whatever made it
+     * unreachable is worth one more attempt.
+     */
+    private function rememberNudgePath(Connector $connector, ?string $reported): void
+    {
+        $path = NudgePath::sanitise($reported);
+
+        if ($path === $connector->nudge_path) {
+            if ($path !== null && $connector->nudge_failures > 0) {
+                $connector->forceFill(['nudge_failures' => 0])->save();
+            }
+
+            return;
+        }
+
+        $connector->forceFill([
+            'nudge_path' => $path,
+            'nudge_failures' => 0,
+        ])->save();
     }
 }

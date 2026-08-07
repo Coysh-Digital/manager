@@ -15,8 +15,8 @@ ordinary test output.
 | 1 | Never require a Craft administrator password | `NoStoredCredentialsTest` |
 | 2 | Never require SSH credentials | `NoStoredCredentialsTest` |
 | 3 | Never store a website's database password | `NoStoredCredentialsTest` |
-| 4 | Connector exposes no inbound management endpoint | `NoRemoteExecutionTest`, plus `bin/verify-invariants.php` in the connector repository |
-| 5 | Connections initiated outbound by the connector | As above |
+| 4 | Connector exposes no inbound endpoint that can carry an instruction | `NoRemoteExecutionTest`, plus `bin/verify-invariants.php` in the connector repository |
+| 5 | Every exchange that decides anything is initiated outbound by the connector | As above |
 | 6 | Monitoring access read-only by default | `PairingTest`, `NoRemoteExecutionTest` |
 | 7 | Backup access requires explicit permission | `BackupPermissionTest`, `BackupPipelineTest`, `DataMinimisationTest` |
 | 8 | No arbitrary PHP, shell, console or SQL execution | `NoRemoteExecutionTest`, `RemoteJobRegistryTest`, plus `bin/verify-invariants.php` in the connector repository |
@@ -35,6 +35,23 @@ The specification's *assumptions* are covered alongside the numbered invariants 
 testable in their own right. `OutboundDestinationTest` is the one for "a webhook destination may be
 malicious": a notification names which site is unpatched, so the destination it goes to is part of
 the threat model rather than a configuration detail.
+
+**Invariants 4 and 5 were narrowed deliberately, and the wording above is the narrowed form.** They
+used to read "no inbound management endpoint" and "connections initiated outbound by the connector",
+full stop. Manager now knocks on a site to ask it to check in early, and the connector answers one
+anonymous endpoint to hear it.
+
+What replaced the absolute is a set of assertions that the endpoint can carry nothing: on this side,
+that the platform holds no address it could be told to call, that a path from the wire is refused
+unless it is understood in full, that exactly two reviewed files compose a site-facing address, and
+that the dispatcher takes a site and nothing else. On the connector's side, `verify-invariants.php`
+holds an anonymous controller to a stricter rule set than the administrator-gated one it replaced -
+no request parameters at all, no body, one task and no other, 202 or 401 with no content, and a
+signature verified against the key pinned at pairing.
+
+The property people actually rely on is unchanged and is worth stating plainly: **nothing depends on
+that endpoint being reachable.** A site Manager cannot reach keeps its own schedule, which is what
+every site did before this existed.
 
 ## What is deliberately not covered yet
 

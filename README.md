@@ -31,8 +31,10 @@ a design decision rather than a roadmap gap, and
 [What it does, and does not](https://managerforcraft.com/docs/what-it-does.html) explains where the line
 sits and why.
 
-**Sites come to it.** Every exchange starts at the Craft site and goes outbound. Nothing listens,
-nothing is pushed, and a site behind NAT needs no inbound firewall rule.
+**Sites come to it.** Every exchange that decides anything starts at the Craft site and goes outbound.
+Manager can knock on a site to ask it to check in early, so a requested backup starts in seconds - but
+that knock says only "check in now", and **no work is ever pushed**. Nothing depends on it arriving, so
+a site behind NAT needs no inbound firewall rule; it keeps its own schedule.
 
 ## What running it involves
 

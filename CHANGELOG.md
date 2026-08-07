@@ -11,8 +11,57 @@ here for exactly that reason.
 Seeing the state of a fleet's backups without reading every row, and seeing how far behind each site
 is without opening it.
 
-Nothing here needs any action on upgrade. There is no migration, no new configuration key and no
-change to what a connector sends.
+**Before you upgrade:** there is a migration, a new configuration key, and Manager now makes one
+outbound request to a managed site that it did not make before. All three are described under
+*Requested work starts in seconds* below. Nothing needs doing to take this - the defaults are safe and
+the behaviour degrades to exactly what it did before - but an installation that must make no outbound
+request to a customer's site should set `MANAGER_NUDGE_ENABLED=false` before deploying.
+
+### Requested work starts in seconds, instead of waiting for the site to notice
+
+Pressing **Request backup** wrote a queued row and nothing else. The site collected it on its next
+check-in - up to five minutes away with cron, and on a site whose connector schedule runs off ordinary
+web traffic, however long it took for somebody to visit. The screen was correct for that whole time and
+looked broken. It even said so in its own source: *"For that whole time the screen is correct and looks
+broken."*
+
+Manager now knocks on the site and asks it to check in.
+
+**The knock carries no instruction, and that is the entire design.** There is no field in it for a job,
+a capability, a path or a destination. A site that receives one makes the ordinary signed claim it would
+have made on its own a few minutes later, and everything that decides anything happens there: the
+capability is re-checked at claim time, the recipients are the ones the site has pinned, the artifact
+goes where the site derives rather than where anybody says. **So the worst outcome of a forged, replayed
+or misdirected knock is one early poll.**
+
+**The address is composed, never accepted.** The host is the site's expected domain - the one an
+operator typed, and the one pairing is bound to. Only the *path* comes from the wire, and only after it
+has been understood in full: anything carrying a scheme, a host, credentials, a port, a fragment, a
+traversal or a control character is refused outright rather than repaired. That is deliberately the
+mirror of the rule the connector applies to itself, where an upload host is derived rather than taken
+from a response. Both directions now pin to something a person stated.
+
+The request is guarded exactly as an outbound notification webhook is, because the same reasoning
+applies: HTTPS only, redirects not followed, the connection pinned to the address the guard validated so
+DNS cannot move underneath, a five-second timeout, and the response body discarded.
+
+**Nothing depends on it.** A site behind NAT, an IP allowlist, a WAF, HTTP basic auth, or simply one
+running a connector too old to say where to knock, is never knocked on and never told it was missed - it
+finds out on its own schedule, exactly as before. After five consecutive failures Manager stops trying
+until the site itself says otherwise on a claim, so an unreachable site does not collect a doomed
+outbound request every time somebody presses a button.
+
+**What the screen says changes with it, and only when it is true.** A site Manager can reach reads
+*"The site is being asked to start it now"*; one it cannot keeps the sentence it has always had. Bulk
+requests say how many of each. *Being asked*, not *will start* - the knock is queued, not delivered, and
+whether a site answers is not something Manager knows yet.
+
+**This is time-to-start, not time-to-finish.** A large database is still a dump, an encryption pass and
+an upload, which is minutes to hours. What changes is that the row goes from *queued* to *running* while
+the person who pressed the button is still looking at it.
+
+Requires a connector on 1.14.0 or later to have any effect. Anything older never says where to knock, is
+never knocked on, and behaves exactly as it does today. Requires `manager-protocol` 1.8.0.
 
 ### Backups
 

@@ -16,7 +16,7 @@ The point of the design is that these are properties of the code rather than pro
 |---|---|
 | No administrator password | There is nowhere in the schema to store one. A test walks the live schema for anything resembling a stored site credential, so a new table is checked the moment it is created. |
 | No SSH or database credentials | Same. |
-| No inbound endpoint on managed sites | The connector registers no route that accepts management input. Every exchange is started by the connector, outbound. |
+| No inbound instruction to managed sites | The connector registers no route that accepts management input. It answers one anonymous endpoint whose entire vocabulary is "check in now" - it reads no parameters, takes no body, and only causes the site to make the ordinary signed request it makes on its own timer. Every exchange that decides anything is still started by the connector, outbound, and nothing depends on that endpoint being reachable. |
 | No remote execution | No console-command runner, no PHP evaluation, no SQL, no shell, no arbitrary file access. |
 | Read-only by default | A newly paired site receives read capabilities and nothing else. Anything that modifies a site needs separate, explicit confirmation. |
 | Public keys only | Connectors generate their keypair locally and send only the public half. A stolen copy of the platform database confers no ability to sign as any site. |

@@ -22,9 +22,12 @@ live database on every run to keep it that way.
 machine, then uploads it. What gets stored is ciphertext, and so is what anyone who steals the
 server gets. See [Recovery keys](/recovery-keys).
 
-**Sites come to it, not the other way round.** Every exchange starts at the Craft site and goes
-outbound. Nothing listens, nothing gets pushed, and a site behind NAT works with no inbound firewall
-rule at all.
+**Sites come to it, not the other way round.** Every exchange that decides anything starts at the
+Craft site and goes outbound. Manager can knock on a site to ask it to check in early - so a
+requested backup starts in seconds rather than at the next scheduled check-in - but that knock says
+only "check in now", and the site still decides for itself what to do about it. **No work is ever
+pushed.** Nothing depends on the knock arriving either, so a site behind NAT works with no inbound
+firewall rule at all; it simply keeps its own schedule.
 
 **You decide what each site may do.** A newly paired site can report its own version numbers and
 nothing else. Everything past that is granted per site, and taking a backup needs its own deliberate
