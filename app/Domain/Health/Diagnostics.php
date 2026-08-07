@@ -90,6 +90,7 @@ final class Diagnostics
             ...$this->backupDestination(),
             $this->backupSizeCeiling(),
             $this->uploadPathCeiling(),
+            $this->uploadPathTimeout(),
             ...$this->security(),
         ];
     }
@@ -145,25 +146,27 @@ final class Diagnostics
         }
 
         /*
-         | Raised past what a single request can carry, on an edition that cannot split one.
+         | Raised past what a single request can carry, for a connector that can only make one.
          |
-         | An object store refuses a single PUT over five gigabytes, so above that an artifact has to
-         | arrive in parts - and only an edition binding {@see DirectUploadGrants} to something real
-         | can issue them. Self-hosted binds {@see NoDirectUploads}, so every byte comes through this
-         | application instead: a ceiling above 5 GB there is a promise the upload path cannot keep,
-         | and without this it would be discovered at the end of a multi-hour upload.
+         | This warning used to say that an edition without presigned uploads could not accept an
+         | artifact above five gigabytes at all, because a single request cannot carry one and only
+         | {@see DirectUploadGrants} could split it. That stopped being true when artifacts started
+         | arriving through this application in parts: a self-hosted installation now takes a
+         | twenty-gigabyte artifact with nothing presigned and no object store involved.
          |
-         | A warning rather than a failure. An operator may have raised it deliberately while pointing
-         | sites at their own bucket, in which case the artifact never comes here at all and the
-         | ceiling is exactly right. This check cannot tell, so it says what it sees.
+         | What survives is narrower and still worth saying. A connector too old to send parts sends
+         | the whole file in one request, and for those sites the old sentence is exactly right - they
+         | will fail at the end of a multi-hour upload. So the warning stays, and now names which
+         | sites it is about rather than the whole installation.
          */
         if ($bytes > Protocol::SINGLE_PUT_MAX_BYTES && app(DirectUploadGrants::class) instanceof NoDirectUploads) {
             return Check::warn(
                 'Backup size ceiling',
                 "Artifacts up to {$readable}.",
-                'Above 5 GB an artifact cannot be uploaded in one request, and this edition streams '
-                .'every byte through the application. Sites uploading directly to their own storage '
-                .'are unaffected; anything else will fail at the end of the upload.',
+                'Sites new enough to upload in parts are unaffected and will reach this ceiling. A '
+                .'connector older than that sends the whole artifact in one request, which cannot '
+                .'carry more than 5 GB - those sites will fail at the end of the upload. Upgrade '
+                .'them, or point them at their own storage.',
             );
         }
 
@@ -191,11 +194,20 @@ final class Diagnostics
      *
      * So read a pass here as "PHP is not the limit", never as "uploads work". The check says what
      * it can see, and says so rather than implying it can see everything.
+     *
+     * **What has to be compared against changed when artifacts started arriving in parts.** The
+     * largest body this application now receives is one part, not one database, so a connector new
+     * enough to send them needs `post_max_size` above eight megabytes rather than above the ceiling.
+     * That is the difference between an installation needing to be configured for its largest
+     * customer and needing to be configured once. A connector too old to send parts still sends the
+     * whole file in one request, which is why the ceiling comparison is kept and reported as a
+     * warning rather than removed.
      */
     private function uploadPathCeiling(): Check
     {
         $postMax = $this->iniBytes('post_max_size');
         $ceiling = $this->backupSize->ceilingBytes();
+        $partBytes = $this->backups->ingestPartBytes();
 
         if ($postMax === null) {
             return Check::pass('Upload path ceiling', 'PHP accepts a request body of any size.');
@@ -204,32 +216,37 @@ final class Diagnostics
         $readable = round($postMax / 1024 / 1024).' MB';
 
         /*
-         | A ceiling this platform has already promised, and plumbing that cannot keep it.
+         | The part size is the real requirement now, so it is the one that fails.
          |
-         | Stated as a contradiction rather than as a small number, because that is what makes it a
-         | failure: the claim response has told every site it will accept up to the ceiling, and
-         | those sites will dump, encrypt and offer an artifact before finding out otherwise.
+         | Below it nothing can be uploaded at all, by any connector, however small the database -
+         | which is a different and worse thing than being unable to take the largest artifact this
+         | platform says it will accept.
          */
-        if ($ceiling !== null && $postMax < $ceiling) {
+        if ($postMax < $partBytes) {
             return Check::fail(
                 'Upload path ceiling',
-                "PHP post_max_size is {$readable}, below this platform's backup ceiling of "
-                .round($ceiling / 1024 / 1024).' MB.',
-                'Sites are told they may upload to the ceiling and PHP will refuse them before this '
-                .'application runs. Raise post_max_size to at least the ceiling, or lower '
-                .'MANAGER_BACKUP_MAX_BYTES to match.',
+                "PHP post_max_size is {$readable}, below the ".round($partBytes / 1024 / 1024)
+                .' MB this platform receives artifacts in.',
+                'No backup can be uploaded at any size until this is raised. Set post_max_size to at '
+                .'least the part size, or to 0 for no limit.',
             );
         }
 
-        // The same floor, and the same reasoning, as the ceiling check above: under a megabyte
-        // refuses essentially every real database.
-        if ($postMax < 1024 * 1024) {
-            return Check::fail(
+        /*
+         | Above the part size and below the ceiling is now a warning rather than a failure, and the
+         | sentence has to say which connectors it affects. A site sending parts is unaffected; one
+         | too old to know about them still sends the whole artifact in a single request and will be
+         | refused by PHP after dumping and encrypting a database.
+         */
+        if ($ceiling !== null && $postMax < $ceiling) {
+            return Check::warn(
                 'Upload path ceiling',
-                "PHP post_max_size is {$readable}.",
-                'PHP will refuse essentially every backup before this application sees it, with a '
-                .'413 that is not configured here and does not appear in this log. Raise '
-                .'post_max_size, or set it to 0 for no limit.',
+                "PHP post_max_size is {$readable}, below this platform's backup ceiling of "
+                .round($ceiling / 1024 / 1024).' MB.',
+                'Sites new enough to upload in parts are unaffected. A connector older than that '
+                .'sends the whole artifact in one request and PHP will refuse it, after the site has '
+                .'dumped and encrypted its database. Raise post_max_size to the ceiling, or upgrade '
+                .'those connectors.',
             );
         }
 
@@ -246,6 +263,67 @@ final class Diagnostics
             $ceiling === null
                 ? "PHP accepts request bodies up to {$readable}, which is the effective backup ceiling."
                 : "PHP accepts request bodies up to {$readable}.",
+        );
+    }
+
+    /**
+     * How long one part of an upload may take before something ends the request.
+     *
+     * The companion to the ceiling above, and the reason it exists is a production failure the
+     * ceiling check could not have caught. A console refused a backup with an HTTP 502 - not a 413 —
+     * carrying no correlation id and no JSON, because a web server in front of the platform ended
+     * the request while PHP was still reading the body. Every runbook in these repositories was
+     * written for a body-size refusal; nothing anywhere mentioned a timeout.
+     *
+     * **The two limits that actually decide this are both invisible from inside PHP.** php-fpm's
+     * `request_terminate_timeout` is a pool setting, not an ini setting, and it overrides
+     * `set_time_limit(0)` from outside the process - so the upload controllers lifting their own
+     * limit never protected against it. nginx's `fastcgi_read_timeout` is further away still. This
+     * check cannot read either, and says so rather than implying a pass means uploads work.
+     *
+     * What it can do is state the arithmetic somebody needs in order to check by hand: one part is
+     * this many megabytes, so on a slow uplink it takes about this many seconds, so any timeout in
+     * front of this platform has to be comfortably above that. Since parts are bounded, that is a
+     * fixed number an operator can compare against once - which is the whole reason chunked ingest
+     * makes this diagnosable at all. Before it, the answer depended on the size of a database.
+     */
+    private function uploadPathTimeout(): Check
+    {
+        $partBytes = $this->backups->ingestPartBytes();
+        $megabytes = round($partBytes / 1024 / 1024, 1);
+
+        // Half a megabyte a second: a modest business uplink, deliberately pessimistic. The point of
+        // the number is to be the one an operator can safely configure against, not the one they will
+        // usually see.
+        $seconds = (int) ceil($partBytes / (512 * 1024));
+
+        $maxExecution = (int) ini_get('max_execution_time');
+
+        $advice = "One part is {$megabytes} MB, which takes about {$seconds}s on a slow uplink. "
+            .'Any timeout in front of this platform must be above that - and neither php-fpm\'s '
+            .'request_terminate_timeout nor nginx\'s fastcgi_read_timeout can be read from here, so '
+            .'this check cannot confirm they are.';
+
+        /*
+         | A non-zero max_execution_time below the transfer time is the one case this can be sure
+         | about, because it is the one limit that is an ini setting.
+         |
+         | Not a warning. An installation configured this way refuses every backup from every site,
+         | at the same point in every upload, and the site is told the platform rejected its artifact.
+         */
+        if ($maxExecution > 0 && $maxExecution < $seconds) {
+            return Check::fail(
+                'Upload path timeout',
+                "PHP max_execution_time is {$maxExecution}s.",
+                $advice.' Raise max_execution_time, or set it to 0 as the shipped image does.',
+            );
+        }
+
+        return Check::pass(
+            'Upload path timeout',
+            $maxExecution > 0
+                ? "PHP max_execution_time is {$maxExecution}s. {$advice}"
+                : "PHP imposes no execution limit. {$advice}",
         );
     }
 

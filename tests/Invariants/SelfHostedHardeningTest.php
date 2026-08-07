@@ -151,11 +151,22 @@ it('fails on a ceiling too small to accept any real database', function (): void
         ->and($check->remedy)->toContain('MANAGER_BACKUP_MAX_BYTES');
 });
 
-it('fails when PHP will refuse artifacts this platform has promised to accept', function (): void {
+it('warns when PHP will refuse whole artifacts from a connector too old to send parts', function (): void {
     /*
      | The failure the shipped Docker image had: nginx carved the upload route out of its body limit
      | and php.ini left post_max_size at 2M, so the claim response advertised a ceiling the request
      | path could not carry. A site dumps, encrypts and offers before finding out.
+     |
+     | A warning rather than a failure since artifacts started arriving in parts, and the demotion is
+     | the point rather than a softening. The largest body this platform now receives is one part, so
+     | an installation whose post_max_size is above the part size and below the ceiling takes every
+     | backup from every connector new enough to send them. What it cannot take is a whole artifact
+     | from an older one - which is a real problem, affects a shrinking set of sites, and has an
+     | upgrade rather than a configuration change as its remedy. Failing every installation for it
+     | would be a permanent red, and this file's own arguments say what happens to those.
+     |
+     | The unconditional contradiction did not go away; it moved down to the part size, and is
+     | asserted below.
      |
      | Driven off the real ini value rather than a hardcoded one, because this is asserting a
      | relationship between two numbers and only one of them is ours to set.
@@ -173,9 +184,57 @@ it('fails when PHP will refuse artifacts this platform has promised to accept', 
 
     $check = checkNamed('Upload path ceiling');
 
+    expect($check->status)->toBe(Check::WARN)
+        ->and($check->detail)->toContain('post_max_size')
+        ->and($check->remedy)->toContain('in parts');
+});
+
+it('fails when PHP will refuse a single part, which refuses every backup at any size', function (): void {
+    /*
+     | The stricter half of the check above, and the one that is not conditional on anything.
+     |
+     | Below the part size nothing can be uploaded at all - not a large database, not a small one, and
+     | not by any connector, because every artifact now arrives as at least one part. There is no
+     | version of a site that works around this and no size that squeaks under it, so it is stated as
+     | a failure rather than as a comparison against a ceiling somebody may never reach.
+    */
+    $postMax = checkNamed('Upload path ceiling');
+
+    if (str_contains($postMax->detail, 'any size')) {
+        expect($postMax->status)->toBe(Check::PASS);
+
+        return;
+    }
+
+    // A part larger than any plausible post_max_size on a runner, which is the same trick the test
+    // above uses on the ceiling: only one of the two numbers is ours to set.
+    config(['manager.backups.ingest_part_bytes' => 1024 ** 4]);
+
+    $check = checkNamed('Upload path ceiling');
+
     expect($check->failed())->toBeTrue()
         ->and($check->detail)->toContain('post_max_size')
-        ->and($check->remedy)->toContain('post_max_size');
+        ->and($check->remedy)->toContain('No backup can be uploaded');
+});
+
+it('states the part transfer time it cannot verify a timeout against', function (): void {
+    /*
+     | The 502 this whole path exists to remove was a timeout, not a body-size refusal, and every
+     | runbook in these repositories was written for the latter. php-fpm's request_terminate_timeout
+     | is a pool setting rather than an ini one and overrides set_time_limit(0) from outside the
+     | process; nginx's fastcgi_read_timeout is further away still. Neither can be read from here.
+     |
+     | So what this check owes an operator is the arithmetic to check by hand, and an explicit
+     | statement that it has not checked. A diagnostic that implied otherwise would be worse than not
+     | having one - which is the standing lesson from a CI job that was red long enough that the note
+     | explaining it got believed instead of the log.
+    */
+    $check = checkNamed('Upload path timeout');
+
+    expect($check->failed())->toBeFalse()
+        ->and($check->detail)->toContain('request_terminate_timeout')
+        ->and($check->detail)->toContain('fastcgi_read_timeout')
+        ->and($check->detail)->toContain('cannot confirm');
 });
 
 it('names PHP as the effective ceiling when this platform sets none', function (): void {

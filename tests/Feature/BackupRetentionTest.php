@@ -228,6 +228,88 @@ it('writes off a declaration whose bytes never arrived', function (): void {
         ->and($recent->fresh()->state)->toBe(BackupArtifact::STATE_PENDING);
 });
 
+it('leaves alone an upload whose parts are still arriving, however long it has taken', function (): void {
+    /*
+     | The same mistake as the comment above, in the form chunked ingest brings back.
+     |
+     | That window was raised once already because an hour failed large backups "on a site that had
+     | done every part of the work correctly". Uploading in parts makes an upload longer than six hours
+     | genuinely possible for the first time, so measuring from the declaration would reintroduce
+     | exactly that - a backup written off while it is working, by a sweep that cannot tell the
+     | difference between slow and dead.
+     |
+     | What the window means is unchanged: nothing has happened for this long. Only what counts as
+     | something happening has moved, from "was declared" to "sent a part".
+    */
+    $window = (int) config('manager.backups.upload_window');
+
+    $working = BackupArtifact::factory()->for($this->site)->pending()->create([
+        'organisation_id' => $this->organisation->id,
+        'created_at' => now()->subSeconds($window * 4),
+        'staged_bytes' => 8_388_608,
+        'staged_at' => now()->subMinutes(2),
+    ]);
+
+    $abandoned = BackupArtifact::factory()->for($this->site)->pending()->create([
+        'organisation_id' => $this->organisation->id,
+        'created_at' => now()->subSeconds($window * 4),
+        'staged_bytes' => 8_388_608,
+        'staged_at' => now()->subSeconds($window * 2),
+    ]);
+
+    $this->artisan('manager:backups:prune')->assertSuccessful();
+
+    expect($working->fresh()->state)->toBe(BackupArtifact::STATE_PENDING)
+        ->and($abandoned->fresh()->state)->toBe(BackupArtifact::STATE_FAILED);
+});
+
+it('clears part files with no upload still waiting for them', function (): void {
+    /*
+     | The belt to the braces in BackupService::fail().
+     |
+     | Failing an artifact removes its parts, and that covers every ordinary way an upload ends. What
+     | it does not cover is a row deleted outside the application, or a database restored over a
+     | filesystem that kept its files - and what is left behind is an encrypted copy of part of a
+     | customer's database, on the control plane, in numbers that eventually fill the disk that
+     | monitors the whole fleet.
+    */
+    $directory = storage_path('app/private/backup-staging');
+
+    if (! is_dir($directory)) {
+        mkdir($directory, 0700, true);
+    }
+
+    $awaited = BackupArtifact::factory()->for($this->site)->pending()->create([
+        'organisation_id' => $this->organisation->id,
+        'created_at' => now(),
+        'staged_bytes' => 1024,
+        'staged_at' => now(),
+    ]);
+
+    $orphan = $directory.'/01JZZZZZZZZZZZZZZZZZZZZZZZ.part';
+    $inUse = $directory.'/'.$awaited->external_id.'.part';
+
+    file_put_contents($orphan, 'x');
+    file_put_contents($inUse, 'x');
+
+    // Never touches anything that is not shaped like an identifier this platform wrote. A sweep that
+    // removed whatever it found is the kind that eventually gets pointed somewhere it should not be.
+    $foreign = $directory.'/not-ours.txt';
+    file_put_contents($foreign, 'x');
+
+    try {
+        $this->artisan('manager:backups:prune')->assertSuccessful();
+
+        expect(is_file($orphan))->toBeFalse()
+            ->and(is_file($inUse))->toBeTrue()
+            ->and(is_file($foreign))->toBeTrue();
+    } finally {
+        @unlink($orphan);
+        @unlink($inUse);
+        @unlink($foreign);
+    }
+});
+
 it('records every deletion in the audit log', function (): void {
     ($this->artifact)(['taken_at' => now()->subDays(1)]);
     ($this->artifact)(['taken_at' => now()->subDays(2)]);

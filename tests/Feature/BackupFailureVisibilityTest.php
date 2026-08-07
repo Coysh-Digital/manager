@@ -283,6 +283,53 @@ it('settles a declared artifact when the backup job fails', function (): void {
         ->and($artifact->failure_reason)->toBe('the upload did not complete');
 });
 
+it('records one failure against two objects under one actor and one correlation id', function (): void {
+    /*
+     | The pair above, read from the activity log rather than from the database.
+     |
+     | One failed backup writes two rows - the job's and the artifact's - and that is right: the
+     | backups screen reads the artifact, the job registry reads the job, and the table is append-only
+     | so neither could be removed anyway. What was wrong was that they read as two unrelated failures
+     | at the same second, because one said "Connector 1.12.1" and the other said "Connector".
+     |
+     | The connector that reported it is the actor for both, and the request that wrote them is the
+     | thing that ties them together. Both were already true; only one of them was recorded.
+    */
+    $job = RemoteJob::factory()->for($this->site)->create([
+        'type' => Jobs::BACKUP_CREATE,
+        'state' => Jobs::STATE_CLAIMED,
+        'claimed_by_connector_id' => $this->connector->id,
+    ]);
+
+    BackupArtifact::factory()->for($this->site)->create([
+        'organisation_id' => $this->organisation->id,
+        'remote_job_id' => $job->id,
+        'state' => BackupArtifact::STATE_PENDING,
+    ]);
+
+    app(JobService::class)->report(
+        site: $this->site,
+        connector: $this->connector,
+        jobExternalId: $job->external_id,
+        succeeded: false,
+        failureReason: 'The platform rejected the artifact (HTTP 502)',
+    );
+
+    $rows = AuditEvent::query()
+        ->whereIn('action', ['job.failed', 'backup.failed'])
+        ->orderBy('seq')
+        ->get();
+
+    expect($rows)->toHaveCount(2)
+        ->and($rows->pluck('actor_label')->unique()->values()->all())
+        ->toBe(['Connector '.$this->connector->connector_version])
+        ->and($rows->pluck('correlation_id')->unique())->toHaveCount(1)
+        // Two objects, named as such. The artifact row is the one the backups screen shows, and the
+        // job row is the one the failed-jobs panel deliberately skips because the artifact carries the
+        // reason - so a reader has to be able to tell which is which.
+        ->and($rows->pluck('target_type')->all())->toBe(['job', 'backup_artifact']);
+});
+
 it('sends no size limit on a self-hosted installation', function (): void {
     // The site's own maxBackupMegabytes stands. Whoever runs this installation runs the machines
     // being backed up, and the limit bounds a dump on a disk they own.

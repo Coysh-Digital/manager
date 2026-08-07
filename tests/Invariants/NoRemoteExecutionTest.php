@@ -76,15 +76,22 @@ it('exposes only reporting endpoints to connectors', function (): void {
     //   backups/*/uploaded   says an artifact went straight to storage; carries nothing but the fact,
     //                        and the platform asks storage rather than believing it
     //   backups/*/content  the artifact bytes; authenticated before the body is read at all
+    //   backups/*/content/{part}   the same bytes, one bounded piece at a time, so that no single
+    //                              request has to outlive a proxy's patience. The part number is in
+    //                              the path and the signature covers the path, so a captured part
+    //                              cannot be replayed at a different offset.
+    //   backups/*/assembled   says every part has been sent; carries nothing, and unlike `uploaded`
+    //                         the platform can check for itself because it is holding the bytes
     //
     // Note what is not here: nothing the platform can push, and nothing that takes a command. Every
-    // one of these is a connector posting something it decided to send - the two backup routes
-    // included, since the platform never asks a site for an artifact, it queues a job and waits to be
-    // sent one.
+    // one of these is a connector posting something it decided to send - the backup routes included,
+    // since the platform never asks a site for an artifact, it queues a job and waits to be sent one.
     expect($connectorRoutes)->toBe([
         'api/connector/v1/backups',
         'api/connector/v1/backups/progress',
+        'api/connector/v1/backups/{artifactId}/assembled',
         'api/connector/v1/backups/{artifactId}/content',
+        'api/connector/v1/backups/{artifactId}/content/{part}',
         'api/connector/v1/backups/{artifactId}/uploaded',
         'api/connector/v1/heartbeat',
         'api/connector/v1/inventory',

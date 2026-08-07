@@ -443,7 +443,11 @@ final class JobService
                 ->first();
 
             if ($artifact !== null) {
-                app(BackupService::class)->fail($artifact, $reason);
+                // The reporting connector, so the artifact's audit row names the same actor as the
+                // `job.failed` row written a few lines above it. One failure, two objects, and until
+                // this argument existed the two rows said "Connector 1.12.1" and "Connector" - which
+                // reads as two unrelated failures at the same second rather than one with its cause.
+                app(BackupService::class)->fail($artifact, $reason, connector: $connector);
             } else {
                 // No artifact means the site refused before declaring, so nothing else will report
                 // this. BackupService::fail() sends its own notice when there is one.

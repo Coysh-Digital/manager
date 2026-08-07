@@ -6,6 +6,112 @@ Entries are written for somebody about to upgrade a running installation. Anythi
 action is under **Before you upgrade** - that section is the one to read, and `docs/upgrade.md` points
 here for exactly that reason.
 
+## 1.3.0 — 2026-08-06
+
+Backups no longer arrive as one enormous request, which is the difference between a large database
+being backed up and not.
+
+Nothing about the artifact changes. Same encryption, same manifest, same signature, same file
+`manager-restore` opens. What changes is the number of requests it takes to get here.
+
+### Before you upgrade
+
+**Nothing is required, and one thing is worth knowing.** If you route by path in a reverse proxy —
+a `location` block for the upload route, or a rule excluding it from a body limit — it will name
+`/api/connector/v1/backups/{id}/content` and will not match the two new URLs beside it. Widen it:
+
+```nginx
+# was: ^/api/connector/v1/backups/[^/]+/content$
+location ~ ^/api/connector/v1/backups/[^/]+/(content(/[0-9]+)?|assembled)$ {
+```
+
+The shipped Docker image is already correct. A rule that is not widened does not break anything
+immediately - parts fall through to your general handler, and if that has nginx's default 1 MB body
+limit they are refused with a 413 - but it does mean you keep the failure this release exists to
+remove.
+
+### Added
+
+- **A backup artifact is uploaded in parts.** A connector now sends bounded pieces of a few megabytes
+  each and then asks the platform to assemble them, rather than holding one request open for as long
+  as a customer's database takes to travel. The whole file is hashed once, on this side, against the
+  checksum inside the signed manifest, and nothing reaches storage until it matches — so the
+  guarantee is the one it always was, made after reassembly instead of during a single stream.
+
+  This exists because of a specific failure. A backup was refused with an HTTP **502** carrying no
+  correlation ID and no JSON, which means a web server in front of the platform ended the request
+  before it reached PHP. That is a timeout, not a size limit, and it is not fixable from inside the
+  application: PHP-FPM's `request_terminate_timeout` ends the process from outside, and
+  `set_time_limit(0)` — which both upload routes have always called — cannot raise it. Every runbook
+  in these repositories was written for a 413. Nothing anywhere mentioned a 502.
+
+  A request that carries eight megabytes does not run into any of that, whatever size the database
+  is. So the fix is not a longer request; it is not needing one.
+
+  A part that fails is retried on its own, and a connector that loses its place is told which part to
+  resume from — so a connection dropped near the end of a twenty-gigabyte artifact costs that part
+  rather than the whole upload. Nothing has to be upgraded in step: the platform offers parts and a
+  connector too old to know about them keeps sending the whole file exactly as before, while a newer
+  connector talking to an older platform does the same.
+
+- **`MANAGER_BACKUP_INGEST_PART_BYTES`**, 8 MB by default, and deliberately not the existing
+  `MANAGER_BACKUP_PART_BYTES`. That one is 256 MB because an object store refuses a single PUT over
+  5 GB; this one is small because a request must finish inside a timeout nobody here can see. The two
+  numbers move in opposite directions and sharing a key would give you the failure above with extra
+  steps.
+
+- **`MANAGER_RATE_LIMIT_INGEST_SITE` and `MANAGER_RATE_LIMIT_INGEST_IP`**, 600 and 1200 a minute.
+  Artifact bytes are counted against their own allowance, because a two-gigabyte backup in parts is
+  two hundred and fifty requests and the ordinary limit of 60 is sized for a connector that reports
+  rather than one that uploads. Separate keys rather than a larger shared number, so an upload in
+  progress cannot exhaust the budget heartbeats and job claims depend on.
+
+- **An "Upload path timeout" check in `manager:doctor`.** It reports how long one part takes on a slow
+  uplink and states plainly that it cannot read PHP-FPM's `request_terminate_timeout` or nginx's
+  `fastcgi_read_timeout` — the two limits that actually decide this. A check that implied otherwise
+  would be worse than not having one.
+
+### Changed
+
+- **"Upload path ceiling" now measures against the part size, and a smaller number is enough.** The
+  largest body this platform receives is one part, so `post_max_size` no longer has to be sized
+  against your largest customer's database. Below the part size the check fails, because then nothing
+  can be uploaded at any size by anybody. Between the part size and your configured ceiling it now
+  warns instead of failing, and says who is affected: sites on a connector too old to send parts,
+  which still upload the whole artifact in one request.
+
+- **"Backup size ceiling" stopped warning about 5 GB on every self-hosted installation.** It said an
+  artifact above five gigabytes could not be accepted without presigned uploads. That is no longer
+  true — parts make it perfectly possible with no object store involved — so the warning now names
+  the sites it is really about, which are the ones on an older connector.
+
+- **The sweep for declarations whose bytes never arrived measures from the last part received.**
+  Against the declaration alone it would write off an upload that is working, which is exactly the
+  failure that had the window raised from one hour to six. Uploading in parts makes an upload longer
+  than six hours genuinely possible for the first time, so this closes the same trap in its new form.
+
+- **One failed backup no longer reads as two.** A failure writes two audit rows — the job's and the
+  artifact's — because it settles two objects, and both rows stay. They were reading as unrelated
+  events at the same second, because one named the connector's version and the other did not. They
+  now carry the same actor, and the Activity log links a backup row through to that backup.
+
+### Fixed
+
+- **Six advisories in `league/commonmark`**, one of them high, all denial-of-service. It arrives
+  through `laravel/framework` rather than being asked for directly, and moves 2.8.3 → 2.9.0 inside
+  the constraint the framework already declares — so this is a lockfile change and nothing else.
+
+  Unrelated to everything above, and included here because a tag cannot be changed afterwards. The
+  advisories predate this release and were failing CI's *Supply chain* job on `main`; shipping a
+  version of a backup product with a known high advisory in it, when the fix is a lockfile bump,
+  is not a trade worth making for tidier release notes.
+
+- **The shipped nginx configuration excluded every part of a chunked upload.** Its `location` pattern
+  ended at `content$`, which does not match `content/3`, so parts would have fallen through to the
+  general handler at `client_max_body_size 2m` and failed in exactly the way the single request they
+  replace already did. Nothing in the test suite would have caught it, because the suite exercises
+  the route and not the image.
+
 ## 1.2.0 — 2026-08-06
 
 Four things about the console, and one of them makes an alert work that never has.
