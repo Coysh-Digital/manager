@@ -253,6 +253,27 @@ backup existed and who removed it.
 Deleting also destroys the stored copies of the encryption key before it touches storage. So if the
 storage deletion half-fails, whatever bytes remain are bytes nobody holds a key for.
 
+It asks you to confirm your password, and it is one of the few things that still does. Asking for a
+backup does not - see [Security](/security) for where that line falls and why.
+
+### Deleting several at once
+
+Tick the boxes on the **Backups** screen and press **Delete selected**. There is a tick-box in the
+table header for all of them. Up to a hundred at a time, which is what the screen shows.
+
+**Two different things happen, and the summary says which.** A backup that stored bytes is *deleted*:
+tombstoned, key destroyed, row kept. A row for a backup that never stored anything - a declaration
+that failed before any bytes arrived - is *removed* outright, because a tombstone there would record
+the absence of something that was already absent. A selection may hold both, and the result reads
+"3 backups were deleted... 1 row was removed..." rather than adding them up.
+
+Anything that had already gone by the time you pressed the button is reported in the amber band
+rather than counted as done. On a screen that can sit open for a while, that is an ordinary thing to
+happen.
+
+The reason recorded against a bulk deletion says it was one, so the audit log distinguishes a backup
+that was chosen from one swept up with thirty-nine others.
+
 ## Where the guarantees stop
 
 Worth stating plainly, because the temptation is to round these up.

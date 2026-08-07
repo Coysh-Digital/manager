@@ -35,8 +35,9 @@ permission, or a backup already on its way is left out and named in the amber ba
 Reporting "requested" over a fleet where half the sites refused is the kind of half-truth you would
 only discover when you needed the backup.
 
-Backups need recent authentication, so you may be asked for your password. The selection survives
-that - you come back to the same ticked boxes and press the button again.
+Asking for backups does not need a password. Deleting them does - see
+[Backups](/backups) for the checkboxes on that screen, which do the same thing in the other
+direction and sit behind a password confirmation because they destroy encryption keys.
 
 ## Findings
 

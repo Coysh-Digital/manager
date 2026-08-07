@@ -1,5 +1,5 @@
 /*
- * Selecting sites on the fleet screen.
+ * Selecting rows in a table that has a bulk action beneath it.
  *
  * Enhancement only, and the distinction is load-bearing rather than decorative. The checkboxes are
  * an ordinary form's own state and the submit button is an ordinary submit button, so choosing six
@@ -7,16 +7,23 @@
  * here is the three things a plain form cannot do: a select-all, a select-a-group, and a running
  * count.
  *
- * Written against data attributes rather than classes, so restyling the table cannot silently
- * detach the behaviour from it.
+ * Written against data attributes rather than classes, so restyling a table cannot silently detach
+ * the behaviour from it.
+ *
+ * The scope is a *region*, not a form, and that is the whole reason one file can serve two screens.
+ * On the fleet the two are the same element. On the backups screen they cannot be: that table
+ * already carries a form per row for single deletion, forms cannot nest, and so the bulk form sits
+ * empty beside the table while the checkboxes join it with `form="..."`. Scoping to the form element
+ * would find no checkboxes there at all.
+ *
+ * Groups are optional. The backups screen has none, so `[data-bulk-group]` matches nothing inside
+ * that scope and the group machinery costs it nothing - no branching required.
  */
 
-const form = () => document.querySelector('[data-bulk-form]');
+const boxes = (scope) => Array.from(scope.querySelectorAll('[data-bulk-item]'));
 
-const boxes = () => Array.from(document.querySelectorAll('[data-bulk-site]'));
-
-const groupBoxes = (group) =>
-    Array.from(document.querySelectorAll(`[data-bulk-site="${group}"]`));
+const groupBoxes = (scope, group) =>
+    Array.from(scope.querySelectorAll(`[data-bulk-item="${group}"]`));
 
 /*
  * Reflect the selection everywhere that describes it.
@@ -25,11 +32,11 @@ const groupBoxes = (group) =>
  * their set is selected. A half-selected group showing an empty box invites somebody to click it
  * expecting to add the rest and watch it clear what they had.
  */
-function sync() {
-    const all = boxes();
+function sync(scope) {
+    const all = boxes(scope);
     const selected = all.filter((box) => box.checked);
 
-    const count = document.querySelector('[data-bulk-count]');
+    const count = scope.querySelector('[data-bulk-count]');
 
     if (count) {
         count.textContent = String(selected.length);
@@ -37,21 +44,21 @@ function sync() {
 
     // Hidden while nothing is selected. Blade renders it visible, so the no-JS case keeps the
     // button; this only takes it away once there is something to take it away from.
-    const bar = document.querySelector('[data-bulk-bar]');
+    const bar = scope.querySelector('[data-bulk-bar]');
 
     if (bar) {
         bar.classList.toggle('hidden', selected.length === 0);
     }
 
-    document.querySelectorAll('[data-bulk-group]').forEach((toggle) => {
-        const group = groupBoxes(toggle.dataset.bulkGroup);
+    scope.querySelectorAll('[data-bulk-group]').forEach((toggle) => {
+        const group = groupBoxes(scope, toggle.dataset.bulkGroup);
         const chosen = group.filter((box) => box.checked).length;
 
         toggle.checked = group.length > 0 && chosen === group.length;
         toggle.indeterminate = chosen > 0 && chosen < group.length;
     });
 
-    const everything = document.querySelector('[data-bulk-all]');
+    const everything = scope.querySelector('[data-bulk-all]');
 
     if (everything) {
         everything.checked = all.length > 0 && selected.length === all.length;
@@ -60,31 +67,31 @@ function sync() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    if (!form()) {
-        return;
-    }
-
-    document.querySelector('[data-bulk-all]')?.addEventListener('change', (event) => {
-        boxes().forEach((box) => {
-            box.checked = event.target.checked;
-        });
-
-        sync();
-    });
-
-    document.querySelectorAll('[data-bulk-group]').forEach((toggle) => {
-        toggle.addEventListener('change', () => {
-            groupBoxes(toggle.dataset.bulkGroup).forEach((box) => {
-                box.checked = toggle.checked;
+    document.querySelectorAll('[data-bulk-scope]').forEach((scope) => {
+        scope.querySelector('[data-bulk-all]')?.addEventListener('change', (event) => {
+            boxes(scope).forEach((box) => {
+                box.checked = event.target.checked;
             });
 
-            sync();
+            sync(scope);
         });
+
+        scope.querySelectorAll('[data-bulk-group]').forEach((toggle) => {
+            toggle.addEventListener('change', () => {
+                groupBoxes(scope, toggle.dataset.bulkGroup).forEach((box) => {
+                    box.checked = toggle.checked;
+                });
+
+                sync(scope);
+            });
+        });
+
+        boxes(scope).forEach((box) => box.addEventListener('change', sync.bind(null, scope)));
+
+        // Run once on load rather than starting from zero: the recent-authentication gate hands a
+        // selection back through `old()`, so boxes can already be ticked when this file arrives.
+        // That applies to deleting backups, which is still gated; the fleet's backup button no
+        // longer is, and gets the same treatment after a validation error.
+        sync(scope);
     });
-
-    boxes().forEach((box) => box.addEventListener('change', sync));
-
-    // Run once on load rather than starting from zero: the recent-authentication gate hands the
-    // selection back through old('sites'), so boxes can already be ticked when this file arrives.
-    sync();
 });

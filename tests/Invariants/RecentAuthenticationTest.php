@@ -107,10 +107,52 @@ it('names only routes that exist', function (): void {
 it('keeps the gate itself in front of every sensitive action', function (): void {
     // The alias was replaced with a subclass. If that swap ever stops applying, the actions below
     // would simply run - so this asserts the gate is still there rather than trusting the wiring.
-    foreach (['sites.store', 'sites.destroy', 'recovery-keys.store', 'settings.mfa'] as $name) {
+    //
+    // `sites.store` used to head this list and no longer belongs on it: adding a site is routine
+    // work and was let out of the group deliberately. `backups.destroy` took its place rather than
+    // the list simply getting shorter, because deleting a backup destroys an encryption key
+    // irrecoverably and is the action the narrowing was most tempted to take with it.
+    foreach (['backups.destroy', 'backups.destroy-many', 'sites.destroy', 'recovery-keys.store', 'settings.mfa'] as $name) {
         $route = Route::getRoutes()->getByName($name);
 
         $this->assertNotNull($route, "Route {$name} has gone.");
         $this->assertContains('password.confirm', $route->gatherMiddleware(), "Route {$name} lost its gate.");
+    }
+});
+
+/**
+ * The other direction, which nothing checked before.
+ *
+ * The gate was narrowed on purpose: it is for changing what Manager is, not for using it. That is a
+ * decision with no representation in the type system and no natural home in a route file that a
+ * merge cannot quietly undo - and re-gating a route is a one-word change that looks, in a diff, like
+ * somebody being careful.
+ *
+ * Every route below was behind the gate and was taken out with a reason written beside it. If one
+ * comes back, it should come back because somebody argued for it and changed this list, not because
+ * a conflict resolved the wrong way.
+ */
+it('keeps the gate out of the way of routine work', function (): void {
+    $open = [
+        'sites.store',
+        'sites.enrolment-code',
+        'backups.store',
+        'backups.store-many',
+        'backups.download',
+        'sites.backups.schedule',
+        'findings.acknowledge',
+        'findings.reopen',
+        'updates.refresh',
+    ];
+
+    foreach ($open as $name) {
+        $route = Route::getRoutes()->getByName($name);
+
+        $this->assertNotNull($route, "Route {$name} has gone.");
+        $this->assertNotContains(
+            'password.confirm',
+            $route->gatherMiddleware(),
+            "Route {$name} was gated again. It was let out deliberately - see routes/web.php.",
+        );
     }
 });

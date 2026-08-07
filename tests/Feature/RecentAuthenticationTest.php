@@ -13,12 +13,19 @@ use Illuminate\Support\Facades\Hash;
  * The recent-authentication gate, and what survives it.
  *
  * The gate itself was never the problem: it fires when it should and refuses what it should. What it
- * did was throw the form away. Somebody filled in "Add a site", pressed the button, was asked for
- * their password, proved it - and arrived back at an empty, collapsed panel with no sign that
- * anything had been typed. The reported behaviour was "I have to add the site again".
+ * did was throw the form away. Somebody filled a form in, pressed the button, was asked for their
+ * password, proved it - and arrived back at a form showing the old values, with no sign that
+ * anything had been typed. The reported behaviour was "I have to type it all again".
  *
  * Nothing is replayed. The input comes back and the person presses the button; see ResumableInput
  * for why that is the design rather than a limitation of it.
+ *
+ * These tests used "Add a site" as their vehicle, because that was the reported case. It is no
+ * longer behind the gate at all - the gate was narrowed to actions that change what Manager is
+ * rather than actions that use it - so they drive the same mechanism through renaming a site
+ * instead. What is under test here is the gate and ResumableInput, not the route; the route is only
+ * whatever still goes through them. `tests/Invariants/RecentAuthenticationTest.php` is what pins
+ * which routes those are, in both directions.
  */
 beforeEach(function (): void {
     $this->organisation = Organisation::factory()->create(['name' => 'Coysh Digital']);
@@ -44,29 +51,32 @@ beforeEach(function (): void {
     };
 });
 
-it('gives the add-site form back after a password confirmation', function (): void {
+it('gives the form back after a password confirmation', function (): void {
+    $site = Site::factory()->for($this->organisation)->connected()->create([
+        'name' => 'Example Site',
+        'expected_domain' => 'example.org',
+    ]);
+
     $this->actingAs($this->owner)
-        ->post('/sites', [
-            'name' => 'Example Client',
-            'expected_domain' => 'example.org',
+        ->post(route('sites.settings.update', $site), [
+            'name' => 'Renamed',
+            'expected_domain' => 'renamed.example',
             'environment' => 'staging',
-            'capabilities' => ['inventory:read'],
         ])
         ->assertRedirect(route('password.confirm'));
 
-    // Nothing was created: the gate still refuses the action itself.
-    expect(Site::query()->count())->toBe(0);
+    // Nothing was changed: the gate still refuses the action itself.
+    expect($site->fresh()->name)->toBe('Example Site');
 
-    ($this->confirm)()->assertRedirect(route('sites.index'));
+    ($this->confirm)()->assertRedirect(route('sites.settings', $site));
 
+    // What was typed is on the screen, not what was stored. Coming back to the old values is
+    // indistinguishable from having lost the new ones, which was the whole complaint.
     $this->actingAs($this->owner)
-        ->get('/sites')
+        ->get(route('sites.settings', $site))
         ->assertOk()
-        ->assertSee('value="Example Client"', false)
-        ->assertSee('value="example.org"', false)
-        // The panel is a <details>. Restoring the fields into a collapsed panel would look exactly
-        // like losing them.
-        ->assertSee('<details class="group relative z-20" open', false);
+        ->assertSee('value="Renamed"', false)
+        ->assertSee('value="renamed.example"', false);
 });
 
 it('puts the person back where they were, not on the fleet screen', function (): void {
@@ -101,36 +111,42 @@ it('honours the configured recent-authentication window', function (): void {
 
     expect($window)->toBe(15 * 60);
 
+    $site = Site::factory()->for($this->organisation)->connected()->create(['name' => 'Before']);
+
+    // Straight through, rather than to the gate. The controller answers with back(), so what is
+    // asserted is that the gate did not intercept - and then that the change actually landed.
     $this->actingAs($this->owner)
         ->withSession(['auth.password_confirmed_at' => now()->subSeconds($window - 60)->timestamp])
-        ->post('/sites', [
+        ->post(route('sites.settings.update', $site), [
             'name' => 'Inside the window',
-            'expected_domain' => 'example.org',
-            'environment' => 'production',
+            'expected_domain' => $site->expected_domain,
+            'environment' => $site->environment,
         ])
-        // Straight through to the site it created, rather than to the gate.
-        ->assertRedirect(route('sites.show', Site::query()->sole()));
+        ->assertSessionHas('status');
+
+    expect($site->fresh()->name)->toBe('Inside the window');
 
     $this->actingAs($this->owner)
         ->withSession(['auth.password_confirmed_at' => now()->subSeconds($window + 60)->timestamp])
-        ->post('/sites', [
+        ->post(route('sites.settings.update', $site), [
             'name' => 'Outside the window',
-            'expected_domain' => 'other.example',
-            'environment' => 'production',
+            'expected_domain' => $site->expected_domain,
+            'environment' => $site->environment,
         ])
         ->assertRedirect(route('password.confirm'));
 
-    expect(Site::query()->pluck('name')->all())->toBe(['Inside the window']);
+    expect($site->fresh()->name)->toBe('Inside the window');
 });
 
 it('answers a JSON caller with 423 rather than a redirect', function (): void {
     // The API branch is delegated to the framework untouched: no redirect, no captured input, and
     // nothing for a machine caller to misread as success.
+    $site = Site::factory()->for($this->organisation)->connected()->create();
+
     $this->actingAs($this->owner)
-        ->postJson('/sites', [
+        ->postJson(route('sites.settings.update', $site), [
             'name' => 'Machine',
-            'expected_domain' => 'example.org',
-            'environment' => 'production',
+            'expected_domain' => $site->expected_domain,
         ])
         ->assertStatus(423);
 
@@ -141,28 +157,32 @@ it('says what was interrupted, rather than that something was', function (): voi
     // "You are about to do something that changes what Manager may do" is true of every
     // interruption and helps with none of them. Reported as frustrating, and the frustration is not
     // the gate - it is not knowing whether what you typed still exists.
+    $site = Site::factory()->for($this->organisation)->connected()->create();
+
     $this->actingAs($this->owner)
-        ->post('/sites', ['name' => 'Example Client', 'expected_domain' => 'example.org', 'environment' => 'production'])
+        ->post(route('sites.settings.update', $site), ['name' => 'Renamed', 'expected_domain' => $site->expected_domain])
         ->assertRedirect(route('password.confirm'));
 
     $this->actingAs($this->owner)->get(route('password.confirm'))
         ->assertOk()
         ->assertSee('You were about to')
-        ->assertSee('add a site')
+        ->assertSee("change a site's details")
         ->assertSee('what you had typed is kept');
 });
 
 it('says on arrival that nothing was done, and what to press', function (): void {
+    $site = Site::factory()->for($this->organisation)->connected()->create();
+
     $this->actingAs($this->owner)
-        ->post('/sites', ['name' => 'Example Client', 'expected_domain' => 'example.org', 'environment' => 'production'])
+        ->post(route('sites.settings.update', $site), ['name' => 'Renamed', 'expected_domain' => $site->expected_domain])
         ->assertRedirect(route('password.confirm'));
 
     ($this->confirm)();
 
-    $this->actingAs($this->owner)->get('/sites')
+    $this->actingAs($this->owner)->get(route('sites.settings', $site))
         ->assertOk()
         ->assertSee('nothing was done yet')
-        ->assertSee('press the button again to add a site');
+        ->assertSee("press the button again to change a site's details");
 });
 
 it('gives back the environment as well, which it used to drop in silence', function (): void {
@@ -194,26 +214,31 @@ it('gives back the environment as well, which it used to drop in silence', funct
     expect($site->fresh()->environment)->toBe('production');
 });
 
-it('gives back a backup schedule it interrupted', function (): void {
-    // The schedule moved to the Backups screen and kept its gate, so it had to be given a way back
-    // as well - a control that loses what you set it to is one people stop trusting.
-    $site = Site::factory()->for($this->organisation)->connected()->create(['backup_schedule' => 'off']);
+it('gives back a retention policy it interrupted', function (): void {
+    /*
+     | This was the backup *schedule*, which sits on the same screen and has since been let out of
+     | the gate: setting one is the same act "Back up now" performs, said once for every night.
+     | Retention is the control beside it that kept its gate, because shortening retention deletes
+     | artifacts - and it is the one that needed this most. Three numbers typed into three boxes is
+     | exactly the kind of thing a control loses and people stop trusting.
+     */
+    $site = Site::factory()->for($this->organisation)->connected()->create();
 
     $this->actingAs($this->owner)
-        ->post(route('sites.backups.schedule', $site), [
-            'backup_schedule' => 'weekly',
-            'backup_schedule_hour' => 4,
-            'backup_schedule_day' => 3,
+        ->post(route('sites.backups.retention', $site), [
+            'backup_retention_days' => 14,
+            'backup_retention_weeks' => 6,
+            'backup_retention_months' => 3,
         ])
         ->assertRedirect(route('password.confirm'));
 
     ($this->confirm)()->assertRedirect(route('sites.backups', $site));
 
-    expect(session('_old_input.backup_schedule'))->toBe('weekly')
-        ->and((int) session('_old_input.backup_schedule_hour'))->toBe(4)
-        ->and((int) session('_old_input.backup_schedule_day'))->toBe(3)
+    expect((int) session('_old_input.backup_retention_days'))->toBe(14)
+        ->and((int) session('_old_input.backup_retention_weeks'))->toBe(6)
+        ->and((int) session('_old_input.backup_retention_months'))->toBe(3)
         // The gate still refused the act itself. Restoring is not replaying.
-        ->and($site->fresh()->backup_schedule)->toBe('off');
+        ->and($site->fresh()->backup_retention_days)->not->toBe(14);
 });
 
 it('still refuses to carry a typed confirmation across the gate', function (): void {

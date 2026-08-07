@@ -21,7 +21,6 @@ use App\Models\Organisation;
 use App\Models\RuntimeReport;
 use App\Models\Site;
 use App\Models\User;
-use App\Support\ResumableInput;
 use coyshdigital\managerprotocol\Jobs;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
@@ -109,7 +108,6 @@ final class SiteController
             'reporting' => $reporting,
             'membership' => app(Membership::class),
             'grantableCapabilities' => CapabilityService::grantableFromInterface(),
-            'reopenAddSite' => ResumableInput::wasRestoredFor('sites.store'),
             'totalSites' => $organisation->sites()->active()->count(),
             'shown' => $sites->count(),
             'summary' => $this->summary($organisation),

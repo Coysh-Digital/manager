@@ -334,15 +334,21 @@ it('refuses to queue a backup for a site without permission', function (): void 
     expect(RemoteJob::query()->count())->toBe(0);
 });
 
-it('needs recent authentication to request a backup', function (): void {
+it('requests a backup without asking for the password again', function (): void {
     CapabilityGrant::factory()->for($this->site)->capability('backups:create')->create();
 
-    // Asking a production site for a copy of its database is not something a stale session should do.
+    // This asserted the opposite until the gate was narrowed. Asking a production site for a copy of
+    // its database is a serious act and also the product's main verb, performed several times a week
+    // by the person whose job it is; a password prompt in front of the main verb is a tax on using
+    // the thing rather than a defence of it. What kept its gate is the destroying half - see
+    // `backups.destroy` and `sites.backups.retention`.
+    //
+    // No session priming. That absence is the assertion.
     $this->actingAs($this->owner)
         ->post("/backups/sites/{$this->site->external_id}")
-        ->assertRedirect(route('password.confirm'));
+        ->assertRedirect();
 
-    expect(RemoteJob::query()->count())->toBe(0);
+    expect(RemoteJob::query()->count())->toBe(1);
 });
 
 it('refuses a member who is not an administrator', function (): void {

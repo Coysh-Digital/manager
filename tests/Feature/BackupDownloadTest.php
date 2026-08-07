@@ -208,14 +208,25 @@ it('refuses a member who cannot administer', function (): void {
         ->assertForbidden();
 });
 
-it('requires recent authentication', function (): void {
-    // A complete copy of a customer's database, encrypted or not, is not something a session left
-    // open on an unlocked machine should be enough for.
+it('downloads without asking for the password again', function (): void {
+    /*
+     | This asserted the opposite, on the argument that a complete copy of a customer's database is
+     | not something a session left open on an unlocked machine should be enough for. That argument
+     | was not wrong, and it was weighed against the moment this button is actually pressed.
+     |
+     | Downloading is the one thing somebody does under pressure, at the moment a site is already
+     | broken, and a password prompt between them and the backup is worst exactly when it matters
+     | most. The bytes remain ciphertext this platform cannot open, sealed to recovery keys that
+     | exist only where the customer put them, and the caller is still an administrator.
+     |
+     | Kept as an assertion rather than deleted because it is the one item on that list where the
+     | trade is real. If it is ever re-gated, that should be a decision somebody makes here.
+     */
     storeAnswering('https://bucket.example.org/signed');
 
     $this->actingAs($this->owner)
         ->get(route('backups.download', $this->artifact))
-        ->assertRedirect(route('password.confirm'));
+        ->assertRedirect('https://bucket.example.org/signed');
 });
 
 it('refuses an artifact whose bytes are not there', function (string $state): void {
