@@ -15,6 +15,8 @@ use App\Contracts\ProductLabel;
 use App\Contracts\Provisioner;
 use App\Contracts\ServerAccess;
 use App\Contracts\StorageQuota;
+use App\Domain\Backup\FailedBackupJobs;
+use App\Domain\Backup\InFlightBackups;
 use App\Domain\Findings\RuleCategory;
 use App\Domain\Notifications\EmailCatalogue;
 use App\Models\Finding;
@@ -218,6 +220,25 @@ class AppServiceProvider extends ServiceProvider
                 // "look now" from "there is a list".
                 'severeSecurityFindings' => $security->clone()->whereIn('severity', ['critical', 'high'])->exists(),
                 'severeFindings' => $other->clone()->whereIn('severity', ['critical', 'high'])->exists(),
+
+                /*
+                 | Backups in flight, and backups that did not happen.
+                 |
+                 | Two numbers rather than a total, because they are not the same kind of news and a
+                 | sum of them means nothing: "3" could be three running or three failed, and only
+                 | one of those is worth walking across the room for.
+                 |
+                 | Named for backups specifically rather than reusing `updateCount` or
+                 | `findingCount`. Those two keys are also set per-site by ResolvesSiteContext for
+                 | <x-site-tabs>, so on a site sub-page the sidebar quietly shows that site's numbers
+                 | instead of the fleet's. Adding a third name to that collision would make it worse.
+                 |
+                 | Counted rather than assembled - both services expose a count for this - so the
+                 | sidebar costs two scalar queries on every page rather than hydrating every
+                 | outstanding job and its phase history to call count() on the result.
+                 */
+                'backupsRunning' => app(InFlightBackups::class)->countForOrganisation($organisation->id),
+                'backupsFailed' => app(FailedBackupJobs::class)->countForOrganisation($organisation->id),
             ]);
         });
     }

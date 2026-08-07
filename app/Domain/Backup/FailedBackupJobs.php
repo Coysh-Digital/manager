@@ -55,6 +55,20 @@ final class FailedBackupJobs
     }
 
     /**
+     * How many notices there are, without assembling any of them.
+     *
+     * For the sidebar, which renders on every authenticated page and wants one integer. Built from
+     * `notices()` for the same reason "Clear all" is: the badge, the panel and the button all have
+     * to mean the same set of jobs.
+     */
+    public function countForOrganisation(int $organisationId): int
+    {
+        return $this->notices()
+            ->whereHas('site', static fn ($query) => $query->where('organisation_id', $organisationId))
+            ->count();
+    }
+
+    /**
      * Stop showing one notice.
      *
      * Scoped to the organisation rather than taking a job on trust, so an identifier from another

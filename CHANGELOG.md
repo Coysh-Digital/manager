@@ -6,6 +6,53 @@ Entries are written for somebody about to upgrade a running installation. Anythi
 action is under **Before you upgrade** - that section is the one to read, and `docs/upgrade.md` points
 here for exactly that reason.
 
+## 1.5.0 — 2026-08-07
+
+Seeing the state of a fleet's backups without reading every row, and seeing how far behind each site
+is without opening it.
+
+Nothing here needs any action on upgrade. There is no migration, no new configuration key and no
+change to what a connector sends.
+
+### Backups
+
+- **A summary above the backups list, and filters under it.** How many backups are stored, arriving
+  and failed, and how many bytes storage is holding. Each count is a link that filters the table to
+  it, and the filters live in the query string, so a view filtered to failures can be sent to
+  whoever owns the site.
+- **A status column.** The state of an artifact was previously implied by which of the other columns
+  were filled in.
+- **Scheduled runs.** When each schedule will next fire, and what the last few produced -
+  successes as well as failures. The two panels above it are each scoped to what still needs
+  somebody, so a fleet whose schedule had quietly stopped firing looked identical to a fleet with
+  nothing to do. The upcoming times are projected by the same code the scheduler runs on, so the
+  screen cannot promise a run the scheduler will not make.
+- **The list is paginated**, fifty to a page, and the filter stays attached when you page.
+- **Fixed: the "In storage" figure was measured from one page of artifacts**, not from all of them.
+  Any organisation holding more than a hundred was told it was storing less than it was, on the one
+  screen whose job is to say how much is being stored.
+
+### Fleet
+
+- **An Updates column**, showing how far behind each site is and whether any of it is a security
+  release. The number was already collected and was only ever shown as an organisation-wide total in
+  the sidebar, so the fleet screen could tell you there were nine updates and not which site had
+  them. Sorting by it puts a security release above a larger ordinary backlog.
+- **A backup that succeeded now reads as a badge**, like a backup that failed. The column carried a
+  red badge for a failure and plain text for a success, which made the rows that were fine look like
+  an absence of information rather than the answer.
+- **A count beside Backups in the sidebar** - failures in red, work in progress quietly, nothing at
+  all when there is nothing outstanding.
+
+### Fixed
+
+- **Two status badges have been grey since they were written.** Both asked for a tone spelled
+  `amber`, which is not one the component has, so both fell back to grey while their own comments
+  explained why amber was the right choice. They are the "Did not complete" and "No change" badges on
+  the backup panels. There is now a check that fails the build on a tone the component cannot render.
+- **Adding a column to the fleet table left every group heading one cell short.** The `colspan` was a
+  literal written twenty lines from the list it had to agree with; it is derived from that list now.
+
 ## 1.4.0 — 2026-08-07
 
 Email that looks like it came from Manager, and says what actually happened. A password gate that

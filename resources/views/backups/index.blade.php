@@ -5,28 +5,60 @@
 
 @section('content')
     <div class="mx-auto max-w-[1100px]">
-        <div class="mb-5 flex flex-wrap items-end justify-between gap-3">
-            <div class="flex flex-col gap-1.5">
-                <h1 class="text-[22px] font-semibold tracking-[-0.015em]">Backups</h1>
-                <p class="text-[13px] text-text-2">
-                    Encrypted on the site before they are uploaded, and stored to
-                    <span class="font-mono text-[12px]">{{ $storage }}</span>.
-                </p>
-            </div>
-
-            @if ($artifacts->isNotEmpty())
-                <div class="flex gap-5 text-[13px]">
-                    <div class="flex flex-col gap-0.5">
-                        <span class="font-mono text-[9.5px] uppercase tracking-[0.07em] text-text-3">Stored</span>
-                        <span class="tabular">{{ $artifacts->where('state', 'stored')->count() }}</span>
-                    </div>
-                    <div class="flex flex-col gap-0.5">
-                        <span class="font-mono text-[9.5px] uppercase tracking-[0.07em] text-text-3">In storage</span>
-                        <span class="tabular">{{ number_format($storedBytes / 1048576, 1) }} MB</span>
-                    </div>
-                </div>
-            @endif
+        <div class="mb-4 flex flex-col gap-1.5">
+            <h1 class="text-[22px] font-semibold tracking-[-0.015em]">Backups</h1>
+            <p class="text-[13px] text-text-2">
+                Encrypted on the site before they are uploaded, and stored to
+                <span class="font-mono text-[12px]">{{ $storage }}</span>.
+            </p>
         </div>
+
+        @php $anyArtifacts = array_sum($summary['counts']) > 0; @endphp
+
+        {{--
+            What this organisation is holding, and the way into each part of it.
+
+            The tiles are the filter. Three of them are counts that set `state` in the query string
+            and one is a total that filters nothing, and they are drawn the same because they are the
+            same kind of fact - the difference is whether there is anywhere to go.
+
+            Findings deliberately does not have a strip like this, and the comment there gives the
+            reason: four integers, three of them usually zero, is a band of chrome carrying nothing.
+            The difference here is that these are not usually zero and each one is a destination. A
+            fleet with two failed backups wants exactly one click to see which two.
+
+            The numbers are the organisation's, not the page's, so they do not move when the table is
+            filtered. A tile reading "Stored: 0" beside a table you had just filtered to failures
+            would be answering a question nobody asked.
+        --}}
+        @if ($anyArtifacts)
+            <div class="mb-3.5 grid grid-cols-2 gap-px overflow-hidden rounded-[10px] border border-border bg-border sm:grid-cols-4">
+                @foreach ($stateLabels as $state => $label)
+                    @php
+                        $active = $filters['state'] === $state;
+                        $count = $summary['counts'][$state] ?? 0;
+                    @endphp
+
+                    <a href="{{ route('backups.index', array_filter([...$filters, 'state' => $active ? null : $state])) }}"
+                       @class([
+                           'flex flex-col gap-1 px-4 py-3 no-underline',
+                           'bg-pale' => $active,
+                           'bg-surface hover:bg-row-hover' => ! $active,
+                       ])
+                       @if ($active) aria-current="true" @endif>
+                        <span class="font-mono text-[10px] uppercase tracking-[0.07em] {{ $active ? 'text-primary' : 'text-text-3' }}">{{ $label }}</span>
+                        <span class="font-mono text-[15px] tabular {{ $active ? 'text-primary' : ($count > 0 && $state === 'failed' ? 'text-danger' : 'text-text') }}">{{ $count }}</span>
+                    </a>
+                @endforeach
+
+                {{-- No link on this one. There is no such thing as filtering to bytes, and a tile
+                     that looked clickable and was not would be worse than one that plainly is not. --}}
+                <div class="flex flex-col gap-1 bg-surface px-4 py-3">
+                    <span class="font-mono text-[10px] uppercase tracking-[0.07em] text-text-3">In storage</span>
+                    <span class="font-mono text-[15px] tabular text-text">{{ number_format($summary['storedBytes'] / 1048576, 1) }} MB</span>
+                </div>
+            </div>
+        @endif
 
         @if (session('status'))
             <div class="mb-4 rounded-lg border border-ok-line bg-ok-bg px-3.5 py-2.5 text-[12.5px] text-ok">
@@ -186,7 +218,10 @@
             </div>
         @endif
 
-        @if ($artifacts->isNotEmpty())
+        {{-- Guarded on the organisation having any artifacts at all, not on this page having rows.
+             Filtering to something with no matches has to leave the filter bar on screen, or the
+             only way back is the browser's back button. --}}
+        @if ($anyArtifacts)
             @php
                 /*
                  | Owners get the column, matching the per-row Delete and Remove buttons and the
@@ -195,10 +230,51 @@
                  */
                 $bulk = $membership->isOwner();
                 $restored = $bulk ? (array) old('artifacts', []) : [];
+                $filtered = $filters['state'] !== '' || $filters['site'] !== '';
             @endphp
 
             <div class="overflow-hidden rounded-[10px] border border-border bg-surface shadow-[var(--shadow)]"
                  @if ($bulk) data-bulk-scope @endif>
+
+                {{-- A GET form, so the result is a URL. The tiles above set `state` and this sets
+                     `site`; both write the same query string, so the two compose rather than
+                     overwriting each other. --}}
+                <form method="GET" action="{{ route('backups.index') }}"
+                      class="flex flex-wrap items-center gap-2.5 border-b border-border bg-surface-2 px-4 py-3">
+                    <label for="filter-site" class="sr-only">Site</label>
+                    <select id="filter-site" name="site"
+                            class="h-8 rounded-[7px] border border-border-2 bg-surface px-2 text-[12.5px] text-text">
+                        <option value="">Every site</option>
+                        @foreach ($filterSites as $filterSite)
+                            <option value="{{ $filterSite->external_id }}" @selected($filters['site'] === $filterSite->external_id)>
+                                {{ $filterSite->name }}
+                            </option>
+                        @endforeach
+                    </select>
+
+                    <label for="filter-state" class="sr-only">Status</label>
+                    <select id="filter-state" name="state"
+                            class="h-8 rounded-[7px] border border-border-2 bg-surface px-2 text-[12.5px] text-text">
+                        <option value="">Any status</option>
+                        @foreach ($stateLabels as $state => $label)
+                            <option value="{{ $state }}" @selected($filters['state'] === $state)>{{ $label }}</option>
+                        @endforeach
+                    </select>
+
+                    <button type="submit"
+                            class="h-8 rounded-[7px] border border-border-2 bg-surface px-3 text-[12.5px] text-text hover:bg-row-hover">
+                        Apply
+                    </button>
+
+                    @if ($filtered)
+                        <a href="{{ route('backups.index') }}" class="text-[12.5px] text-text-2 hover:text-primary">Clear</a>
+                    @endif
+
+                    <span class="ml-auto text-[12px] text-text-3">
+                        Showing {{ $artifacts->count() }} of {{ $artifacts->total() }}
+                    </span>
+                </form>
+
                 @if ($bulk)
                     {{--
                         The bulk form, empty, and it has to stay empty.
@@ -241,6 +317,7 @@
                                     </th>
                                 @endif
                                 <th class="border-b border-border px-4 py-2.5 text-left font-mono text-[9.5px] uppercase tracking-[0.07em] text-text-3">Site</th>
+                                <th class="border-b border-border px-4 py-2.5 text-left font-mono text-[9.5px] uppercase tracking-[0.07em] text-text-3">Status</th>
                                 <th class="border-b border-border px-4 py-2.5 text-left font-mono text-[9.5px] uppercase tracking-[0.07em] text-text-3">Taken</th>
                                 <th class="border-b border-border px-4 py-2.5 text-right font-mono text-[9.5px] uppercase tracking-[0.07em] text-text-3">Size</th>
                                 <th class="border-b border-border px-4 py-2.5 text-left font-mono text-[9.5px] uppercase tracking-[0.07em] text-text-3">Engine</th>
@@ -286,16 +363,9 @@
                                         </td>
                                     @endif
                                     <td class="border-b border-border px-4 py-2.5">
-                                        <div class="flex items-center gap-2">
-                                            <a href="{{ route('sites.show', $artifact->site) }}" class="no-underline hover:underline">
-                                                {{ $artifact->site->name }}
-                                            </a>
-                                            @if ($artifact->state === 'pending')
-                                                <x-status-badge tone="warn" label="Uploading" />
-                                            @elseif ($artifact->state === 'failed')
-                                                <x-status-badge tone="bad" label="Failed" />
-                                            @endif
-                                        </div>
+                                        <a href="{{ route('sites.show', $artifact->site) }}" class="no-underline hover:underline">
+                                            {{ $artifact->site->name }}
+                                        </a>
                                         @if ($artifact->failure_reason)
                                             <span class="text-[11.5px] text-danger">{{ $artifact->failure_reason }}</span>
                                         @endif
@@ -310,6 +380,21 @@
                                             </span>
                                         @endif
                                     </td>
+                                    {{-- Its own column now, rather than a badge beside the site name.
+                                         Status was the one fact on this table you had to read the
+                                         row to find, which is the opposite of what a status is for -
+                                         and the labels come from BackupController::LISTED_STATES, so
+                                         the word here, the word in the filter and the word on the
+                                         tile above are one string. --}}
+                                    <td class="border-b border-border px-4 py-2.5 whitespace-nowrap">
+                                        <x-status-badge :tone="match ($artifact->state) {
+                                                            'stored' => 'ok',
+                                                            'pending' => 'warn',
+                                                            default => 'bad',
+                                                        }"
+                                                        :label="$stateLabels[$artifact->state] ?? Str::ucfirst($artifact->state)" />
+                                    </td>
+
                                     <td class="border-b border-border px-4 py-2.5 whitespace-nowrap">
                                         {{ $artifact->taken_at->diffForHumans(short: true) }}
                                     </td>
@@ -359,7 +444,17 @@
                     </table>
                 </div>
 
-                @if ($bulk)
+                {{-- The filter matched nothing. Said inside the card, under the bar that caused it,
+                     rather than by the whole card vanishing - which is what an empty page looked
+                     like before, and took the Clear link with it. --}}
+                @if ($artifacts->isEmpty())
+                    <div class="px-4 py-8 text-center">
+                        <p class="text-[13px] text-text-2">No backup matches that filter.</p>
+                        <a href="{{ route('backups.index') }}" class="text-[12.5px] text-primary hover:text-primary-hover">Show every backup</a>
+                    </div>
+                @endif
+
+                @if ($bulk && $artifacts->isNotEmpty())
                     {{-- Rendered visible, and bulk.js hides it once there is a selection to hide it
                          against. The other way round - hidden in Blade, shown by script - would mean
                          no button at all with JavaScript switched off, which is exactly the case
@@ -385,8 +480,97 @@
                         </span>
                     </div>
                 @endif
+
+                {{-- Last, under the bulk bar rather than above it. The bar acts on the rows in the
+                     table; the pager leaves them. `withQueryString()` on the paginator is what keeps
+                     the filter attached to page two - without it, paging silently clears it. --}}
+                @if ($artifacts->hasPages())
+                    <div class="border-t border-border bg-surface-2 px-4 py-2.5">{{ $artifacts->links() }}</div>
+                @endif
             </div>
 
+        @endif
+
+        {{--
+            What the schedules are about to do, and what they have been doing.
+
+            Both halves matter and neither was on this screen. The panels above are scoped to what
+            still needs somebody: work in flight, and undismissed failures from the last seven days.
+            So a fleet whose schedule had quietly stopped firing looked exactly like a fleet with
+            nothing to do - which is the failure this product exists to catch, showing up in the
+            product itself.
+
+            The upcoming times are projected by the same object the scheduler asks. That is the only
+            reason it is honest to print them: a "next run" a screen derives on its own is a promise
+            about somebody else's code.
+        --}}
+        @if ($upcomingRuns !== [] || $pastRuns->isNotEmpty())
+            <div class="mt-3.5 overflow-hidden rounded-[10px] border border-border bg-surface shadow-[var(--shadow)]">
+                <div class="border-b border-border px-4 py-3 text-[13.5px] font-medium">Scheduled runs</div>
+
+                <div class="grid gap-px bg-border sm:grid-cols-2">
+                    <div class="bg-surface px-4 py-3">
+                        <p class="mb-2 font-mono text-[10px] uppercase tracking-[0.07em] text-text-3">Upcoming</p>
+
+                        @if ($upcomingRuns === [])
+                            <p class="text-[12.5px] text-text-2">
+                                No site has a backup schedule. Set one on a site's Backups tab, and its
+                                next few runs appear here.
+                            </p>
+                        @else
+                            {{-- Queued shortly before they are due rather than at the instant, and
+                                 said plainly - a list of times with no qualifier reads as a
+                                 guarantee, and this is an hourly command deciding per site. --}}
+                            <p class="mb-2 text-[12px] text-text-3">Requested on the hour they are due.</p>
+
+                            <ul class="flex flex-col gap-1.5">
+                                @foreach ($upcomingRuns as $run)
+                                    <li class="flex flex-wrap items-baseline justify-between gap-2 text-[12.5px]">
+                                        <a href="{{ route('sites.backups', $run['site']) }}" class="no-underline hover:underline">
+                                            {{ $run['site']->name }}
+                                        </a>
+                                        <span class="font-mono text-[11.5px] tabular text-text-2">
+                                            {{ $run['at']->format('j M, H:i') }}
+                                            <span class="text-text-3">({{ $run['at']->diffForHumans(short: true) }})</span>
+                                        </span>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        @endif
+                    </div>
+
+                    <div class="bg-surface px-4 py-3">
+                        <p class="mb-2 font-mono text-[10px] uppercase tracking-[0.07em] text-text-3">Past</p>
+
+                        @if ($pastRuns->isEmpty())
+                            <p class="text-[12.5px] text-text-2">No backup has finished yet.</p>
+                        @else
+                            <ul class="flex flex-col gap-1.5">
+                                @foreach ($pastRuns as $run)
+                                    <li class="flex flex-wrap items-baseline justify-between gap-2 text-[12.5px]">
+                                        <span class="flex items-center gap-2">
+                                            <a href="{{ route('sites.backups', $run->site) }}" class="no-underline hover:underline">
+                                                {{ $run->site->name }}
+                                            </a>
+                                            {{-- Expired and cancelled sit with failed for the same
+                                                 reason the failures panel puts them together: to
+                                                 somebody waiting for a backup they are one event. --}}
+                                            <x-status-badge :tone="$run->state === 'succeeded' ? 'ok' : 'bad'"
+                                                            :label="Str::ucfirst($run->state)" />
+                                        </span>
+                                        <span class="font-mono text-[11.5px] tabular text-text-3">
+                                            {{ $run->updated_at->diffForHumans(short: true) }}
+                                        </span>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        @endif
+
+        @if ($anyArtifacts)
             {{-- Download hands over ciphertext and nothing else. This panel used to say there was no
                  download button at all, and gave the timeout argument for it - which is an argument
                  about decrypting inside a web request, not about handing over the bytes as they are

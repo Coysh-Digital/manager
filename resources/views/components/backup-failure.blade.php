@@ -9,12 +9,16 @@
 
     Amber rather than red. Nothing has been lost - the earlier backups are all still there - and the
     thing that needs to change is usually one setting. Red is for when there is nothing to restore.
+
+    The tone is spelled `warn`, which is what carries amber. It read `amber` here for as long as this
+    file has existed, and `amber` is not in the component's tone map - so the badge quietly fell
+    through to grey and this comment described a colour nobody had ever seen.
 --}}
 @props(['failure', 'showSite' => false, 'canDismiss' => false])
 
 <div class="flex flex-col gap-2 border-b border-border px-4 py-3 last:border-b-0">
     <div class="flex flex-wrap items-center gap-2">
-        <x-status-badge tone="amber" label="Did not complete" />
+        <x-status-badge tone="warn" label="Did not complete" />
 
         @if ($showSite)
             <a href="{{ route('sites.show', $failure->site) }}" class="text-[13px] font-medium no-underline hover:underline">

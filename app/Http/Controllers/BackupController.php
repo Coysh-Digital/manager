@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Domain\Audit\AuditRecorder;
 use App\Domain\Backup\BackupReadiness;
+use App\Domain\Backup\BackupSchedule;
 use App\Domain\Backup\BackupService;
 use App\Domain\Backup\BackupTimeline;
 use App\Domain\Backup\FailedBackupJobs;
@@ -22,9 +23,12 @@ use App\Models\RemoteJob;
 use App\Models\Site;
 use coyshdigital\managerprotocol\Jobs;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
 /**
@@ -57,6 +61,7 @@ final class BackupController
         private readonly BackupReadiness $readiness,
         private readonly RecoveryKeyService $recoveryKeys,
         private readonly AuditRecorder $audit,
+        private readonly BackupSchedule $schedule,
     ) {}
 
     /**
@@ -78,19 +83,76 @@ final class BackupController
      */
     private const BULK_DELETE_REASON = 'Deleted by hand, as one of several selected together.';
 
-    public function index(Organisation $organisation): View
+    /**
+     * The three artifact states this screen lists, and what each is called on it.
+     *
+     * Doubles as the filter's allowlist and as the summary strip's definition, so a tile and the
+     * view it links to cannot count different things. A tile reading 4 above a filtered table
+     * showing 2 rows is worse than no tile: it is the screen disagreeing with itself in public.
+     *
+     * `expired` and `deleted` are absent deliberately. Both are tombstones - the row survives so the
+     * audit trail does - and neither is a backup somebody has.
+     *
+     * @var array<string, string>
+     */
+    private const LISTED_STATES = [
+        BackupArtifact::STATE_STORED => 'Stored',
+
+        // Not "In progress". That heading belongs to the panel above the table, which lists jobs a
+        // site has not come back from yet - a different object with a different count, and two
+        // numbers under one word on one screen is how somebody comes to distrust both.
+        BackupArtifact::STATE_PENDING => 'Arriving',
+
+        BackupArtifact::STATE_FAILED => 'Failed',
+    ];
+
+    /**
+     * Artifacts per page.
+     *
+     * Coupled to the `max:100` in {@see destroyMany()}: the bulk form can only ever carry what one
+     * page drew, so the page has to stay inside the ceiling the controller validates. Raising this
+     * above 100 without raising that turns a legitimate select-all into a validation error.
+     */
+    private const PER_PAGE = 50;
+
+    /**
+     * How many scheduled runs to show in each direction.
+     *
+     * Small on purpose. This panel answers "is the schedule running, and when is the next one" - and
+     * both halves of that are answered by a handful of rows. A full history belongs in the activity
+     * log, which has pagination and a search.
+     */
+    private const RUNS_SHOWN = 5;
+
+    public function index(Request $request, Organisation $organisation): View
     {
-        $artifacts = BackupArtifact::query()
+        /*
+         | Filters in the query string, like the fleet screen's.
+         |
+         | The same argument SiteController makes applies here and slightly harder: the reason
+         | somebody filters this screen to failures is usually that they are about to send the URL to
+         | whoever owns the site. A filter held in the session cannot be sent to anybody.
+         */
+        $filters = [
+            'state' => (string) $request->query('state', ''),
+            'site' => (string) $request->query('site', ''),
+        ];
+
+        // A closed set, checked here rather than trusted. The value reaches a `whereIn` on a column,
+        // and the same argument SiteController::sortable() makes about ordering applies to filtering.
+        if (! array_key_exists($filters['state'], self::LISTED_STATES)) {
+            $filters['state'] = '';
+        }
+
+        $artifacts = $this->artifactQuery($organisation, $filters)
             // Recipients so each row can name the recovery key that opens it. Without this the only
             // way to learn which of several keys a given backup needs is to download it and run
             // `manager-restore inspect`, which is a strange thing to make somebody do when the
             // platform recorded the answer at the moment it sealed the artifact.
             ->with(['site', 'recipients'])
-            ->where('organisation_id', $organisation->id)
-            ->whereIn('state', [BackupArtifact::STATE_STORED, BackupArtifact::STATE_PENDING, BackupArtifact::STATE_FAILED])
             ->orderByDesc('taken_at')
-            ->limit(100)
-            ->get();
+            ->paginate(self::PER_PAGE)
+            ->withQueryString();
 
         $permitted = Site::query()
             // Readiness needs each site's organisation to count its recovery keys. Every row here
@@ -116,6 +178,21 @@ final class BackupController
             'membership' => app(Membership::class),
             'artifacts' => $artifacts,
 
+            'filters' => $filters,
+            'stateLabels' => self::LISTED_STATES,
+
+            // Every site with an artifact, for the filter's site list. Drawn from the artifacts
+            // rather than from `permittedSites` on purpose: a site whose permission was revoked
+            // still has the backups it took, and leaving it out of the list would make them
+            // unreachable by filter while still being listed in the table.
+            'filterSites' => Site::query()
+                ->whereIn('id', BackupArtifact::query()
+                    ->select('site_id')
+                    ->where('organisation_id', $organisation->id)
+                    ->whereIn('state', array_keys(self::LISTED_STATES)))
+                ->orderBy('name')
+                ->get(['id', 'external_id', 'name']),
+
             // Backups that were asked for and left nothing behind. Without this they are invisible:
             // no artifact to list, and the job has left the queue so InFlightBackups cannot see it
             // either.
@@ -130,17 +207,146 @@ final class BackupController
             // and offer somewhere to go, instead of repeating the same sentence down every row.
             'needsRecoveryKey' => ! $this->recoveryKeys->hasActiveKey($organisation),
 
-            // What storage holds, matching the quota rather than reporting a different number to it.
-            'storedBytes' => $artifacts
-                ->where('state', BackupArtifact::STATE_STORED)
-                ->sum(fn (BackupArtifact $artifact): int => $artifact->expectedUploadBytes()),
+            /*
+             | The organisation's totals, deliberately not the page's.
+             |
+             | Two reasons. A summary that moved when you filtered would say "Stored: 0" beside a
+             | table you had just filtered to failures, which answers a question nobody asked; and
+             | the tiles are the filter controls, so each has to state what it will show you rather
+             | than what you are already looking at.
+             |
+             | Counted in SQL rather than off `$artifacts`, which is now one page of fifty and was
+             | previously one page of a hundred. `storedBytes` was summed from that capped collection
+             | and so quietly under-reported storage for any organisation with more than a hundred
+             | artifacts - on the one screen whose whole job is to say how much is being stored.
+             */
+            'summary' => $this->summary($organisation),
 
             'storage' => $this->backups->describeStorage(),
             'acknowledgement' => CapabilityService::acknowledgementFor('backups:create'),
 
             'inFlight' => $this->inFlight->forOrganisation($organisation->id),
             'checkInWindow' => $this->inFlight->checkInWindow(),
+
+            // When the schedules will next fire, and what the last few produced.
+            'upcomingRuns' => $this->upcomingRuns($permitted),
+            'pastRuns' => $this->pastRuns($organisation),
         ]);
+    }
+
+    /**
+     * The artifact list, scoped and filtered, without the ordering or eager loads the screen adds.
+     *
+     * @param  array{state: string, site: string}  $filters
+     * @return Builder<BackupArtifact>
+     */
+    private function artifactQuery(Organisation $organisation, array $filters): Builder
+    {
+        return BackupArtifact::query()
+            // Every query starts scoped. Nothing relies on a caller remembering to add it.
+            ->where('organisation_id', $organisation->id)
+            ->whereIn('state', array_keys(self::LISTED_STATES))
+            ->when($filters['state'] !== '', fn (Builder $query) => $query->where('state', $filters['state']))
+
+            /*
+             | By external id, never by the primary key.
+             |
+             | The value arrives in a URL, and a numeric id in a URL is an invitation to try the next
+             | one. The organisation scope above already makes that harmless, but a filter that
+             | silently matched nothing would be the only evidence, and "nothing here" is what an
+             | empty organisation looks like too.
+             */
+            ->when($filters['site'] !== '', fn (Builder $query) => $query->whereHas(
+                'site',
+                fn ($builder) => $builder->where('external_id', $filters['site']),
+            ));
+    }
+
+    /**
+     * What this organisation is holding, whatever the table is currently filtered to.
+     *
+     * Two queries: one grouped count covering every listed state, and one sum. The sum goes through
+     * {@see BackupArtifact::storedBytesExpression()} rather than adding up a column, because how many
+     * bytes an artifact costs is one rule and the quota already asks it this way. A meter that
+     * measured something else would disagree with the thing enforcing the limit.
+     *
+     * @return array{counts: array<string, int>, storedBytes: int}
+     */
+    private function summary(Organisation $organisation): array
+    {
+        $counts = BackupArtifact::query()
+            ->where('organisation_id', $organisation->id)
+            ->whereIn('state', array_keys(self::LISTED_STATES))
+            ->groupBy('state')
+            ->selectRaw('state, count(*) as total')
+            ->pluck('total', 'state');
+
+        return [
+            'counts' => array_map(
+                static fn (string $state): int => (int) ($counts[$state] ?? 0),
+                array_combine(array_keys(self::LISTED_STATES), array_keys(self::LISTED_STATES)),
+            ),
+
+            'storedBytes' => (int) BackupArtifact::query()
+                ->where('organisation_id', $organisation->id)
+                ->where('state', BackupArtifact::STATE_STORED)
+                ->sum(BackupArtifact::storedBytesExpression()),
+        ];
+    }
+
+    /**
+     * The next scheduled backup for each site that has a schedule, soonest first.
+     *
+     * Projected rather than recorded, because there is nothing to record: the scheduler decides on
+     * the hour and writes a row only once it has acted. {@see BackupSchedule} is the same object the
+     * command asks, so this cannot promise a run the scheduler will not make.
+     *
+     * @param  Collection<int, Site>  $sites
+     * @return list<array{site: Site, at: Carbon}>
+     */
+    private function upcomingRuns(Collection $sites): array
+    {
+        $runs = [];
+
+        foreach ($sites as $site) {
+            $at = $this->schedule->nextRun($site);
+
+            if ($at !== null) {
+                $runs[] = ['site' => $site, 'at' => $at];
+            }
+        }
+
+        usort($runs, static fn (array $a, array $b): int => $a['at']->getTimestamp() <=> $b['at']->getTimestamp());
+
+        return array_slice($runs, 0, self::RUNS_SHOWN);
+    }
+
+    /**
+     * What the schedule has actually produced lately.
+     *
+     * Every finished backup job, not only the successful ones and not only the failed ones. The two
+     * panels above this each show half of that picture and both are scoped to what still needs
+     * attention - in-flight work, and failures from the last seven days that nobody has dismissed.
+     * Neither answers "is this schedule running at all", which is the question a list of past runs
+     * exists for.
+     *
+     * @return Collection<int, RemoteJob>
+     */
+    private function pastRuns(Organisation $organisation): Collection
+    {
+        return RemoteJob::query()
+            ->with('site')
+            ->where('type', Jobs::BACKUP_CREATE)
+            ->whereHas('site', fn ($query) => $query->where('organisation_id', $organisation->id))
+            ->whereIn('state', [
+                Jobs::STATE_SUCCEEDED,
+                Jobs::STATE_FAILED,
+                Jobs::STATE_EXPIRED,
+                Jobs::STATE_CANCELLED,
+            ])
+            ->orderByDesc('updated_at')
+            ->limit(self::RUNS_SHOWN)
+            ->get();
     }
 
     /**

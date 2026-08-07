@@ -366,6 +366,7 @@ final class SiteController
             'name' => 'Site',
             'seen' => 'Last seen',
             'craft' => 'Craft',
+            'updates' => 'Updates',
             'disk' => 'Disk',
             'backup' => 'Backup',
             'response' => 'Response',
@@ -488,6 +489,20 @@ final class SiteController
                     // Descending, by negating: the interesting end of each of these is the top.
                     'disk' => [$figures['disk'] === null ? 1 : 0, -($figures['disk'] ?? 0)],
                     'response' => [$figures['p95'] === null ? 1 : 0, -($figures['p95'] ?? 0)],
+
+                    /*
+                     | A security release first, then the largest backlog.
+                     |
+                     | Not simply "most updates". Nine ordinary plugin updates and one Craft security
+                     | release are not the same job, and a column sorted purely by count would bury
+                     | the second under the first. The badge already makes that distinction in
+                     | colour; the sort has to make it too, or clicking the heading argues with what
+                     | the column is showing.
+                     */
+                    'updates' => [
+                        $site->has_security_release ? 0 : 1,
+                        -(int) $site->available_updates,
+                    ],
 
                     /*
                      | Failures first, then oldest backup first. Both halves are the same question -
