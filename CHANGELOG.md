@@ -97,6 +97,15 @@ remove.
 
 ### Fixed
 
+- **Six advisories in `league/commonmark`**, one of them high, all denial-of-service. It arrives
+  through `laravel/framework` rather than being asked for directly, and moves 2.8.3 → 2.9.0 inside
+  the constraint the framework already declares — so this is a lockfile change and nothing else.
+
+  Unrelated to everything above, and included here because a tag cannot be changed afterwards. The
+  advisories predate this release and were failing CI's *Supply chain* job on `main`; shipping a
+  version of a backup product with a known high advisory in it, when the fix is a lockfile bump,
+  is not a trade worth making for tidier release notes.
+
 - **The shipped nginx configuration excluded every part of a chunked upload.** Its `location` pattern
   ended at `content$`, which does not match `content/3`, so parts would have fallen through to the
   general handler at `client_max_body_size 2m` and failed in exactly the way the single request they
