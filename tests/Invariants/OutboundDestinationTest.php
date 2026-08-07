@@ -306,7 +306,7 @@ it('sends an email and records the delivery', function (): void {
         ->and($destination->fresh()->last_delivery_at)->not->toBeNull();
 });
 
-it('writes a plain-text body with no vulnerability detail and no tokenised links', function (): void {
+it('writes a text part with no vulnerability detail and no tokenised links', function (): void {
     $site = Site::factory()->create(['name' => 'Example Site', 'expected_domain' => 'example.org']);
 
     $body = app(EmailTransport::class)->body(new NotificationEvent(

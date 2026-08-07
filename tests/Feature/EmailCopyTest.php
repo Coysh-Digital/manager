@@ -107,7 +107,13 @@ it('does not mistake a URL scheme for a placeholder', function (): void {
 });
 
 it('refuses to store wording for an email nobody may reword', function (): void {
-    expect(fn () => app(EmailCopy::class)->put('core.password-reset', 'x', 'y'))
+    /*
+     | The alerts are the case this is really about: they have no wording to edit, because every
+     | sentence in one is generated from the event that caused it. This used to name
+     | `core.password-reset`, which has since become editable — a key that quietly turns real is
+     | exactly how a test like this stops testing anything, so it names one that cannot.
+     */
+    expect(fn () => app(EmailCopy::class)->put('core.backup-failed', 'x', 'y'))
         ->toThrow(InvalidArgumentException::class);
 });
 

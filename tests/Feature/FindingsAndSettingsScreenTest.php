@@ -354,8 +354,8 @@ it('hides the irreversible actions from a non-owner', function (): void {
 
 it('sends a test message to the owner and nobody else', function (): void {
     // Asserted against the callback rather than through Mail::fake(). Mail::raw() builds no Mailable,
-    // so there is nothing for assertSent() to inspect - the same limitation EmailTransport documents,
-    // and the reason its body is a public method.
+    // so there is nothing for assertSent() to inspect. The alerts used to have the same problem and
+    // no longer do - they are a Mailable now - but the test message is deliberately still raw.
     $addressed = null;
 
     Mail::shouldReceive('raw')->once()->andReturnUsing(function (string $body, callable $callback) use (&$addressed): void {

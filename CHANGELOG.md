@@ -6,6 +6,63 @@ Entries are written for somebody about to upgrade a running installation. Anythi
 action is under **Before you upgrade** - that section is the one to read, and `docs/upgrade.md` points
 here for exactly that reason.
 
+## 1.4.0 — 2026-08-07
+
+Email that looks like it came from Manager, and says what actually happened.
+
+### Before you upgrade
+
+**Nothing is required, and one thing is worth knowing.** Notification emails now arrive as HTML with
+a plain-text alternative attached, where before they were plain text only. If you have a mail rule,
+a helpdesk integration or a script that matches on the old shape — the aligned `Site:` / `Domain:` /
+`Environment:` block, or the `Open Manager:` line — check it. The plain-text part still carries all
+of the same facts in the same order, so a rule reading the text alternative keeps working; one
+parsing the body of a message that is now `multipart/alternative` may not.
+
+The subject line is unchanged, including its `[Manager]` prefix, on purpose: it is what most filters
+actually match on.
+
+### Changed
+
+- **Notification emails are branded, and this reverses a decision.** The monitoring and backup alerts
+  were sent as plain text through `Mail::raw`, deliberately, on the argument that an HTML mail about
+  a security finding is a phishing template somebody has been trained to click. That argument was
+  real. What it missed is that the alerts were then the only mail Manager sent that did not look like
+  Manager — password resets, invitations and every hosted subscription email already rendered through
+  the product's own theme — so the most important message was the least recognisable one, and
+  "doesn't look like the other mail from this product" is a phishing signal pointing the wrong way.
+
+  What the old decision was really protecting is kept: an alert links to a screen and never carries a
+  credential. Every link is a named route to a page that requires signing in, there are no signed or
+  tokenised URLs in either part of the message, and `tests/Invariants/MailBrandingTest.php` now
+  asserts all of that rather than asserting the absence of HTML.
+
+- **An alert links to the screen the event is about.** Every alert used to end with the same URL —
+  `/findings` — whatever had happened, so a backup failure pointed at a list of security findings
+  that had nothing to say about it. A backup failure now opens that site's Backups tab, a silent site
+  opens the site, a revoked connector opens its settings, and a confirmed permission opens the
+  permissions section.
+
+- **The password reset is written in Manager's words.** It was the framework's notification, opening
+  "You are receiving this email because we received a password reset request for your account" — the
+  same generic voice that invitations were moved away from, arriving at the moment somebody is
+  already slightly worried. The mechanism is untouched: Laravel's broker still issues the token,
+  single-use, expiring and stored hashed. Its wording is now editable wherever a hosting layer offers
+  a screen for that, which the invitation's already was.
+
+- **Emails open with a name where there is one.** "Hello Tim" rather than "Hello!", falling back to
+  the old wording when the account has no name. No first name is guessed from an address.
+
+### Fixed
+
+- **A backup failure no longer prints its reason twice.** The reason appeared once as prose and again
+  as a labelled row directly beneath it, because it is deliberately in both the event's summary and
+  its context — the summary leads with it, and the webhook payload keeps it under `context.reason`.
+  The email now skips any detail its own summary has already said. The webhook body is unchanged.
+
+- **Long labels no longer run into their values** in the plain-text part, which padded every label to
+  a fixed twelve characters.
+
 ## 1.3.1 — 2026-08-07
 
 One race in 1.3.0, found within hours of it reaching a live console, which threw away a backup that

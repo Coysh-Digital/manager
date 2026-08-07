@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Notifications;
 
+use App\Notifications\PasswordReset;
 use App\Notifications\TeamInvitation;
 
 /**
@@ -130,6 +131,11 @@ final class EmailCatalogue
                 name: 'Password reset',
                 trigger: 'Somebody asks for a reset link from the sign-in screen.',
                 recipients: 'The address the reset was requested for, if an account exists.',
+                notification: PasswordReset::class,
+
+                // Taken from the class rather than restated, so the wording advertised here and the
+                // wording that sends cannot come apart.
+                copy: PasswordReset::copy(),
             ),
             EmailCatalogueEntry::core(
                 name: 'Invitation',

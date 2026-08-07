@@ -2,17 +2,30 @@
 
 declare(strict_types=1);
 
+use App\Domain\Backup\BackupFailureNotice;
 use App\Domain\Notifications\EmailCopy;
+use App\Domain\Notifications\EmailTransport;
+use App\Domain\Notifications\NotificationEvent;
+use App\Mail\AlertMail;
+use App\Models\Site;
 use App\Models\User;
+use App\Notifications\PasswordReset;
 use App\Notifications\TeamInvitation;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification;
 
 /*
- * What customer-facing email looks like, and what deliberately does not.
+ * What customer-facing email looks like.
  *
- * Two separate concerns share this file because they are the two halves of one decision: MailMessage
- * emails are branded HTML, and the findings alerts are not, and each is wrong if it drifts into the
- * other.
+ * **This file used to assert the opposite of half of what it now asserts.** The monitoring alerts
+ * were plain text on purpose, and the argument was that an HTML mail about a security finding is a
+ * phishing template somebody has been trained to click. That decision was reversed deliberately, by
+ * the person who owns the product, and not because a check went red — see
+ * App\Domain\Notifications\EmailTransport for what changed our mind.
+ *
+ * What survived the reversal is the part that was actually load-bearing: an alert links to a screen
+ * and never carries a credential. That is asserted below, harder than it was before.
  */
 
 it('renders MailMessage through the Manager theme', function (): void {
@@ -28,6 +41,34 @@ it('renders MailMessage through the Manager theme', function (): void {
 
     expect($rendered)->toContain('#c9331c')
         ->and($rendered)->toContain('has invited you');
+});
+
+it('renders the password reset in Manager\'s own words', function (): void {
+    /*
+     | The framework's own notification is perfectly good English written by nobody in particular,
+     | and it was the last email here still speaking in that voice. Overriding it is one method on
+     | the User model, which is exactly the kind of thing a later refactor removes without noticing:
+     | the reset would keep working, keep arriving, and quietly go back to "we received a password
+     | reset request for your account".
+     */
+    $rendered = (string) (new PasswordReset('token'))
+        ->toMail(new User(['name' => 'Tim Coysh', 'email' => 'tim@example.org']))
+        ->render();
+
+    expect($rendered)->toContain('#c9331c')
+        ->and($rendered)->toContain('asked to reset')
+        ->and($rendered)->toContain('Hello Tim')
+        ->and($rendered)->not->toContain('we received a password reset request');
+});
+
+it('sends a password reset through Manager\'s notification, not the framework\'s', function (): void {
+    // The override above is only worth anything if the broker actually reaches it.
+    Notification::fake();
+
+    $user = User::factory()->create();
+    $user->sendPasswordResetNotification('token');
+
+    Notification::assertSentTo($user, PasswordReset::class);
 });
 
 it('keeps the email theme in step with the interface palette', function (string $token, string $hex): void {
@@ -83,16 +124,81 @@ it('escapes markup an operator types into an override', function (): void {
         ->and($rendered)->not->toContain('javascript:');
 });
 
-it('leaves the findings alerts as plain text', function (): void {
+it('sends an alert as branded HTML with a plain-text alternative', function (): void {
     /*
-     | The decision this protects is stated in EmailTransport's own docblock: an HTML mail about a
-     | security finding is a phishing template somebody has been trained to click. It is the kind of
-     | thing a later "let's brand all our emails" change undoes without noticing, because branding
-     | everything is the obvious instruction and this is the one exception to it.
+     | Both parts, from the message that was actually built rather than from Mailable::render(),
+     | which only ever returns the HTML. A text part that has silently stopped being attached is the
+     | failure worth catching: nothing errors, every alert keeps arriving, and the people whose
+     | clients refuse HTML get an empty message.
      */
-    $source = File::get(app_path('Domain/Notifications/EmailTransport.php'));
+    $site = Site::factory()->create(['name' => 'Example Site', 'expected_domain' => 'example.org']);
 
-    expect($source)->toContain('Mail::raw(')
-        ->and($source)->not->toContain('->markdown(')
-        ->and($source)->not->toContain('->view(');
+    Mail::to('alerts@example.org')->send(new AlertMail(
+        BackupFailureNotice::event($site, 'The site refused the artifact', '01ARTIFACT'),
+    ));
+
+    $message = Mail::mailer()->getSymfonyTransport()->messages()[0]->getOriginalMessage();
+
+    $html = (string) $message->getHtmlBody();
+    $text = (string) $message->getTextBody();
+
+    expect($html)->toContain('#c9331c')
+        ->and($html)->toContain('Example Site')
+        ->and($text)->toContain('Example Site')
+        ->and($text)->toContain('example.org');
+
+    /*
+     | The half of the old plain-text decision that was actually load-bearing.
+     |
+     | An alert sits in a mailbox for years and gets forwarded, so its link must be an address and
+     | never a credential — every destination is a named route to a screen behind a session. A
+     | signed URL here would make the email itself the way in, for anybody who ever sees it.
+    */
+    foreach ([$html, $text] as $part) {
+        expect($part)->not->toContain('token')
+            ->and($part)->not->toContain('signature=')
+            ->and($part)->not->toContain(config('app.key'));
+    }
+});
+
+it('points an alert at the screen the event is about', function (): void {
+    /*
+     | Every alert used to end with the same URL — /findings — whatever had happened. Reported live:
+     | a backup failure arrived pointing at the screen that lists security findings, which had
+     | nothing to say about it, so the reasonable conclusion was that the alert was wrong.
+     */
+    $site = Site::factory()->create();
+
+    $backup = app(EmailTransport::class)->body(
+        BackupFailureNotice::event($site, 'The site refused the artifact'),
+    );
+
+    $finding = app(EmailTransport::class)->body(new NotificationEvent(
+        type: NotificationEvent::FINDING_OPENED,
+        subject: 'Craft has an outstanding security release',
+        summary: 'This site runs Craft 5.6.2 and 5.6.4 is available.',
+        site: $site,
+    ));
+
+    expect($backup)->toContain(route('sites.backups', $site))
+        ->and($backup)->not->toContain('/findings')
+        ->and($finding)->toContain(route('findings.index'));
+});
+
+it('says the failure reason once', function (): void {
+    /*
+     | BackupFailureNotice puts the reason in the summary and in the context, and both are correct:
+     | the summary leads with it because it is the only part saying what to do, and the context
+     | keeps it because NotificationEvent::toPayload() is the webhook contract. Reported live: the
+     | email printed the same sentence twice, once as prose and once as a labelled row beneath it.
+     */
+    $site = Site::factory()->create(['name' => 'Example Site']);
+    $reason = 'The site refused the artifact';
+
+    $body = app(EmailTransport::class)->body(BackupFailureNotice::event($site, $reason));
+
+    expect(substr_count($body, $reason))->toBe(1);
+
+    // And the webhook still carries it, which is the reason it could not simply be deleted.
+    expect(BackupFailureNotice::event($site, $reason)->toPayload()['context']['reason'])->toBe($reason);
 });
