@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Domain\Backup\BackupSchedule;
 use App\Domain\Job\JobRejectedException;
 use App\Domain\Job\JobService;
 use App\Models\AuditEvent;
@@ -456,4 +457,120 @@ it('keeps whatever gate the schedule had before it moved', function (): void {
         ])->assertRedirect();
 
     expect($site->fresh()->backup_schedule)->toBe('daily');
+});
+
+/*
+ | The projection, and its agreement with the command
+ |-------------------------------------------------------------------------------------------------
+ |
+ | A "next run" printed on a screen is a claim about what a scheduled command will do, and if the two
+ | ever disagree it is the screen people believe, because it is the one they can see. That is the
+ | whole reason BackupSchedule exists rather than the Backups page deriving times of its own - so the
+ | property worth asserting is not that the projection looks right, but that travelling to a time it
+ | named makes the command fire.
+ */
+
+it('names a time the command actually fires at', function (): void {
+    $site = Site::factory()->for($this->organisation)->connected()->create([
+        'backup_schedule' => 'weekly',
+        'backup_schedule_hour' => 2,
+        'backup_schedule_day' => 6,
+        'timezone' => 'Australia/Sydney',
+    ]);
+    Connector::factory()->for($site)->create();
+    CapabilityGrant::factory()->for($site)->capability('backups:create')->create();
+
+    $next = app(BackupSchedule::class)->nextRun($site);
+
+    expect($next)->not->toBeNull()
+        ->and($next->dayOfWeekIso)->toBe(6)
+        ->and($next->hour)->toBe(2);
+
+    // Stand at the moment it named, and the command must agree.
+    Carbon::setTestNow($next);
+
+    $this->artisan('manager:backups:schedule')->assertSuccessful();
+
+    expect(RemoteJob::query()->where('site_id', $site->id)->where('type', Jobs::BACKUP_CREATE)->exists())->toBeTrue();
+
+    Carbon::setTestNow();
+});
+
+it('reads the hour in the site zone rather than the server one', function (): void {
+    $site = Site::factory()->for($this->organisation)->connected()->create([
+        'backup_schedule' => 'daily',
+        'backup_schedule_hour' => 3,
+        'timezone' => 'Pacific/Auckland',
+    ]);
+
+    $next = app(BackupSchedule::class)->nextRun($site);
+
+    expect($next->timezoneName)->toBe('Pacific/Auckland')->and($next->hour)->toBe(3);
+});
+
+it('projects nothing for a site with no schedule', function (): void {
+    $site = Site::factory()->for($this->organisation)->connected()->create(['backup_schedule' => 'off']);
+
+    expect(app(BackupSchedule::class)->nextRuns($site))->toBe([]);
+});
+
+it('skips the window it has already fired in rather than promising it twice', function (): void {
+    $site = Site::factory()->for($this->organisation)->connected()->create([
+        'backup_schedule' => 'daily',
+        'backup_schedule_hour' => 3,
+        'timezone' => 'UTC',
+    ]);
+
+    // Standing inside the scheduled hour, having already fired in it.
+    Carbon::setTestNow(Carbon::parse('2026-08-07 03:20:00', 'UTC'));
+    $site->forceFill(['backup_scheduled_at' => Carbon::parse('2026-08-07 03:05:00', 'UTC')])->save();
+
+    $next = app(BackupSchedule::class)->nextRun($site);
+
+    // Tomorrow, not the hour we are standing in - the command will not fire again in this window.
+    expect($next->toDateString())->toBe('2026-08-08');
+
+    Carbon::setTestNow();
+});
+
+it('offers the current window when it is due and has not fired', function (): void {
+    $site = Site::factory()->for($this->organisation)->connected()->create([
+        'backup_schedule' => 'daily',
+        'backup_schedule_hour' => 3,
+        'timezone' => 'UTC',
+    ]);
+
+    Carbon::setTestNow(Carbon::parse('2026-08-07 03:20:00', 'UTC'));
+
+    // The hour between the scheduler's tick and the hour ending is exactly when somebody is most
+    // likely to be looking, and "tomorrow" would be the wrong answer in it.
+    expect(app(BackupSchedule::class)->nextRun($site)->toDateString())->toBe('2026-08-07');
+
+    Carbon::setTestNow();
+});
+
+it('does not promise a run on a day the scheduled hour does not exist', function (): void {
+    /*
+     * The morning a zone springs forward, 01:00 in Europe/London becomes 02:00 and PHP shifts a
+     * setTime() rather than refusing. The command simply never sees its hour that day and does not
+     * fire, so printing the shifted time would promise a run that will not happen.
+     */
+    $site = Site::factory()->for($this->organisation)->connected()->create([
+        'backup_schedule' => 'daily',
+        'backup_schedule_hour' => 1,
+        'timezone' => 'Europe/London',
+    ]);
+
+    Carbon::setTestNow(Carbon::parse('2027-03-27 12:00:00', 'Europe/London'));
+
+    $runs = app(BackupSchedule::class)->nextRuns($site, 3);
+
+    foreach ($runs as $run) {
+        expect($run->hour)->toBe(1);
+    }
+
+    // 28 March 2027 is the transition. It must not be among them.
+    expect(collect($runs)->map(fn ($run) => $run->toDateString())->all())->not->toContain('2027-03-28');
+
+    Carbon::setTestNow();
 });

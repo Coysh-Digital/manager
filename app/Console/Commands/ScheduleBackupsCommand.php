@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Domain\Backup\BackupSchedule;
 use App\Domain\Backup\BackupTimeline;
 use App\Domain\Backup\RecoveryKeyService;
 use App\Domain\Job\JobRejectedException;
@@ -46,7 +47,7 @@ final class ScheduleBackupsCommand extends Command
 
     protected $description = 'Request backups from sites whose schedule is due';
 
-    public function handle(JobService $jobs, RecoveryKeyService $keys, BackupTimeline $timeline): int
+    public function handle(JobService $jobs, RecoveryKeyService $keys, BackupTimeline $timeline, BackupSchedule $schedule): int
     {
         $dryRun = (bool) $this->option('dry-run');
 
@@ -60,24 +61,21 @@ final class ScheduleBackupsCommand extends Command
             ->cursor();
 
         foreach ($sites as $site) {
-            // The site's own zone. "03:00" has to mean the quiet hour where this site is, and a
-            // fleet spread across London and Sydney cannot share one - which is why this stopped
-            // being the organisation's.
-            $timezone = $site->timezone ?: 'UTC';
+            /*
+             | The site's own zone. "03:00" has to mean the quiet hour where this site is, and a
+             | fleet spread across London and Sydney cannot share one - which is why this stopped
+             | being the organisation's.
+             |
+             | Both questions below are asked of BackupSchedule rather than derived here, and the
+             | screens that project future runs ask the same object. They used to be four lines of
+             | comparison living only in this method, so anything wanting to say "next run: Saturday
+             | 03:00" had to reimplement them - and a projection that drifts from the scheduler is
+             | believed over the scheduler, because it is the one somebody can see.
+             */
+            $timezone = $schedule->timezoneFor($site);
             $now = Carbon::now($timezone);
 
-            if ($now->hour !== $site->backup_schedule_hour) {
-                continue;
-            }
-
-            if ($site->backup_schedule === 'weekly' && $now->dayOfWeekIso !== $site->backup_schedule_day) {
-                continue;
-            }
-
-            // Already fired in this window. Compared against the recorded timestamp rather than
-            // against existing jobs, so a job that failed and was swept up does not reopen the window.
-            if ($site->backup_scheduled_at !== null
-                && $site->backup_scheduled_at->setTimezone($timezone)->isSameHour($now)) {
+            if (! $schedule->isDue($site, $now) || $schedule->hasFiredInWindow($site, $now)) {
                 continue;
             }
 

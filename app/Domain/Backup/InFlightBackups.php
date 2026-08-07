@@ -50,6 +50,24 @@ final class InFlightBackups
     }
 
     /**
+     * How many are outstanding, without assembling any of them.
+     *
+     * For the sidebar, which renders on every authenticated page and wants one integer. Going
+     * through {@see forOrganisation()} would hydrate every job, eager-load its site and run the
+     * phase query, all to call count() on the result.
+     *
+     * Built from the same `jobs()` definition rather than a second query written to match, so the
+     * badge and the panel it points at cannot disagree. A badge reading 2 above a screen listing 3
+     * is worse than no badge: it teaches people the number is decorative.
+     */
+    public function countForOrganisation(int $organisationId): int
+    {
+        return $this->outstanding()
+            ->whereHas('site', static fn ($query) => $query->where('organisation_id', $organisationId))
+            ->count();
+    }
+
+    /**
      * How long a person should expect to wait before a site collects the request.
      *
      * Phrased as a window rather than a countdown. The connector runs its job task every five
@@ -71,11 +89,25 @@ final class InFlightBackups
      */
     private function jobs()
     {
-        return RemoteJob::query()
+        return $this->outstanding()
             ->with('site')
-            ->where('type', Jobs::BACKUP_CREATE)
-            ->whereIn('state', [Jobs::STATE_QUEUED, Jobs::STATE_CLAIMED])
             ->orderByDesc('created_at');
+    }
+
+    /**
+     * What counts as outstanding, without the ordering or the eager load the screen needs.
+     *
+     * Separated for the same reason {@see FailedBackupJobs::notices()} is: the count and the list
+     * have to be the same set, and the only way to guarantee that is for both to be built from one
+     * definition rather than from two that happen to agree today.
+     *
+     * @return Builder<RemoteJob>
+     */
+    private function outstanding()
+    {
+        return RemoteJob::query()
+            ->where('type', Jobs::BACKUP_CREATE)
+            ->whereIn('state', [Jobs::STATE_QUEUED, Jobs::STATE_CLAIMED]);
     }
 
     /**

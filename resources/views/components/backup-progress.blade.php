@@ -34,7 +34,7 @@
                  been quiet for long enough that "large database" has stopped being the likeliest
                  explanation, and somebody watching a stepper that has not moved deserves to be told
                  that rather than left to guess. --}}
-            <x-status-badge tone="amber" label="No change" />
+            <x-status-badge tone="warn" label="No change" />
         @endif
 
         <span class="ml-auto font-mono text-[11.5px] text-text-3" data-backup-elapsed>

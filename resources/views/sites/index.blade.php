@@ -218,7 +218,6 @@
                      | and why instead, which is the same choice `Refresh all` made.
                      */
                     $bulk = $membership->canAdminister();
-                    $columnCount = $bulk ? 11 : 10;
                     $restoredSites = $bulk ? (array) old('sites', []) : [];
                 @endphp
 
@@ -237,12 +236,32 @@
                             @endif
 
                             @php
-                                // heading => [responsive classes, sort key or null]
+                                /*
+                                 | heading => [responsive classes, sort key or null]
+                                 |
+                                 | $columnCount is derived from this rather than written down. The
+                                 | group-heading rows span the table with `colspan`, and that number
+                                 | was a literal sitting twenty lines away from the list it had to
+                                 | agree with - so adding a column here left every group heading one
+                                 | cell short, silently and only at some breakpoints.
+                                 */
                                 $columns = [
                                     'Site' => ['', 'name'],
                                     'Environment' => ['hidden xl:table-cell', null],
                                     'Status' => ['', null],
                                     'Craft' => ['hidden lg:table-cell', 'craft'],
+
+                                    /*
+                                     | What each site is behind on, at the same breakpoint as Craft.
+                                     |
+                                     | The number was already on the row - UpdatesIngestService
+                                     | mirrors it onto `sites` so the fleet query stays a single
+                                     | table scan - and until now it was read only by the sidebar
+                                     | badge. So the fleet screen could tell you a total for the
+                                     | organisation and not which site it belonged to.
+                                     */
+                                    'Updates' => ['hidden lg:table-cell', 'updates'],
+
                                     'PHP' => ['hidden xl:table-cell', null],
                                     'Disk' => ['hidden lg:table-cell', 'disk'],
                                     'Backup' => ['hidden lg:table-cell', 'backup'],
@@ -265,6 +284,8 @@
 
                                     'Last seen' => ['hidden sm:table-cell', 'seen'],
                                 ];
+
+                                $columnCount = count($columns) + ($bulk ? 1 : 0);
                             @endphp
 
                             @foreach ($columns as $heading => [$responsive, $key])
@@ -352,6 +373,29 @@
                                         <x-status-badge :tone="$tone" :label="Str::of($site->status)->replace('_', ' ')->ucfirst()" />
                                     </td>
                                     <td class="hidden whitespace-nowrap px-3 py-3 font-mono text-[12px] tabular text-text-2 lg:table-cell">{{ $site->craft_version ?? '—' }}</td>
+
+                                    {{--
+                                        How far behind this site is, and whether any of it is urgent.
+
+                                        Empty rather than a zero, and this is the one column on the
+                                        table where that is right. "Nothing to do" is the resting
+                                        state of a fleet that is being kept up to date, and drawing
+                                        a badge for it down every row would make the rows that do
+                                        need something harder to find, not easier - which is the
+                                        whole reason for the column.
+
+                                        Amber when a security release is among them, matching the
+                                        sidebar badge. The count alone cannot carry that: one update
+                                        can be more urgent than nine.
+                                    --}}
+                                    <td class="hidden whitespace-nowrap px-3 py-3 lg:table-cell">
+                                        @if ((int) $site->available_updates > 0)
+                                            <x-status-badge :tone="$site->has_security_release ? 'warn' : 'info'"
+                                                            glyph="↑"
+                                                            :label="$site->available_updates.' '.Str::plural('update', $site->available_updates)" />
+                                        @endif
+                                    </td>
+
                                     <td class="hidden whitespace-nowrap px-3 py-3 font-mono text-[12px] tabular text-text-2 xl:table-cell">{{ $site->php_version ?? '—' }}</td>
 
                                     @php
@@ -397,9 +441,12 @@
                                         @elseif ($backup['at'] === null)
                                             <span class="font-mono text-[12px] text-text-3">—</span>
                                         @else
-                                            <span class="font-mono text-[12px] tabular text-text-2">
-                                                {{ $backup['at']->diffForHumans(short: true) }}
-                                            </span>
+                                            {{-- A badge rather than bare text, so the column reads
+                                                 as one thing down its whole length. A failure was
+                                                 already a badge and a success was not, which made
+                                                 the good rows look like an absence of information
+                                                 rather than the answer. --}}
+                                            <x-status-badge tone="ok" :label="$backup['at']->diffForHumans(short: true)" />
                                         @endif
                                     </td>
 

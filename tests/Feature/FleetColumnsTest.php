@@ -175,3 +175,90 @@ it('sorts the least trustworthy backups to the top', function (): void {
     // whose last good copy is old and still succeeding.
     expect(strpos($html, 'Broken Ltd'))->toBeLessThan(strpos($html, 'Recent Ltd'));
 });
+
+/*
+ * The Updates column.
+ *
+ * The count and the security flag are mirrored onto the `sites` row by UpdatesIngestService, so this
+ * column is free — and the query budget above is what keeps it that way. What it has to get right is
+ * the distinction the number alone cannot carry: one security release is more urgent than nine
+ * ordinary updates, and a column that sorted or coloured purely by count would say the opposite.
+ */
+
+it('shows how far behind each site is', function (): void {
+    $this->site->forceFill(['available_updates' => 9, 'has_security_release' => false])->save();
+
+    $this->actingAs($this->user)->get(route('sites.index'))
+        ->assertOk()
+        ->assertSee('9 updates');
+});
+
+it('says one update rather than one updates', function (): void {
+    $this->site->forceFill(['available_updates' => 1, 'has_security_release' => false])->save();
+
+    $this->actingAs($this->user)->get(route('sites.index'))
+        ->assertOk()
+        ->assertSee('1 update')
+        ->assertDontSee('1 updates');
+});
+
+it('draws nothing at all for a site with nothing to do', function (): void {
+    // Not a zero. "Nothing to do" is the resting state of a fleet being kept up to date, and a badge
+    // down every row for it would bury the rows that need something.
+    $this->site->forceFill(['available_updates' => 0, 'has_security_release' => false])->save();
+
+    $html = $this->actingAs($this->user)->get(route('sites.index'))->assertOk()->getContent();
+
+    expect($html)->not->toContain('0 updates');
+});
+
+it('gives a security release the amber treatment and an ordinary update the quiet one', function (): void {
+    /*
+     * Matched as a badge rather than by looking for the class anywhere on the page. The sidebar's
+     * own update badge goes amber on exactly the same condition, so a bare toContain('amber') here
+     * would pass whether or not this column had ever been written.
+     */
+    $badge = static fn (string $tone, string $label): string => '/border-'.$tone.'-line[^>]*+>.{0,200}?'.preg_quote($label, '/').'/s';
+
+    $this->site->forceFill(['available_updates' => 1, 'has_security_release' => true])->save();
+
+    $urgent = $this->actingAs($this->user)->get(route('sites.index'))->assertOk()->getContent();
+
+    $this->site->forceFill(['has_security_release' => false])->save();
+
+    $ordinary = $this->actingAs($this->user)->get(route('sites.index'))->assertOk()->getContent();
+
+    expect($urgent)->toMatch($badge('amber', '1 update'))
+        ->and($ordinary)->toMatch($badge('info', '1 update'))
+        ->and($ordinary)->not->toMatch($badge('amber', '1 update'));
+});
+
+it('sorts a security release above a larger ordinary backlog', function (): void {
+    $this->site->forceFill(['available_updates' => 12, 'has_security_release' => false])->save();
+
+    $urgent = Site::factory()->for($this->organisation)->connected()->create([
+        'name' => 'Urgent Ltd',
+        'available_updates' => 1,
+        'has_security_release' => true,
+    ]);
+
+    $html = $this->actingAs($this->user)->get(route('sites.index', ['sort' => 'updates']))
+        ->assertOk()
+        ->getContent();
+
+    expect(strpos($html, $urgent->name))->toBeLessThan(strpos($html, $this->site->name));
+});
+
+it('reads a successful backup as a badge rather than as bare text', function (): void {
+    // The column carried a red badge for a failure and plain text for a success, so the rows that
+    // were fine looked like an absence of information rather than the answer.
+    BackupArtifact::factory()->for($this->site)->create([
+        'organisation_id' => $this->organisation->id,
+        'state' => BackupArtifact::STATE_STORED,
+        'taken_at' => now()->subHours(4),
+    ]);
+
+    $html = $this->actingAs($this->user)->get(route('sites.index'))->assertOk()->getContent();
+
+    expect($html)->toContain('border-ok-line')->and($html)->toContain('4h ago');
+});

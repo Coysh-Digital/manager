@@ -14,17 +14,17 @@ under **Before you upgrade**.
 
 ## Upgrade
 
-Replace `v1.4.0` below with the version you are moving to.
+Replace `v1.5.0` below with the version you are moving to.
 
 ```bash
 cd /opt/manager
 git fetch --tags
 
-git checkout v1.4.0
+git checkout v1.5.0
 cd deploy/docker
 
 # Record which release this is, so the interface can say so rather than "unreleased build".
-sed -i 's/^MANAGER_VERSION=.*/MANAGER_VERSION=1.4.0/' .env
+sed -i 's/^MANAGER_VERSION=.*/MANAGER_VERSION=1.5.0/' .env
 
 docker compose up -d --build
 
