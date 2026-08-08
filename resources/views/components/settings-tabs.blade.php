@@ -52,8 +52,13 @@
 
      `relative` is load-bearing. An sr-only element inside an unpositioned overflow-x-auto container
      resolves its absolute position against the page and extends the document sideways —
-     tests/Invariants/ResponsiveLayoutTest.php fails the build for it. --}}
-<nav aria-label="Settings sections" class="relative -mx-4 mb-5 overflow-x-auto border-b border-border px-4 sm:mx-0 sm:mb-6 sm:px-0">
+     tests/Invariants/ResponsiveLayoutTest.php fails the build for it.
+
+     `overflow-y-hidden` is the other half of the same rule. CSS resolves the opposite axis to `auto`
+     as soon as one of them is not `visible`, so `overflow-x-auto` on its own makes this scrollable
+     vertically as well - and the `-mb-px` below puts one pixel of the list outside the box on
+     purpose, which is enough for a phone to offer a vertical drag on a strip of tabs. --}}
+<nav aria-label="Settings sections" class="relative -mx-4 mb-5 overflow-x-auto overflow-y-hidden border-b border-border px-4 sm:mx-0 sm:mb-6 sm:px-0">
     <ul class="-mb-px flex w-max min-w-full items-end gap-x-1">
         @foreach ($tabs as $tab)
             @php $active = request()->routeIs($tab['route'], ...($tab['also'] ?? [])); @endphp

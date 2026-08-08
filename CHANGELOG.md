@@ -32,6 +32,15 @@ what a webhook receives.
 The webhook payload is unchanged. `context.reason` still carries the failure verbatim; it is the
 `summary` prose around it that moved.
 
+### Fixed
+
+- **The site and settings tabs scrolled up and down as well as sideways on a phone.** A thumb aiming
+  along the strip nudged it out of line instead. CSS resolves an `overflow` of `visible` to `auto` as
+  soon as the other axis is not, so `overflow-x-auto` alone means "scrollable both ways" — and the
+  tab list deliberately puts one pixel outside the box so the active tab's underline sits on the
+  container's border rather than below it. One pixel is enough to scroll. There is now a check that
+  fails the build on a navigation strip that can scroll vertically.
+
 ## 1.5.0 — 2026-08-07
 
 Seeing the state of a fleet's backups without reading every row, and seeing how far behind each site
