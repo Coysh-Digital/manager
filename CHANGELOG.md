@@ -44,6 +44,12 @@ The webhook payload is unchanged. `context.reason` still carries the failure ver
   installation has ever had `nanoid` on it. The advisory was published after 1.5.0 was tagged, which
   is why a release that was green went red without anybody touching it — the point of running
   `npm audit` on every build rather than at release time.
+- **The site and settings tabs scrolled up and down as well as sideways on a phone.** A thumb aiming
+  along the strip nudged it out of line instead. CSS resolves an `overflow` of `visible` to `auto` as
+  soon as the other axis is not, so `overflow-x-auto` alone means "scrollable both ways" — and the
+  tab list deliberately puts one pixel outside the box so the active tab's underline sits on the
+  container's border rather than below it. One pixel is enough to scroll. There is now a check that
+  fails the build on a navigation strip that can scroll vertically.
 
 ## 1.5.0 — 2026-08-07
 
