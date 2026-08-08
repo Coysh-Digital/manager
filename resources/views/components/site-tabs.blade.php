@@ -19,8 +19,14 @@
     and it costs the eye the same glance as a real number.
 --}}
 {{-- Scrolls sideways rather than wrapping to two rows on a phone. Seven tabs wrapped is a block of
-     navigation taller than the content under it, and the order carries meaning. --}}
-<nav aria-label="Site sections" class="relative -mx-4 mb-5 overflow-x-auto border-b border-border px-4 sm:mx-0 sm:mb-6 sm:px-0">
+     navigation taller than the content under it, and the order carries meaning.
+
+     `overflow-y-hidden` is not belt-and-braces, it is the fix for a real bug. CSS says that when one
+     axis is not `visible` the other resolves to `auto`, so `overflow-x-auto` alone silently makes
+     this scrollable vertically too - and the `-mb-px` below deliberately puts one pixel of the list
+     outside the box, which is exactly enough to make a phone offer a vertical drag on the tab strip.
+     Reported from use: the tabs moved up and down as well as sideways. --}}
+<nav aria-label="Site sections" class="relative -mx-4 mb-5 overflow-x-auto overflow-y-hidden border-b border-border px-4 sm:mx-0 sm:mb-6 sm:px-0">
     <ul class="-mb-px flex w-max min-w-full items-end gap-x-1">
         @foreach ($tabs as $tab)
             @php $active = request()->routeIs($tab['route']); @endphp
