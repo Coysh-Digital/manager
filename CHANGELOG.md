@@ -44,6 +44,15 @@ The webhook payload is unchanged. `context.reason` still carries the failure ver
   installation has ever had `nanoid` on it. The advisory was published after 1.5.0 was tagged, which
   is why a release that was green went red without anybody touching it — the point of running
   `npm audit` on every build rather than at release time.
+- **The environment reference was missing eleven settings**, on a page that opens by saying it lists
+  everything Manager reads. The most consequential was `MANAGER_NUDGE_ENABLED` — the one 1.5.0 tells
+  you to set if your installation must make no outbound request to a managed site. Somebody following
+  that instruction would have arrived at the reference and not found it. Also added: the enrolment
+  rate limits, the heartbeat interval and grace, telemetry retention (and the older
+  `MANAGER_HEARTBEAT_RETENTION_DAYS` name it still honours), `MANAGER_HSTS_SECONDS`,
+  `MANAGER_SETUP_TTL`, `MANAGER_FETCH_CHANGELOGS`, `MANAGER_DIAGNOSTICS_ENDPOINT`, and the four S3
+  credential variables that were named only in passing inside another row. There is now a check that
+  fails the build when a variable is read but not documented.
 - **The site and settings tabs scrolled up and down as well as sideways on a phone.** A thumb aiming
   along the strip nudged it out of line instead. CSS resolves an `overflow` of `visible` to `auto` as
   soon as the other axis is not, so `overflow-x-auto` alone means "scrollable both ways" — and the

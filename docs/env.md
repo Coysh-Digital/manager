@@ -59,6 +59,10 @@ are rejected with a 503 rather than accepted.
 | Variable | Default | Notes |
 |---|---|---|
 | `MANAGER_ENROLMENT_TTL` | `900` | Seconds an enrolment code stays valid. It is a bearer secret until consumed, so keep it short. |
+| `MANAGER_ENROLMENT_MAX_ATTEMPTS_IP` | `10` | Enrolment attempts per source network before they are refused. A code is guessable in principle, so the rate limit is what makes guessing pointless in practice. |
+| `MANAGER_ENROLMENT_MAX_ATTEMPTS_SITE` | `5` | The same, per site. Lower, because a site being paired repeatedly is stranger than an agency pairing several sites from one office. |
+| `MANAGER_ENROLMENT_DECAY` | `900` | Seconds those two counters remember an attempt for. |
+| `MANAGER_NUDGE_ENABLED` | `true` | Whether Manager may ask a site to check in early, so requested work starts in seconds rather than at the next scheduled check-in. The request carries no instruction - a site that receives one makes the ordinary signed claim it would have made anyway - and the address is composed from the site's own expected domain rather than taken from the wire. **Set it to `false` if this installation must make no outbound request to a managed site.** Nothing depends on it: with it off, or against a connector too old to say where to knock, work starts on the site's own schedule exactly as before. Deliberately absent from `.env.example`, because a blank value reads as false and a copied-but-unfilled line would turn it off without anybody meaning to. |
 | `MANAGER_TIMESTAMP_TOLERANCE` | `120` | Seconds of accepted clock skew. Widening this widens the replay window the nonce store must remember; the two move together. |
 | `MANAGER_MAX_PAYLOAD_BYTES` | `262144` | Enforced before parsing. |
 | `MANAGER_RATE_LIMIT_SITE` | `60` | Requests per minute per site. |
@@ -85,6 +89,28 @@ one-time setup flow.
 |---|---|---|
 | `MANAGER_HTTP_PORT` | `8080` | Host port the app binds on, on localhost only. Change it if something already holds 8080. The container port stays 8080, which is what the reverse-proxy examples name. |
 | `MANAGER_TRUSTED_PROXIES` | empty | Comma-separated addresses or CIDR ranges. **Never `*`** - that lets any caller forge its apparent source address, defeating per-network rate limits and the addresses in the audit log. `manager:doctor` fails on it. |
+| `MANAGER_HSTS_SECONDS` | `31536000` | `max-age` on the HSTS header, in seconds. One year. A blank value falls back to the default rather than to zero, because an empty variable is somebody who has not decided rather than somebody asking browsers to stop pinning HTTPS. |
+
+## Health and telemetry
+
+| Variable | Default | Notes |
+|---|---|---|
+| `MANAGER_HEARTBEAT_INTERVAL` | `300` | Seconds a connector is expected to check in within. The screens describe the wait as a window rather than a countdown, because a site with no cron reports off ordinary web traffic instead. |
+| `MANAGER_HEARTBEAT_GRACE` | `3` | How many intervals may pass before a site is treated as silent. Three, so one missed run is not an incident. |
+| `MANAGER_TELEMETRY_RETENTION_DAYS` | `90` | Days of heartbeats, runtime reports and sign-in reports kept before `manager:telemetry:prune` removes them. |
+| `MANAGER_HEARTBEAT_RETENTION_DAYS` | unset | The previous name for the row above, still honoured. It was the documented name before runtime and sign-in reports existed, and silently ignoring a setting an operator had already made would be the wrong way to rename one. Set either; the newer name wins. |
+
+## Updates
+
+| Variable | Default | Notes |
+|---|---|---|
+| `MANAGER_FETCH_CHANGELOGS` | `true` | Whether Manager fetches plugin release notes so an update can be read before it is applied. Outbound traffic to package registries, on by default and switchable off for an installation that must make none. |
+
+## Setup
+
+| Variable | Default | Notes |
+|---|---|---|
+| `MANAGER_SETUP_TTL` | `3600` | Seconds the one-time setup flow stays open on a fresh installation. It creates the first owner, so it closes on its own rather than waiting to be remembered. |
 
 ## Mail
 
@@ -178,7 +204,12 @@ not end-to-end encryption.
 | `MANAGER_BACKUP_SECRET_KEY` | empty | **Legacy.** The other half. Whoever holds it can read backups taken *before* recovery keys existed, which is exactly why that arrangement was replaced. If you have no legacy artifacts, do not set it. |
 | `MANAGER_BACKUP_DISK` | `backups` | Which filesystem disk artifacts are written to. |
 | `MANAGER_BACKUP_DRIVER` | `local` | `local` or `s3`. The local default works but is a poor place for the only copy of a customer's database. |
-| `MANAGER_BACKUP_S3_BUCKET` | empty | With `MANAGER_BACKUP_S3_KEY`, `_SECRET`, `_REGION`, `_ENDPOINT` and `_PATH_STYLE`. Scope the credentials to this bucket alone: a key with access to the backup store has access to every managed site's database. |
+| `MANAGER_BACKUP_S3_BUCKET` | empty | The bucket artifacts are written to when the driver is `s3`. Scope the credentials below to this bucket alone: a key with access to the backup store has access to every managed site's database. |
+| `MANAGER_BACKUP_S3_KEY` | empty | Access key id. |
+| `MANAGER_BACKUP_S3_SECRET` | empty | Secret access key. |
+| `MANAGER_BACKUP_S3_REGION` | unset | No default. AWS needs one; most S3-compatible services ignore it. |
+| `MANAGER_BACKUP_S3_ENDPOINT` | unset | Set it for a non-AWS S3-compatible service; see below. |
+| `MANAGER_BACKUP_S3_PATH_STYLE` | `false` | Path-style addressing, which most non-AWS services need. |
 | `MANAGER_BACKUP_MAX_BYTES` | unset | Largest artifact accepted. Unset means no ceiling, which is the default: a limit nobody chose is an accident, not a policy. Set it in bytes to impose one, and the refusal names both the artifact's size and this variable. A policy statement rather than a buffer size - nothing is held in memory. With no ceiling here, your reverse proxy's body limit and PHP's `post_max_size` become the real one; `manager:doctor` reports what PHP allows, and cannot see the proxy. |
 | `MANAGER_BACKUP_UPLOAD_WINDOW` | `21600` | Seconds a declared artifact may wait for its bytes before being written off. Six hours, because that is what an artifact of the size now permitted takes on a real uplink. |
 | `MANAGER_BACKUP_PART_BYTES` | `268435456` | Bytes per part when an artifact goes **straight to an object store** and is too large for a single request. Sized by what the store will accept, not by anything on this machine. Lower it in tests so a small artifact exercises the multipart path. |
@@ -195,3 +226,4 @@ other than backups. Backups have their own credentials above, deliberately.
 | Variable | Default | Notes |
 |---|---|---|
 | `MANAGER_DIAGNOSTICS_ENABLED` | `false` | Off by default and never mandatory. Carries no site content and no secrets, is visible in settings, and can be turned off again at any time. |
+| `MANAGER_DIAGNOSTICS_ENDPOINT` | unset | Where diagnostics are sent when the row above is on. Unset means nowhere, which is why turning the switch on alone sends nothing. |
