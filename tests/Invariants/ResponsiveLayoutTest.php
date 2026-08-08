@@ -59,6 +59,43 @@ it('keeps a horizontal scroll container positioned, so nothing absolute escapes 
     ]));
 });
 
+it('lets a strip of tabs scroll sideways and not up and down', function (): void {
+    /*
+     | Reported from use: the site and settings tabs moved vertically as well as horizontally on a
+     | phone, so a thumb aiming sideways nudged the strip out of line instead.
+     |
+     | The cause is a rule nobody remembers: CSS resolves an `overflow` of `visible` to `auto` as
+     | soon as the other axis is not `visible`. So `overflow-x-auto` on its own is really
+     | "scrollable in both directions", and these navs put one pixel of their list outside the box
+     | on purpose - `-mb-px`, so the active tab's underline sits on the container's own border
+     | rather than below it. One pixel is enough to scroll.
+     |
+     | Scoped to <nav>. A table that scrolls sideways is a different question with a different
+     | answer - it may legitimately want both - and this is about a control strip, where vertical
+     | movement is never wanted and is always the accident above.
+     */
+    $offenders = [];
+
+    foreach (File::allFiles(resource_path('views')) as $file) {
+        $contents = (string) file_get_contents($file->getPathname());
+
+        preg_match_all('~<nav[^>]*class="([^"]*\boverflow-x-auto\b[^"]*)"~', $contents, $matches, PREG_SET_ORDER);
+
+        foreach ($matches as [, $class]) {
+            if (! preg_match('~\boverflow-y-hidden\b~', $class)) {
+                $offenders[] = $file->getRelativePathname().' - '.$class;
+            }
+        }
+    }
+
+    expect($offenders)->toBe([], implode("\n", [
+        'These navigation strips scroll in both directions:',
+        '  '.implode("\n  ", $offenders),
+        'overflow-x-auto resolves the other axis to auto, and -mb-px puts a pixel outside the box.',
+        'Add overflow-y-hidden.',
+    ]));
+});
+
 it('never hides a table by putting sr-only on the table itself', function (): void {
     $offenders = [];
 
