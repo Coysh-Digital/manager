@@ -32,6 +32,19 @@ what a webhook receives.
 The webhook payload is unchanged. `context.reason` still carries the failure verbatim; it is the
 `summary` prose around it that moved.
 
+### Fixed
+
+- **`nanoid` moved to 3.3.18**, clearing a high-severity advisory
+  ([GHSA-2v37-7h3g-55p8](https://github.com/advisories/GHSA-2v37-7h3g-55p8)) that arrived under
+  Vite's copy of PostCSS. It is a lockfile change and nothing else; the compiled assets are
+  byte-identical.
+
+  **Nothing shipped with it and nothing needs doing.** This is a build-time dependency: the
+  Dockerfile removes the whole Node toolchain and `public/build` is committed, so no running
+  installation has ever had `nanoid` on it. The advisory was published after 1.5.0 was tagged, which
+  is why a release that was green went red without anybody touching it — the point of running
+  `npm audit` on every build rather than at release time.
+
 ## 1.5.0 — 2026-08-07
 
 Seeing the state of a fleet's backups without reading every row, and seeing how far behind each site
