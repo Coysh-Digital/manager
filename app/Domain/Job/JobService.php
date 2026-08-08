@@ -10,6 +10,7 @@ use App\Domain\Backup\BackupFailureNotice;
 use App\Domain\Backup\BackupService;
 use App\Domain\Backup\RecoveryKeyService;
 use App\Domain\Notifications\Notifier;
+use App\Jobs\NudgeSite;
 use App\Models\AuditEvent;
 use App\Models\BackupArtifact;
 use App\Models\Connector;
@@ -186,6 +187,14 @@ final class JobService
                     'capability' => $definition->requiredCapability,
                 ],
             );
+
+            // After the transaction commits, so a site cannot claim a job this transaction has not
+            // finished writing. `afterCommit()` also means a rolled-back enqueue sends nothing.
+            //
+            // Nothing is gated on this. A site that cannot be reached, has not told us where to knock,
+            // or is running a connector too old to say, finds out on its own schedule - which is what
+            // happened before nudging existed and is still what happens most of the time.
+            NudgeSite::dispatch($site->id)->afterCommit();
 
             return $job;
         });

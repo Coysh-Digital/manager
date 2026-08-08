@@ -190,5 +190,7 @@ Craft is connecting as a superuser, because a superuser bypasses privilege check
 | Outbound 443 | Release and advisory checks |
 | Internal 5432, 6379 | Postgres and Redis. Never expose these |
 
-Connectors never receive an inbound connection, so managed sites need no inbound firewall rule at
-all.
+Managed sites need no inbound firewall rule. Manager can knock on one to ask it to check in early,
+but nothing depends on that reaching the site: one it cannot reach keeps its own schedule, and a
+requested backup starts at the next check-in instead of within seconds. Set `MANAGER_NUDGE_ENABLED=false`
+if this installation must make no outbound request to a managed site at all.

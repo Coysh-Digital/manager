@@ -69,6 +69,31 @@ return [
         'rate_limit_per_ip' => (int) env('MANAGER_RATE_LIMIT_IP', 120),
 
         /*
+         | Asking a site to check in now, rather than waiting for it to.
+         |
+         | Work queued here is collected when the site next claims - up to five minutes with cron, and
+         | until somebody visits the site if its scheduler runs off ordinary web traffic. With this on,
+         | a requested backup starts in seconds instead.
+         |
+         | On by default. The one outbound request it makes goes to the domain an operator typed for
+         | that site, guarded exactly as a notification webhook is: HTTPS only, no redirects, the
+         | connection pinned to the validated address, a five-second timeout and the response body
+         | discarded. This platform already reaches out to check a site's TLS certificate, so it is
+         | not a new category of traffic - only an authenticated one.
+         |
+         | Turn it off where Manager must make no outbound request to a managed site. Nothing breaks:
+         | every site keeps its own schedule, which is what it did before this existed.
+         |
+         | Read the same way as `updates.fetch_changelogs` below, which is the same kind of switch -
+         | outbound traffic an operator may want to forbid, on by default. Deliberately not listed in
+         | .env.example: a key present but blank reads as false here, and a line somebody copies
+         | without filling in would silently turn this off.
+        */
+        'nudge' => [
+            'enabled' => filter_var(env('MANAGER_NUDGE_ENABLED', true), FILTER_VALIDATE_BOOLEAN),
+        ],
+
+        /*
          | A separate allowance for artifact bytes, counted separately.
          |
          | The two above are sized for a connector that reports: a heartbeat, an inventory, a job

@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Domain\Backup\FailedBackupJob;
 use App\Domain\Backup\FailedBackupJobs;
 use App\Domain\Capability\CapabilityService;
+use App\Domain\Connector\NudgeDispatcher;
 use App\Domain\Health\SiteUptime;
 use App\Domain\Health\UptimeWindow;
 use App\Domain\Job\JobRejectedException;
@@ -53,7 +54,10 @@ final class SiteController
      */
     public const REPORTING_WINDOW_HOURS = 168;
 
-    public function __construct(private readonly CapabilityService $capabilities) {}
+    public function __construct(
+        private readonly CapabilityService $capabilities,
+        private readonly NudgeDispatcher $nudges,
+    ) {}
 
     public function index(Request $request, Organisation $organisation): View
     {
@@ -163,7 +167,7 @@ final class SiteController
             ]);
         }
 
-        return back()->with('status', $this->refreshMessage($site->name, $queued));
+        return back()->with('status', $this->refreshMessage($site, $queued));
     }
 
     /**
@@ -175,6 +179,7 @@ final class SiteController
 
         $touched = 0;
         $skipped = 0;
+        $nudged = 0;
 
         foreach ($sites as $site) {
             if ($this->queueRefresh($site, $jobs, $request->user()) === []) {
@@ -184,6 +189,10 @@ final class SiteController
             }
 
             $touched++;
+
+            if ($this->nudges->canReach($site)) {
+                $nudged++;
+            }
         }
 
         if ($touched === 0) {
@@ -194,13 +203,28 @@ final class SiteController
 
         // The skipped count is reported rather than swallowed. Silently refreshing four of twelve sites
         // and saying "refreshed" would be the sort of half-truth an operator only discovers later.
+        $skippedNote = $skipped > 0
+            ? sprintf(' %d skipped, having no active connector.', $skipped)
+            : '';
+
+        // Three shapes rather than one with a clause. A fleet nothing can be reached in reads exactly
+        // as it always has, rather than being told that none of it is being asked to hurry.
+        $outcome = match (true) {
+            $nudged === 0 => 'They will report when each next checks in.',
+            $nudged === $touched => 'Each is being asked to report now.',
+            default => sprintf(
+                '%d %s being asked to report now; the rest when each next checks in.',
+                $nudged,
+                $nudged === 1 ? 'is' : 'are',
+            ),
+        };
+
         return back()->with('status', sprintf(
-            'Refresh queued for %d %s.%s They will report when each next checks in.',
+            'Refresh queued for %d %s.%s %s',
             $touched,
             $touched === 1 ? 'site' : 'sites',
-            $skipped > 0
-                ? sprintf(' %d skipped, having no active connector.', $skipped)
-                : '',
+            $skippedNote,
+            $outcome,
         ));
     }
 
@@ -242,13 +266,15 @@ final class SiteController
     /**
      * @param  list<string>  $queued
      */
-    private function refreshMessage(string $name, array $queued): string
+    private function refreshMessage(Site $site, array $queued): string
     {
-        return sprintf(
-            'Refresh queued for %s. It will report when it next checks in%s.',
-            $name,
-            in_array(Jobs::UPDATES_CHECK, $queued, true) ? ', including an update check' : '',
-        );
+        $including = in_array(Jobs::UPDATES_CHECK, $queued, true) ? ', including an update check' : '';
+
+        // "Being asked" rather than "will report": the nudge is queued, not delivered, and a site
+        // behind a firewall answers nothing. That site gets the sentence it has always got.
+        return $this->nudges->canReach($site)
+            ? sprintf('Refresh queued for %s%s. The site is being asked to report now.', $site->name, $including)
+            : sprintf('Refresh queued for %s. It will report when it next checks in%s.', $site->name, $including);
     }
 
     /**

@@ -63,6 +63,11 @@ class Connector extends Model
         'last_seen_at',
         'revoked_at',
         'revoked_reason',
+
+        // `nudge_path`, `nudge_succeeded_at` and `nudge_failures` are deliberately absent. The path is
+        // the one field here that arrives from the wire, and it decides where this platform makes an
+        // outbound request - so it is written only through the two places that pass it through
+        // NudgePath first, and never by mass assignment from a validated array.
     ];
 
     /**
@@ -75,6 +80,7 @@ class Connector extends Model
             'key_rotated_at' => 'datetime',
             'last_seen_at' => 'datetime',
             'revoked_at' => 'datetime',
+            'nudge_succeeded_at' => 'datetime',
         ];
     }
 

@@ -13,6 +13,7 @@ use App\Domain\Backup\FailedBackupJobs;
 use App\Domain\Backup\InFlightBackups;
 use App\Domain\Backup\RecoveryKeyService;
 use App\Domain\Capability\CapabilityService;
+use App\Domain\Connector\NudgeDispatcher;
 use App\Domain\Job\JobRejectedException;
 use App\Domain\Job\JobService;
 use App\Models\BackupArtifact;
@@ -62,6 +63,7 @@ final class BackupController
         private readonly RecoveryKeyService $recoveryKeys,
         private readonly AuditRecorder $audit,
         private readonly BackupSchedule $schedule,
+        private readonly NudgeDispatcher $nudges,
     ) {}
 
     /**
@@ -430,9 +432,14 @@ final class BackupController
             detail: 'Requested from the backups screen.',
         );
 
+        // "Is being asked" rather than "will start": the nudge is queued, not delivered, and whether
+        // the site answers is not something this platform knows yet. A site it cannot reach gets the
+        // sentence it has always got, because for that site nothing has changed.
         return back()->with(
             'status',
-            "Backup requested for {$site->name}. It will run when the site next checks in."
+            $this->nudges->canReach($site)
+                ? "Backup requested for {$site->name}. The site is being asked to start it now."
+                : "Backup requested for {$site->name}. It will run when the site next checks in."
         );
     }
 
@@ -479,6 +486,10 @@ final class BackupController
 
         $queued = 0;
 
+        // How many of those are being knocked on. Counted rather than assumed from $queued, because a
+        // fleet is normally a mixture - some sites this platform can reach and some it cannot.
+        $nudged = 0;
+
         /** @var array<string, int> $skipped reason => how many sites gave it */
         $skipped = [];
 
@@ -522,6 +533,10 @@ final class BackupController
             );
 
             $queued++;
+
+            if ($this->nudges->canReach($site)) {
+                $nudged++;
+            }
         }
 
         // Asked for and not found: archived, removed, or belonging to somebody else. Reported rather
@@ -534,17 +549,45 @@ final class BackupController
 
         $response = $queued === 0
             ? back()->withErrors(['sites' => 'Nothing was requested. '.$this->skippedSentence($skipped)])
-            : back()->with('status', sprintf(
-                'Backup requested for %d %s. Each will run when that site next checks in.',
-                $queued,
-                $queued === 1 ? 'site' : 'sites',
-            ));
+            : back()->with('status', $this->requestedSentence($queued, $nudged));
 
         if ($queued > 0 && $skipped !== []) {
             $response->with('warning', $this->skippedSentence($skipped));
         }
 
         return $response;
+    }
+
+    /**
+     * What was queued, and how much of it this platform is knocking on.
+     */
+    private function requestedSentence(int $queued, int $nudged): string
+    {
+        $sites = $queued === 1 ? 'site' : 'sites';
+
+        // Three shapes rather than one with a clause, because "0 are being asked to start now" is a
+        // sentence about a feature the reader may not know exists, in answer to a question they did
+        // not ask. A fleet nothing can be reached in should read exactly as it always has.
+        if ($nudged === 0) {
+            return sprintf('Backup requested for %d %s. Each will run when that site next checks in.', $queued, $sites);
+        }
+
+        if ($nudged === $queued) {
+            return sprintf(
+                'Backup requested for %d %s. %s being asked to start now.',
+                $queued,
+                $sites,
+                $queued === 1 ? 'The site is' : 'Each is',
+            );
+        }
+
+        return sprintf(
+            'Backup requested for %d %s. %d %s being asked to start now; the rest will run when each next checks in.',
+            $queued,
+            $sites,
+            $nudged,
+            $nudged === 1 ? 'is' : 'are',
+        );
     }
 
     /**
@@ -559,6 +602,9 @@ final class BackupController
      * copy of this method - the argument against a second vocabulary applies just as well to a
      * second sentence.
      *
+     * @param  array<string, int>  $skipped
+     */
+    /**
      * @param  array<string, int>  $skipped
      */
     private function skippedSentence(array $skipped, string $noun = 'site'): string
