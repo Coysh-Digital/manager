@@ -6,6 +6,32 @@ Entries are written for somebody about to upgrade a running installation. Anythi
 action is under **Before you upgrade** - that section is the one to read, and `docs/upgrade.md` points
 here for exactly that reason.
 
+## 1.5.1 — 2026-08-08
+
+An alert you can read at a glance on a phone.
+
+Nothing to do on upgrade. No migration, no configuration, no change to what a connector sends or to
+what a webhook receives.
+
+### Alert emails
+
+- **The facts now sit in a bordered box, tinted to match how serious the event is** — red for a
+  failed backup or a serious finding, amber for a site that has gone quiet or a revoked connector,
+  neutral for a permission that was confirmed. The three are the same colours the interface uses for
+  the same three states, so moving from an inbox to a screen does not mean learning a second colour
+  language.
+- **The reason a backup failed is a labelled row of its own, in red**, rather than prose in the
+  middle of a sentence. It was the one fact somebody needed to act on and the only one without a
+  label, while "Environment: production" had one.
+- **The opening sentence of a backup-failure alert is now the same every time** — *"A backup of X did
+  not complete, so nothing new was stored. Earlier backups are unaffected."* A sentence that does not
+  vary is read once and skipped afterwards, which is what lets the box carry everything that does
+  vary. It also answers the first question a failed backup raises, which is what it did to the
+  backups already stored: nothing.
+
+The webhook payload is unchanged. `context.reason` still carries the failure verbatim; it is the
+`summary` prose around it that moved.
+
 ## 1.5.0 — 2026-08-07
 
 Seeing the state of a fleet's backups without reading every row, and seeing how far behind each site

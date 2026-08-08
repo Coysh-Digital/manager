@@ -70,6 +70,54 @@ final class NotificationEvent
         return array_key_exists($type, self::catalogue());
     }
 
+    /** Something is broken and somebody has to act. */
+    public const TONE_BAD = 'bad';
+
+    /** Something has changed for the worse, or needs looking at. */
+    public const TONE_WARN = 'warn';
+
+    /** A record of something that happened, correctly. */
+    public const TONE_INFO = 'info';
+
+    /**
+     * How loud this event is, for anything rendering it.
+     *
+     * Derived from the type rather than passed in by each factory, because it is a property of the
+     * *kind* of event and not of one occurrence: two backup failures are never one urgent and one
+     * routine. Deriving it also means a new entry in the catalogue cannot be given a tone in one
+     * place and forgotten in another - there is only one place.
+     *
+     * The three match the interface's own status badges, so an alert about a failed backup is the
+     * same red as the row it will be looked at on. A reader moving from an inbox to a screen should
+     * not have to learn a second colour language on the way.
+     *
+     * `default` is INFO rather than an exception: an unrecognised type is a programming error, and
+     * the right consequence of one is an alert that arrives looking calm, not an alert that throws
+     * on the way out. `tests/Invariants/NotificationToneTest.php` is what stops it staying wrong.
+     */
+    public function tone(): string
+    {
+        return self::toneFor($this->type);
+    }
+
+    public static function toneFor(string $type): string
+    {
+        return match ($type) {
+            // Nothing is being backed up, or something is exploitable. Both are "act now".
+            self::BACKUP_FAILED, self::FINDING_OPENED => self::TONE_BAD,
+
+            // Monitoring has a hole in it. Serious, and not the same as a site being broken - a
+            // silent site may be perfectly healthy behind a cron that stopped.
+            self::SITE_SILENT, self::CONNECTOR_REVOKED => self::TONE_WARN,
+
+            // Somebody authorised a copy of a customer database, deliberately. Worth a record and
+            // worth reading; not worth a red box, which would make the red ones mean less.
+            self::CAPABILITY_CONFIRMED => self::TONE_INFO,
+
+            default => self::TONE_INFO,
+        };
+    }
+
     /**
      * @param  array<string, mixed>  $context  counts, versions and identifiers only
      */

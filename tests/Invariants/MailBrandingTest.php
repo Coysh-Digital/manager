@@ -98,6 +98,16 @@ it('keeps the email theme in step with the interface palette', function (string 
     ['--surface', '#ffffff'],
     ['--border', '#e5e1db'],
     ['--pale', '#fcebe6'],
+
+    // The alert detail box carries the tone of the event in the same three colours the interface's
+    // status badges use. Listed here for the same reason as the rest: they are copies, and copies
+    // drift - and a red that has drifted is one somebody has to notice by eye, in an inbox.
+    ['--red', '#9e1733'],
+    ['--red-bg', '#fae9ec'],
+    ['--red-line', '#e9c7d0'],
+    ['--amber', '#8a5a00'],
+    ['--amber-bg', '#fbf1df'],
+    ['--amber-line', '#ebd8ae'],
 ]);
 
 it('escapes markup an operator types into an override', function (): void {
