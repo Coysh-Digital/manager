@@ -25,7 +25,7 @@ Get the source and start the stack. Every command in this section runs from `dep
 where the compose file lives — there is none at the top of the repository.
 
 ```bash
-git clone --branch v1.5.0 https://github.com/Coysh-Digital/manager.git /opt/manager
+git clone --branch v1.5.1 https://github.com/Coysh-Digital/manager.git /opt/manager
 cd /opt/manager/deploy/docker
 cp ../../.env.example .env
 ```
@@ -35,7 +35,7 @@ Open `.env` and set at minimum:
 ```dotenv
 APP_URL=https://manager.example.com
 DB_PASSWORD=            # something long and random
-MANAGER_VERSION=1.5.0   # which release this is; the interface says "unreleased build" without it
+MANAGER_VERSION=1.5.1   # which release this is; the interface says "unreleased build" without it
 ```
 
 The container will refuse to start if `APP_KEY` is empty, if `APP_DEBUG` is on, if `DB_PASSWORD` is

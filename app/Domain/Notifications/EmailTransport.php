@@ -67,6 +67,17 @@ final class EmailTransport
     }
 
     /**
+     * The row that says why, where there is one.
+     *
+     * Named here rather than compared as a string in the template, because two places deciding which
+     * row is the important one is how they come to disagree. It is the headline form of the
+     * `reason` context key, which is what {@see NotificationEvent::toPayload()} calls it - the label
+     * and the wire field stay the same word on purpose, so somebody reading a webhook and somebody
+     * reading an inbox are talking about the same thing.
+     */
+    public const CAUSE_LABEL = 'Reason';
+
+    /**
      * What happened, as label and value pairs.
      *
      * The single source both parts of the message render from - a table in the HTML, an aligned

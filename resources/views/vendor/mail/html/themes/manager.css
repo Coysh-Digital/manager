@@ -234,6 +234,87 @@ img {
     padding: 10px 0;
 }
 
+/*
+ * The detail box on a monitoring alert.
+ *
+ * A bordered, tinted panel rather than the bare rows above, and the tint carries the tone of the
+ * event - the same three colours the interface's status badges use, so somebody moving from the
+ * inbox to the screen is not learning a second colour language on the way.
+ *
+ * The point of it is scanning. The prose above is now the same sentence every time, so it is read
+ * once and skipped forever after; everything that varies between one alert and the next is in here,
+ * and the one line saying *why* is the only coloured value.
+ *
+ * Borders and background rather than a left-edge rule like .panel, because this is read as a unit -
+ * "here are the facts" - rather than as an aside. Widely supported: a table with a border and a
+ * background colour is about the safest thing there is in email, which is why it is not a rounded
+ * div with a shadow.
+ *
+ * Padding lives on the cells, not on the wrapper. Outlook's Word engine ignores padding on a div,
+ * so a box relying on it arrives with the text against the border.
+ */
+
+.detail {
+    margin: 24px 0;
+}
+
+.detail table {
+    -premailer-cellpadding: 0;
+    -premailer-cellspacing: 0;
+    -premailer-width: 100%;
+    margin: 0;
+    width: 100%;
+}
+
+.detail td {
+    font-size: 14px;
+    line-height: 20px;
+    margin: 0;
+    padding: 8px 16px;
+    vertical-align: top;
+}
+
+.detail-label {
+    color: #5d5854; /* --text-2 */
+    width: 35%;
+}
+
+.detail-bad {
+    background-color: #fae9ec; /* --red-bg */
+    border: 1px solid #e9c7d0; /* --red-line */
+}
+
+.detail-warn {
+    background-color: #fbf1df; /* --amber-bg */
+    border: 1px solid #ebd8ae; /* --amber-line */
+}
+
+.detail-info {
+    background-color: #f7f5f2; /* --bg */
+    border: 1px solid #e5e1db; /* --border */
+}
+
+/*
+ * The one line that says why, in the tone's own colour.
+ *
+ * Only this row. A box where every value is red is a box where nothing is emphasised, and the
+ * artifact identifier beside it is not bad news - it is how you find the thing.
+ */
+.detail-cause-bad {
+    color: #9e1733; /* --red */
+    font-weight: 500;
+}
+
+.detail-cause-warn {
+    color: #8a5a00; /* --amber */
+    font-weight: 500;
+}
+
+.detail-cause-info {
+    color: #1c1917; /* --text */
+    font-weight: 500;
+}
+
 .content-cell {
     max-width: 100vw;
     padding: 32px;
