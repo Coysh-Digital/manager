@@ -58,6 +58,58 @@ it('shows a backup the site refused, which left no artifact behind', function ()
         ->assertSee('maxBackupMegabytes');
 });
 
+it('shows the reason as a sentence, not as the exception it arrived in', function (): void {
+    /*
+     | Reported live. The card read:
+     |
+     |   RuntimeException: The platform rejected the request (HTTP 422). This organisation has no
+     |   room left for another backup. Correlation ID: 01KZKKGYJQBRVSN5ZAMR2WFE0
+     |
+     | 1.5.2 tidied this for the alert email and stopped there, so the screen - which is where
+     | somebody is standing when they go to fix it - kept the raw string.
+    */
+    RemoteJob::factory()->for($this->site)->create([
+        'type' => Jobs::BACKUP_CREATE,
+        'state' => Jobs::STATE_FAILED,
+        'failure_reason' => 'RuntimeException: The platform rejected the request (HTTP 422). This '
+            .'organisation has no room left for another backup. Correlation ID: 01KZKKGYJQBRVSN5ZAMR2WFE0',
+    ]);
+
+    $this->actingAs($this->owner)->get('/backups')
+        ->assertOk()
+        ->assertSee('This organisation has no room left for another backup.')
+        ->assertDontSee('RuntimeException')
+        ->assertDontSee('HTTP 422');
+});
+
+it('says what to do about a full organisation on the screen, not only in the email', function (): void {
+    // The remedy list was in FailedBackupJob and the email's copy was in FailureReason, and the two
+    // had already drifted: a backup refused for storage got advice in the inbox and none here.
+    RemoteJob::factory()->for($this->site)->create([
+        'type' => Jobs::BACKUP_CREATE,
+        'state' => Jobs::STATE_FAILED,
+        'failure_reason' => 'This organisation has no room left for another backup.',
+    ]);
+
+    $this->actingAs($this->owner)->get('/backups')
+        ->assertOk()
+        ->assertSee('Shorten the retention');
+});
+
+it('sends a site name on the backups screen to that site\'s backups', function (): void {
+    RemoteJob::factory()->for($this->site)->create([
+        'type' => Jobs::BACKUP_CREATE,
+        'state' => Jobs::STATE_FAILED,
+        'failure_reason' => 'The dump produced no file.',
+    ]);
+
+    // Somebody on the backups screen who clicks a site is asking about that site's backups. Landing
+    // on its overview means finding the Backups tab and clicking again.
+    $this->actingAs($this->owner)->get('/backups')
+        ->assertOk()
+        ->assertSee(route('sites.backups', $this->site), escape: false);
+});
+
 it('does not report the same failure twice when an artifact exists', function (): void {
     // A declared artifact that later failed is already on the screen with a reason of its own.
     // Listing the job as well would describe one failure twice, in two different sentences.

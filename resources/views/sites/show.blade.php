@@ -290,7 +290,7 @@
                     <span class="{{ $event->succeeded() ? '' : 'text-danger' }}">
                         {{ Str::of($event->action)->replace('.', ' ')->ucfirst() }}
                         @unless ($event->succeeded())
-                            <span class="text-text-2">— {{ $event->failure_reason }}</span>
+                            <span class="text-text-2">— {{ App\Domain\Notifications\FailureReason::sentence($event->failure_reason) }}</span>
                         @endunless
                     </span>
                     <span class="text-text-2">{{ $event->actor_label ?? Str::title($event->actor_type) }}</span>

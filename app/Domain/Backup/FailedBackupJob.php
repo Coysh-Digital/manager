@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Backup;
 
+use App\Domain\Notifications\FailureReason;
 use App\Models\Site;
 use Illuminate\Support\Carbon;
 
@@ -29,17 +30,14 @@ final readonly class FailedBackupJob
      *
      * Only for reasons the platform recognises, and null otherwise. A guess dressed as advice is
      * worse than no advice: it sends somebody to change a setting that was not the problem.
+     *
+     * The list itself lives in {@see FailureReason}, which is also what the alert email asks. It was
+     * here, and the email's copy was there, and the two had already drifted: a backup refused for
+     * storage got advice in the inbox and none on the screen, which is the wrong way round - the
+     * screen is where somebody is standing when they go to fix it.
      */
     public function remedy(): ?string
     {
-        $reason = strtolower($this->reason);
-
-        return match (true) {
-            str_contains($reason, 'larger than this connector is configured') => 'Raise maxBackupMegabytes in the site\'s config/manager-connector.php, or point that site at its own S3 bucket.',
-            str_contains($reason, 'no active recovery key') => 'Create a recovery key in Settings. Backups are encrypted to it, so there is nothing to encrypt to until one exists.',
-            str_contains($reason, 'declared but never uploaded') => 'The site started the upload and it did not arrive. Check the site can reach this installation, then run the backup again.',
-            str_contains($reason, 'did not match the declared checksum') => 'The bytes that arrived were not the bytes the site hashed. Run the backup again; if it repeats, the path between the two is altering data.',
-            default => null,
-        };
+        return FailureReason::from($this->reason)->advice;
     }
 }

@@ -409,7 +409,7 @@
                                                 @endif
                                             </div>
                                             @if ($artifact->failure_reason)
-                                                <span class="text-[11.5px] text-danger">{{ $artifact->failure_reason }}</span>
+                                                <span class="text-[11.5px] text-danger">{{ App\Domain\Notifications\FailureReason::sentence($artifact->failure_reason) }}</span>
                                             @endif
                                         </td>
 
