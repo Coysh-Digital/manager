@@ -6,6 +6,42 @@ Entries are written for somebody about to upgrade a running installation. Anythi
 action is under **Before you upgrade** - that section is the one to read, and `docs/upgrade.md` points
 here for exactly that reason.
 
+## 1.5.2 — 2026-08-09
+
+A failed-backup alert that reads like a message rather than a stack trace.
+
+Nothing to do on upgrade. No migration, no configuration, and the webhook payload is unchanged.
+
+### Alert emails
+
+- **The reason no longer arrives wearing an exception class.** A live alert read *"RuntimeException:
+  The platform rejected the request (HTTP 422). This organisation has no room left for another
+  backup. Correlation ID: 01KZK…"* — four things in one line, three of which mean nothing to the
+  person whose backup did not run. What a connector reports is the message of the exception it
+  caught, which is exact and is what support needs; it is not a sentence. The class name and the
+  "the platform said no" framing are dropped, and the reason row now reads *"This organisation has
+  no room left for another backup."*
+
+  Anything unrecognised is passed through whole. A message trimmed into something shorter risks
+  being trimmed into something misleading, and the reader has no way to tell — so this only removes
+  framing it can identify.
+
+- **The correlation identifier has a row of its own.** Being findable is the entire reason somebody
+  forwarding an alert to support needs it, and the end of a sentence is the worst place for a
+  reference number. An identifier the connector could not determine is dropped rather than shown as
+  a row reading "unknown".
+
+- **An alert about a storage limit now says so, and says what to do.** A backup refused for space is
+  not a fault — the backup was fine, there was nowhere to put it — and the remedy is a setting:
+  shorten retention on the site, or increase the storage available to the organisation. The alert
+  reported the failure and left the reader to work that out. It says it now, in the HTML and in the
+  plain-text part, which has to stand as a complete message on its own. No other failure gains
+  advice: a guessed remedy teaches people the advice is worth ignoring.
+
+**The webhook payload is unchanged.** `context.reason` still carries the failure verbatim, exactly as
+1.5.1 promised — a consumer may be matching on the whole string. The tidying happens where the email
+is rendered, and there is a test pinning that distinction.
+
 ## 1.5.1 — 2026-08-08
 
 An alert you can read at a glance on a phone, and a round of hardening around outbound destinations

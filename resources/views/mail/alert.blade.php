@@ -32,6 +32,17 @@
 </div>
 @endif
 
+@if ($advice !== null)
+{{--
+    What to do, for the failures where that is knowable from the reason.
+
+    Below the box rather than inside it: the box is facts about the event, and this is the only line
+    that asks the reader to go and change something. It sits directly above the button for that
+    reason - the sentence and the way to act on it should not have anything between them.
+--}}
+{{ $advice }}
+@endif
+
 <x-mail::button :url="$link->url">
 {{ $link->label }}
 </x-mail::button>
