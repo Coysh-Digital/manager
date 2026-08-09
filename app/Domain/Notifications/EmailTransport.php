@@ -117,10 +117,50 @@ final class EmailTransport
                 continue;
             }
 
+            /*
+             | The reason is taken apart before it is shown, and only here.
+             |
+             | What the connector reports is the message of the exception it caught, which is exact
+             | and is what support needs - and is also a class name, a status code, a sentence and a
+             | reference number run together in one line. Three of those four mean nothing to
+             | somebody whose backup did not run.
+             |
+             | `context.reason` keeps the string whole, because that is what the 1.5.1 notes promised
+             | webhook consumers. This is the rendering path, which is where being helpful belongs.
+            */
+            if ($key === 'reason') {
+                $reason = FailureReason::from($rendered);
+
+                $rows[self::CAUSE_LABEL] = $reason->sentence;
+
+                if ($reason->correlationId !== null) {
+                    // Its own row, because a reference number is least findable inside a sentence -
+                    // and finding it is the entire reason somebody forwarding this needs it.
+                    $rows['Correlation ID'] = $reason->correlationId;
+                }
+
+                continue;
+            }
+
             $rows[(string) Str::headline((string) $key)] = $rendered;
         }
 
         return $rows;
+    }
+
+    /**
+     * What to do about it, where the reason says so plainly enough to be sure.
+     *
+     * Null for everything else. An alert that guesses at a remedy teaches people that its advice is
+     * worth ignoring, which costs more than the alert that said nothing.
+     */
+    public function advice(NotificationEvent $event): ?string
+    {
+        $reason = $event->context['reason'] ?? null;
+
+        return is_string($reason) && $reason !== ''
+            ? FailureReason::from($reason)->advice
+            : null;
     }
 
     /**
@@ -146,6 +186,15 @@ final class EmailTransport
                 $lines[] = '  '.str_pad($label, $width).$value;
             }
 
+            $lines[] = '';
+        }
+
+        // The text part has to be a complete message on its own, so advice that appears in the HTML
+        // and not here would leave whoever reads plain text with the half that only states a problem.
+        $advice = $this->advice($event);
+
+        if ($advice !== null) {
+            $lines[] = $advice;
             $lines[] = '';
         }
 

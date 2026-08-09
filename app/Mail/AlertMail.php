@@ -52,6 +52,10 @@ final class AlertMail extends Mailable
                 // Which row the template should colour. Passed rather than reached for, so the
                 // decision stays in one class and the view stays a view.
                 'causeLabel' => EmailTransport::CAUSE_LABEL,
+                // Where the reason says plainly what to do, said in the message rather than
+                // left for the reader to infer from a limit they cannot see.
+                'advice' => $transport->advice($this->event),
+
                 'link' => AlertLink::for($this->event),
                 'preferences' => AlertLink::preferences(),
                 'plain' => $transport->body($this->event),
