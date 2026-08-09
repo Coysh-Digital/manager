@@ -22,7 +22,7 @@ nowhere to put them.
 ## 1. Get it running
 
 Get the source and start the stack. Every command in this section runs from `deploy/docker`, which is
-where the compose file lives — there is none at the top of the repository.
+where the compose file lives - there is none at the top of the repository.
 
 ```bash
 git clone --branch v1.5.2 https://github.com/Coysh-Digital/manager.git /opt/manager
@@ -39,7 +39,7 @@ MANAGER_VERSION=1.5.2   # which release this is; the interface says "unreleased 
 ```
 
 The container will refuse to start if `APP_KEY` is empty, if `APP_DEBUG` is on, if `DB_PASSWORD` is
-one of the obvious ones, or if `APP_ENV` is set to anything but `production`. That is deliberate —
+one of the obvious ones, or if `APP_ENV` is set to anything but `production`. That is deliberate -
 those are the ones that turn up in every post-mortem, and since 1.1.0 none of them is conditional on
 `APP_ENV`. They used to be, which meant copying a `.env.example` that shipped `APP_ENV=local` skipped
 every one of them; [install.md](install.md) has the detail.
@@ -54,7 +54,7 @@ docker compose run --rm --no-deps app php artisan manager:backups:keygen --show
 ```
 
 **Copy every line of that output into `.env` yourself.** The container's root filesystem is
-read-only and its environment arrives from that file, so nothing can write them for you — which is
+read-only and its environment arrives from that file, so nothing can write them for you - which is
 why they are printed rather than saved. `--no-deps` keeps the database and Redis from starting just
 to generate a key.
 

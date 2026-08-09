@@ -22,8 +22,8 @@
         </div>
 
         <p class="mb-3 max-w-[80ch] text-[12.5px] leading-relaxed text-text-2">
-            Append-only. Entries cannot be edited or deleted, and each one commits to the entry before
-            it, so any alteration is detectable.
+            Everything Manager does is recorded here. Entries cannot be edited or deleted by anyone,
+            and any attempt to change one afterwards would be visible.
 
             @if (app(App\Contracts\ServerAccess::class)->reachable())
                 Verify the chain with
@@ -70,7 +70,7 @@
                                     <x-audit-action :event="$event" :previous="$loop->index > 0 ? $events[$loop->index - 1] : null" />
                                 </td>
                                 <td class="px-3 py-2.5 text-text-2">{{ $event->actor_label ?? Str::title($event->actor_type) }}</td>
-                                <td class="whitespace-nowrap px-3 py-2.5 font-mono text-[11.5px] text-text-3">{{ $event->ip ?? '—' }}</td>
+                                <td class="whitespace-nowrap px-3 py-2.5 font-mono text-[11.5px] text-text-3">{{ $event->ip ?? '-' }}</td>
                                 <td class="px-3 py-2.5">
                                     @if ($event->succeeded())
                                         <x-status-badge tone="ok" label="Succeeded" />

@@ -34,12 +34,24 @@
                     </label>
                 </div>
 
+                {{-- Who to ask depends on who is running this. `ServerAccess` is the same gate the
+                     activity log uses to decide whether to print an artisan command: reachable means
+                     the reader's own organisation operates the installation, so there is no support
+                     desk to send them to and the honest answer is their administrator. Hosted, there
+                     is one, and saying so is better than leaving somebody to work out that the only
+                     route offered involves abandoning their account. --}}
                 <p class="max-w-[80ch] text-[12px] leading-relaxed text-text-3">
                     Your name appears beside everything this account does in the audit log, so it is
                     worth keeping current. The email address cannot be changed here - it is how you
                     sign in, how a password reset reaches you, and what every audit entry already
-                    written is filed against, so moving it is an account recovery process rather than a
-                    field. An owner can invite a new account and revoke this one.
+                    written is filed against.
+                    @if (app(App\Contracts\ServerAccess::class)->reachable())
+                        An administrator can move the account to a new address, or an owner can invite
+                        a new account and revoke this one.
+                    @else
+                        Contact support and we will move it for you, or an owner can invite a new
+                        account and revoke this one.
+                    @endif
                 </p>
 
                 <div>

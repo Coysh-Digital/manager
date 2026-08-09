@@ -8,7 +8,8 @@ here for exactly that reason.
 
 ## 1.5.2 — 2026-08-09
 
-A failed-backup alert that reads like a message rather than a stack trace.
+A failed-backup alert that reads like a message rather than a stack trace, and a round of corrections
+to what several screens say.
 
 Nothing to do on upgrade. No migration, no configuration, and the webhook payload is unchanged.
 
@@ -64,6 +65,39 @@ Nothing to do on upgrade. No migration, no configuration, and the webhook payloa
 **The webhook payload is unchanged.** `context.reason` still carries the failure verbatim, exactly as
 1.5.1 promised — a consumer may be matching on the whole string. The tidying happens where the email
 is rendered, and there is a test pinning that distinction.
+
+### Wording
+
+Five corrections found by reading the screens rather than the code. Nothing behind any of them
+changed, and no setting, migration or payload is involved.
+
+- **A queued test notification pointed at a delivery log that does not exist.** It said *"Check the
+  delivery log below in a moment"*. There is no delivery log: a destination's last three deliveries
+  are listed inside its own row, only once it has any, and nothing on the page refreshes itself. A
+  first-time tester was told to watch a part of the screen that was not going to change and was not
+  there. It now says the test sends in the background and names the reload.
+
+- **The activity log explained itself in cryptography.** *"Append-only. Entries cannot be edited or
+  deleted, and each one commits to the entry before it, so any alteration is detectable"* is exactly
+  true and describes a hash chain to somebody who opened the page to find out who deleted a site.
+  It now says that everything Manager does is recorded, that entries cannot be edited or deleted by
+  anyone, and that any later attempt to change one would be visible. The guarantee is unchanged, the
+  chain is unchanged, and `manager:audit:verify` still proves it.
+
+- **The account screen said an email address cannot be changed and stopped there.** The only route it
+  offered was abandoning the account: invite a new one and revoke this one. It now names the person
+  to ask first - an administrator on a self-hosted installation, support on a hosted one - with the
+  invite route kept as the answer that always works.
+
+- **The single-recovery-key warning is gone.** One active key is what an organisation has the moment
+  it finishes the setup instructions, so the warning fired on the ordinary case, permanently, on the
+  recovery keys screen and on every backups screen behind it. A warning that is always showing is one
+  people stop reading, and it was crowding the blockers beside it, which are the ones that mean a
+  backup will not be taken. Nothing about the risk changed and nothing hides it: the instructions for
+  making a key still say what losing the secret half costs.
+
+- **Em dashes are gone from the interface and the documentation.** A spaced hyphen everywhere
+  instead, including the dash that stands in for a value a site has not reported. Text only.
 
 ## 1.5.1 — 2026-08-08
 

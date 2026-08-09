@@ -372,7 +372,7 @@
                                     <td class="px-3 py-3">
                                         <x-status-badge :tone="$tone" :label="Str::of($site->status)->replace('_', ' ')->ucfirst()" />
                                     </td>
-                                    <td class="hidden whitespace-nowrap px-3 py-3 font-mono text-[12px] tabular text-text-2 lg:table-cell">{{ $site->craft_version ?? '—' }}</td>
+                                    <td class="hidden whitespace-nowrap px-3 py-3 font-mono text-[12px] tabular text-text-2 lg:table-cell">{{ $site->craft_version ?? '-' }}</td>
 
                                     {{--
                                         How far behind this site is, and whether any of it is urgent.
@@ -396,7 +396,7 @@
                                         @endif
                                     </td>
 
-                                    <td class="hidden whitespace-nowrap px-3 py-3 font-mono text-[12px] tabular text-text-2 xl:table-cell">{{ $site->php_version ?? '—' }}</td>
+                                    <td class="hidden whitespace-nowrap px-3 py-3 font-mono text-[12px] tabular text-text-2 xl:table-cell">{{ $site->php_version ?? '-' }}</td>
 
                                     @php
                                         $figures = $runtime[$site->id] ?? ['disk' => null, 'p95' => null];
@@ -408,7 +408,7 @@
                                          not know" is not "it is fine". --}}
                                     <td class="hidden whitespace-nowrap px-3 py-3 font-mono text-[12px] tabular lg:table-cell">
                                         @if ($figures['disk'] === null)
-                                            <span class="text-text-3">—</span>
+                                            <span class="text-text-3">-</span>
                                         @else
                                             <span class="{{ $figures['disk'] >= 90 ? 'font-medium text-amber' : 'text-text-2' }}">
                                                 {{ $figures['disk'] }}%
@@ -439,7 +439,7 @@
                                         @if ($backup['failed'])
                                             <x-status-badge tone="bad" label="Failed" />
                                         @elseif ($backup['at'] === null)
-                                            <span class="font-mono text-[12px] text-text-3">—</span>
+                                            <span class="font-mono text-[12px] text-text-3">-</span>
                                         @else
                                             {{-- A badge rather than bare text, so the column reads
                                                  as one thing down its whole length. A failure was
@@ -452,7 +452,7 @@
 
                                     <td class="hidden whitespace-nowrap px-3 py-3 font-mono text-[12px] tabular xl:table-cell">
                                         @if ($figures['p95'] === null)
-                                            <span class="text-text-3">—</span>
+                                            <span class="text-text-3">-</span>
                                         @else
                                             <span class="{{ $figures['p95'] >= 2000 ? 'font-medium text-amber' : 'text-text-2' }}">
                                                 {{ number_format($figures['p95']) }} ms
@@ -464,8 +464,8 @@
                                         The share of the last seven days this site's connector was
                                         checking in.
 
-                                        An em-dash until there is more than one heartbeat to reason
-                                        from — hasEvidence() is what stops a site paired ten minutes
+                                        A dash until there is more than one heartbeat to reason
+                                        from - hasEvidence() is what stops a site paired ten minutes
                                         ago reading a confident 100%, which is the number somebody
                                         would act on and the one we are least entitled to print.
 
@@ -477,7 +477,7 @@
                                         @php $window = $reporting[$site->id] ?? null; @endphp
 
                                         @if ($window === null || ! $window->hasEvidence())
-                                            <span class="text-text-3">—</span>
+                                            <span class="text-text-3">-</span>
                                         @else
                                             <span class="{{ in_array($window->tone(), ['bad', 'warn'], true) ? 'font-medium text-amber' : 'text-text-2' }}">
                                                 {{ $window->availabilityLabel() }}

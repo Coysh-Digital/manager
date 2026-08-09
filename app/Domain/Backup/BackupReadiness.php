@@ -54,6 +54,12 @@ final class BackupReadiness
     public function __construct(private readonly RecoveryKeyService $keys) {}
 
     /**
+     * `warnings` is currently always empty, and the key stays because both backup screens render it
+     * and a warning that blocks nothing is a thing this class should be able to say. The one that
+     * used to be here - a single active recovery key - was removed: it fired on the ordinary case,
+     * on every site, on a screen somebody had opened to do something else, and the settings screen
+     * is where a second key can actually be added.
+     *
      * @return array{
      *     ready: bool,
      *     blockers: list<string>,
@@ -90,8 +96,6 @@ final class BackupReadiness
             // customer holds, so "no key" is not a missing setting, it is nothing to encrypt to. The
             // same sentence is on the settings screen.
             $blockers[] = 'This organisation has no active recovery key, so there is nothing to encrypt a backup to.';
-        } elseif ($activeKeys === 1) {
-            $warnings[] = 'One recovery key. If it is lost, every backup encrypted to it becomes permanently unreadable.';
         }
 
         if ($this->hasOutstandingBackup($site)) {

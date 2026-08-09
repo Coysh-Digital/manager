@@ -198,7 +198,7 @@
                         </button>
 
                         <p class="text-[12px] text-text-3">
-                            Webhooks must be HTTPS, and cannot point at a private or reserved network —
+                            Webhooks must be HTTPS, and cannot point at a private or reserved network -
                             a notification names which site is unpatched, and a destination on an
                             internal address would make this a way to probe your own infrastructure.
                         </p>

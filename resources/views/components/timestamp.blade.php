@@ -15,7 +15,7 @@
 @props(['at', 'format' => 'j M Y, H:i'])
 
 @if ($at === null)
-    <span {{ $attributes }}>—</span>
+    <span {{ $attributes }}>-</span>
 @else
     @php($local = \App\Support\ViewerTimezone::apply($at))
 

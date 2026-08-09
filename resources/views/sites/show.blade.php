@@ -127,24 +127,24 @@
         <dl class="grid grid-cols-1 gap-x-10 gap-y-2.5 rounded-[10px] border border-border bg-surface px-4 py-3.5 text-[12.5px] sm:grid-cols-2 xl:grid-cols-3">
             @php
                 $inventory = [
-                    'Craft CMS' => $site->craft_version ?? '—',
-                    'Edition' => $site->craft_edition ? Str::title($site->craft_edition) : '—',
-                    'PHP' => $site->php_version ?? '—',
+                    'Craft CMS' => $site->craft_version ?? '-',
+                    'Edition' => $site->craft_edition ? Str::title($site->craft_edition) : '-',
+                    'PHP' => $site->php_version ?? '-',
                     'Database' => $latestReport
                         ? trim(Str::title((string) $latestReport->value('database.engine')).' '.$latestReport->value('database.version'))
-                        : '—',
-                    'Environment' => $latestReport ? Str::title((string) $latestReport->value('environment')) : '—',
-                    'Connector version' => $connector?->connector_version ?? '—',
+                        : '-',
+                    'Environment' => $latestReport ? Str::title((string) $latestReport->value('environment')) : '-',
+                    'Connector version' => $connector?->connector_version ?? '-',
                     'Last report' => $site->last_inventory_at?->diffForHumans(short: true) ?? 'never',
-                    'Key rotated' => $connector?->key_rotated_at?->diffForHumans(short: true) ?? '—',
-                    'Report schema' => $latestReport?->schema_version ?? '—',
+                    'Key rotated' => $connector?->key_rotated_at?->diffForHumans(short: true) ?? '-',
+                    'Report schema' => $latestReport?->schema_version ?? '-',
                 ];
             @endphp
 
             @foreach ($inventory as $label => $value)
                 <div class="flex items-baseline justify-between gap-3">
                     <dt class="text-text-2">{{ $label }}</dt>
-                    <dd class="font-mono">{{ $value ?: '—' }}</dd>
+                    <dd class="font-mono">{{ $value ?: '-' }}</dd>
                 </div>
             @endforeach
 
@@ -153,7 +153,7 @@
                 <dt class="text-text-2">Plugins</dt>
                 <dd>
                     <a href="{{ route('sites.updates', $site) }}" class="font-mono text-primary hover:text-primary-hover">
-                        {{ $latestReport ? count($latestReport->value('plugins', [])).' installed' : '—' }}
+                        {{ $latestReport ? count($latestReport->value('plugins', [])).' installed' : '-' }}
                     </a>
                 </dd>
             </div>
@@ -290,7 +290,7 @@
                     <span class="{{ $event->succeeded() ? '' : 'text-danger' }}">
                         {{ Str::of($event->action)->replace('.', ' ')->ucfirst() }}
                         @unless ($event->succeeded())
-                            <span class="text-text-2">— {{ App\Domain\Notifications\FailureReason::sentence($event->failure_reason) }}</span>
+                            <span class="text-text-2">- {{ App\Domain\Notifications\FailureReason::sentence($event->failure_reason) }}</span>
                         @endunless
                     </span>
                     <span class="text-text-2">{{ $event->actor_label ?? Str::title($event->actor_type) }}</span>

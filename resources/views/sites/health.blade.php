@@ -82,7 +82,7 @@
                          broken counter. --}}
                     <p class="border-b border-border px-4 py-2.5 text-[12.5px] text-text-2">
                         This site checks in more often than the {{ $uptime->intervalMinutes() }}-minute schedule asks for,
-                        which usually means cron and the connector's web trigger are both reporting. Not a fault —
+                        which usually means cron and the connector's web trigger are both reporting. Not a fault -
                         reporting above is measured from time covered, not from check-ins counted, so the extra ones
                         change nothing.
                     </p>
@@ -157,13 +157,13 @@
         @else
             @php
                 $operational = [
-                    'Jobs waiting' => [$latestReport->value('queue.pending', '—'), false],
-                    'Jobs reserved' => [$latestReport->value('queue.reserved', '—'), false],
+                    'Jobs waiting' => [$latestReport->value('queue.pending', '-'), false],
+                    'Jobs reserved' => [$latestReport->value('queue.reserved', '-'), false],
                     'Jobs failed' => [$latestReport->value('queue.failed', 0), (int) $latestReport->value('queue.failed', 0) > 0],
                     'Migrations pending' => [$latestReport->value('migrations.pending', 0), (int) $latestReport->value('migrations.pending', 0) > 0],
-                    'Migrations applied' => [$latestReport->value('migrations.applied', '—'), false],
-                    'PHP' => [$updateReport?->value('php.current') ?? $site->php_version ?? '—', (bool) $updateReport?->value('php.end_of_life')],
-                    'Connector' => [$connector?->connector_version ?? '—', false],
+                    'Migrations applied' => [$latestReport->value('migrations.applied', '-'), false],
+                    'PHP' => [$updateReport?->value('php.current') ?? $site->php_version ?? '-', (bool) $updateReport?->value('php.end_of_life')],
+                    'Connector' => [$connector?->connector_version ?? '-', false],
                     'Report collected' => [$latestReport->collected_at->diffForHumans(short: true), false],
                 ];
             @endphp
@@ -234,7 +234,7 @@
                         <div class="flex flex-col gap-1">
                             <dt class="font-mono text-[10px] uppercase tracking-[0.07em] text-text-3">{{ $label }}</dt>
                             <dd class="font-mono text-[14px] tabular {{ $notable ? 'text-amber' : '' }}">
-                                {{ $value === null ? '—' : number_format((float) $value, 0).' ms' }}
+                                {{ $value === null ? '-' : number_format((float) $value, 0).' ms' }}
                             </dd>
                         </div>
                     @endforeach
@@ -277,12 +277,12 @@
                             ],
                             'Disk free' => [
                                 $runtimeReport->disk_free_bytes === null
-                                    ? '—'
+                                    ? '-'
                                     : number_format($runtimeReport->disk_free_bytes / 1073741824, 1).' GB',
                                 $usedPercent !== null && $usedPercent >= 90,
                             ],
                             'Disk used' => [
-                                $usedPercent === null ? '—' : $usedPercent.'%',
+                                $usedPercent === null ? '-' : $usedPercent.'%',
                                 $usedPercent !== null && $usedPercent >= 90,
                             ],
                             'Measured' => [$runtimeReport->collected_at->diffForHumans(short: true), false],
@@ -342,7 +342,7 @@
                                                          region and no endpoint, on purpose. --}}
                                                     <span class="text-text-2">Remote storage</span>
                                                 @else
-                                                    <span class="text-text-3">—</span>
+                                                    <span class="text-text-3">-</span>
                                                 @endif
                                             </td>
                                         @endif
@@ -354,13 +354,13 @@
                                                      no number at all. --}}
                                                 at least {{ number_format(($volume['bytes'] ?? 0) / 1073741824, 2) }} GB
                                             @elseif (($volume['measured'] ?? true) === false)
-                                                —
+                                                -
                                             @else
                                                 {{ number_format(($volume['bytes'] ?? 0) / 1073741824, 2) }} GB
                                             @endif
                                         </td>
                                         <td class="whitespace-nowrap px-3 py-2 font-mono text-[12px] tabular text-text-3">
-                                            {{ isset($volume['files']) ? number_format($volume['files']) : '—' }}
+                                            {{ isset($volume['files']) ? number_format($volume['files']) : '-' }}
                                         </td>
                                     </tr>
 
@@ -398,7 +398,7 @@
                              case none of them fired because the connector is too old to say any of
                              them. --}}
                         This site's connector plugin doesn't yet report why a volume wasn't measured
-                        — upgrade it to see whether each one is local or remote.
+                        - upgrade it to see whether each one is local or remote.
                     @endif
                 </p>
             </div>
@@ -410,16 +410,16 @@
 
             @php
                 $mb = static fn (?int $bytes): string => $bytes === null
-                    ? '—'
+                    ? '-'
                     : ($bytes < 0 ? 'Unlimited' : number_format($bytes / 1048576, 0).' MB');
 
                 $limits = [
-                    'Version' => [$runtimeReport->value('php.version') ?? '—', false],
-                    'SAPI' => [$runtimeReport->value('php.sapi') ?? '—', false],
+                    'Version' => [$runtimeReport->value('php.version') ?? '-', false],
+                    'SAPI' => [$runtimeReport->value('php.sapi') ?? '-', false],
                     'Memory limit' => [$mb($runtimeReport->value('php.memory_limit_bytes')), false],
                     'Max execution' => [
                         $runtimeReport->value('php.max_execution_time') === null
-                            ? '—'
+                            ? '-'
                             : $runtimeReport->value('php.max_execution_time').'s',
                         false,
                     ],
@@ -430,7 +430,7 @@
                         // Off in production is a real performance finding, not a preference.
                         $runtimeReport->value('php.opcache_enabled') === false && $site->environment === 'production',
                     ],
-                    'Extensions' => [$runtimeReport->value('php.extensions') ?? '—', false],
+                    'Extensions' => [$runtimeReport->value('php.extensions') ?? '-', false],
                 ];
             @endphp
 

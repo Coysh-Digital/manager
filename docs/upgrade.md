@@ -41,8 +41,8 @@ rather than from a clone, verify it before unpacking:
 sha256sum -c SHA256SUMS
 ```
 
-The tarball is built reproducibly — `git archive` takes its timestamps from the commit and gzip is
-told not to stamp its header — so building the same tag yourself produces byte-identical output. That
+The tarball is built reproducibly - `git archive` takes its timestamps from the commit and gzip is
+told not to stamp its header - so building the same tag yourself produces byte-identical output. That
 is what lets somebody other than us confirm a published artifact came from the published source.
 
 **Releases are not signed, and nothing here verifies a signature.** This page used to say the

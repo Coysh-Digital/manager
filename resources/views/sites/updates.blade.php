@@ -51,7 +51,7 @@
                 $core = [
                     [
                         'name' => 'Craft CMS',
-                        'current' => $updateReport?->craft_current ?? $site->craft_version ?? '—',
+                        'current' => $updateReport?->craft_current ?? $site->craft_version ?? '-',
                         'latest' => $updateReport?->craft_latest,
                         'available' => (bool) $updateReport?->craft_update_available,
                         'security' => (bool) $updateReport?->craft_security_release,
@@ -61,7 +61,7 @@
                     ],
                     [
                         'name' => 'PHP',
-                        'current' => $updateReport?->value('php.current') ?? $site->php_version ?? '—',
+                        'current' => $updateReport?->value('php.current') ?? $site->php_version ?? '-',
                         'latest' => null,
                         'available' => false,
                         'security' => (bool) $updateReport?->value('php.end_of_life'),
@@ -195,7 +195,7 @@
 
                                 <td class="whitespace-nowrap px-3 py-2.5 font-mono text-[12px] tabular">
                                     @if ($plugin['latest'] === null)
-                                        <span class="text-text-3">—</span>
+                                        <span class="text-text-3">-</span>
                                     @elseif ($plugin['latest'] === $plugin['current'])
                                         <span class="text-text-3">{{ $plugin['latest'] }}</span>
                                     @else

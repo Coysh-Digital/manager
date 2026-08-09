@@ -163,11 +163,15 @@ it('keeps the claim about the audit chain when it drops the command', function (
     // The command was evidence for a claim, not the claim itself. An append-only chain is still
     // append-only on a hosted edition, and dropping the sentence with the command would quietly
     // withdraw a security property rather than an instruction.
+    //
+    // The claim is now made in plainer words than "any alteration is detectable" - the mechanism is
+    // unchanged, and what this test holds is that the promise survives the command being hidden,
+    // not the phrasing it happens to be in.
     hosted();
 
     $this->actingAs($this->owner)->get('/activity')
         ->assertOk()
-        ->assertSee('any alteration is detectable');
+        ->assertSee('any attempt to change one afterwards would be visible');
 });
 
 it('leaves the command in place on a self-hosted installation', function (): void {

@@ -197,7 +197,10 @@ final class NotificationDestinationController
             context: ['test' => true],
         ));
 
-        return back()->with('status', 'Test queued. Check the delivery log below in a moment.');
+        // Queued, not sent, so there is nothing to report yet - and nothing on this page polls for
+        // it. Naming the reload is the honest instruction: the result appears against the
+        // destination itself, which is the only place deliveries are listed.
+        return back()->with('status', 'Test queued. It sends in the background - reload this page and the result appears under the destination.');
     }
 
     public function destroy(Request $request, NotificationDestination $destination): RedirectResponse
