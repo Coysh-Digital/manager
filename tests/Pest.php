@@ -85,7 +85,7 @@ function postSignedConnectorRequest(
     return test()->call(
         method: 'POST',
         uri: $path,
-        server: connectorServerHeaders($headers),
+        server: array_merge(connectorServerHeaders($headers), $overrides['server'] ?? []),
         content: $body,
     );
 }

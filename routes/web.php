@@ -64,9 +64,27 @@ Route::middleware('guest')->group(function (): void {
     Route::post('login', [LoginController::class, 'store'])->name('login.store');
 
     Route::get('forgot-password', [PasswordResetController::class, 'request'])->name('password.request');
-    Route::post('forgot-password', [PasswordResetController::class, 'email'])->name('password.email');
     Route::get('reset-password/{token}', [PasswordResetController::class, 'reset'])->name('password.reset');
-    Route::post('reset-password', [PasswordResetController::class, 'update'])->name('password.update');
+
+    /*
+     | Both submitting halves are limited by source as well.
+     |
+     | The password broker already throttles by address, so one mailbox cannot be asked for a link
+     | over and over. What that does not bound is one source asking for a link to a *different*
+     | address each time: every request is the first for its address, passes the broker's check, and
+     | sends mail. A limit here is the only thing counting the requests rather than the addresses.
+     |
+     | Login and the two-factor challenge are limited in their controllers because they key on the
+     | account being attacked as well as the source. Nothing here knows an account - a reset request
+     | for an address that does not exist is answered identically to one that does, deliberately - so
+     | the source is all there is to count, and route middleware is the right place to count it.
+     */
+    Route::post('forgot-password', [PasswordResetController::class, 'email'])
+        ->middleware('throttle:10,15')
+        ->name('password.email');
+    Route::post('reset-password', [PasswordResetController::class, 'update'])
+        ->middleware('throttle:10,15')
+        ->name('password.update');
 
     // Reached only with a pending challenge in the session. Nobody is authenticated at this point.
     Route::get('two-factor', [TwoFactorChallengeController::class, 'show'])->name('two-factor.challenge');

@@ -17,6 +17,9 @@ namespace App\Domain\Notifications;
  *  1. **HTTPS only.** A notification says which site has an unpatched security release. That is not
  *     something to broadcast in the clear.
  *  2. **Address ranges blocked.** Loopback, link-local, private, and the cloud metadata address.
+ *     The same address can arrive in more than one encoding, so the comparison normalises before it
+ *     decides - see `inRange()`. A range list that only recognises one spelling of an address is a
+ *     range list with a hole in it.
  *  3. **The resolved address is pinned.** Checking DNS and then letting the HTTP client resolve it
  *     again leaves a window in which the answer changes - DNS rebinding. So this returns the address
  *     it validated, and the caller connects to that.
@@ -51,6 +54,13 @@ final class OutboundUrlGuard
 
         // Unique local addresses, the IPv6 equivalent of RFC 1918.
         'fc00::/7',
+
+        // NAT64, RFC 6052. This prefix is not an address so much as a doorway: a translator on the
+        // other side forwards to the IPv4 address embedded in the low bits. Unwrapping it and judging
+        // that IPv4 address would mean trusting a translator this platform does not run to send the
+        // packet where the bits say, so the prefix is refused entire.
+        '64:ff9b::/96',
+        '64:ff9b:1::/48',
 
         // This host, and unspecified.
         '0.0.0.0/8',
@@ -148,8 +158,18 @@ final class OutboundUrlGuard
      */
     private function addressesFor(string $host): array
     {
-        if (filter_var($host, FILTER_VALIDATE_IP) !== false) {
-            return [$host];
+        // `parse_url` hands back an IPv6 literal with its brackets still on, and neither
+        // `filter_var` nor `inet_pton` accepts those. Left alone, `https://[::1]/` is not recognised
+        // as an address at all: it falls through to the resolver, fails to resolve, and is refused
+        // for that reason instead of for being loopback. Refused either way - but every IPv6 entry
+        // in the range list above was dead code on that path, and a rejection that happens by
+        // accident is one a later change can remove without noticing.
+        $literal = str_starts_with($host, '[') && str_ends_with($host, ']')
+            ? substr($host, 1, -1)
+            : $host;
+
+        if (filter_var($literal, FILTER_VALIDATE_IP) !== false) {
+            return [$literal];
         }
 
         $addresses = [];
@@ -207,6 +227,10 @@ final class OutboundUrlGuard
             return false;
         }
 
+        // Before any length comparison, because the comparison below is what an unnormalised address
+        // slips through.
+        $addressBytes = self::unwrapMappedIpv4($addressBytes);
+
         // Different families never overlap.
         if (strlen($addressBytes) !== strlen($subnetBytes)) {
             return false;
@@ -227,5 +251,31 @@ final class OutboundUrlGuard
         $mask = 0xFF << (8 - $remainingBits) & 0xFF;
 
         return (ord($addressBytes[$wholeBytes]) & $mask) === (ord($subnetBytes[$wholeBytes]) & $mask);
+    }
+
+    /**
+     * An IPv4 address written as IPv6, reduced to the four bytes it actually is.
+     *
+     * `::ffff:169.254.169.254` and `169.254.169.254` are the same destination, but `inet_pton` packs
+     * the first into sixteen bytes and the second into four. Every range in the list above is written
+     * in one family or the other, so without this the sixteen-byte form is compared against nothing:
+     * the IPv4 entries are skipped as a different family, and no IPv6 entry describes it. It would
+     * pass the guard and then be handed to curl, which connects to the IPv4 address it names.
+     *
+     * Reducing it here means the IPv4 list judges every IPv4 destination however it was spelled,
+     * rather than the list needing a second copy of itself in the other notation.
+     */
+    private static function unwrapMappedIpv4(string $packed): string
+    {
+        // Ten zero bytes then 0xffff, per RFC 4291 - the only IPv6 form that carries an IPv4 address
+        // to be used as one. The IPv4-compatible form (`::a.b.c.d`) is deprecated and not translated
+        // by anything current, so it is left to be judged as the IPv6 address it is.
+        $mappedPrefix = str_repeat("\0", 10)."\xff\xff";
+
+        if (strlen($packed) === 16 && str_starts_with($packed, $mappedPrefix)) {
+            return substr($packed, 12);
+        }
+
+        return $packed;
     }
 }

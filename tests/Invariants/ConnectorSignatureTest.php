@@ -162,6 +162,19 @@ it('rejects an oversized payload before parsing it', function (): void {
         ->assertStatus(413);
 });
 
+it('refuses a declared oversized length without reading the body', function (): void {
+    // The body here is a few bytes; only the declared length is large. Nothing but the header could
+    // have produced this refusal, which is what makes it worth asserting separately from the test
+    // above: that one measures a body it has already taken, and a limit enforced by measuring what
+    // you are holding is not the limit `Protocol::MAX_PAYLOAD_BYTES` describes.
+    //
+    // A declared length is a claim, so this is not the whole guard - a caller that lies, or omits it,
+    // is still caught above. Refusing the ones that admit it is simply free.
+    postSignedConnectorRequest($this->path, [], $this->site, $this->keypair['secret'], [
+        'server' => ['CONTENT_LENGTH' => (string) (Protocol::MAX_PAYLOAD_BYTES + 1)],
+    ])->assertStatus(413);
+});
+
 it('fails closed when replay protection is unavailable', function (): void {
     // Invariant 15. This is the one place where availability deliberately loses to correctness:
     // without a working replay check, accepting a request means accepting replays of it.
