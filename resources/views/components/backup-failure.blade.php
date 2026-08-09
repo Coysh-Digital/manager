@@ -21,7 +21,7 @@
         <x-status-badge tone="warn" label="Did not complete" />
 
         @if ($showSite)
-            <a href="{{ route('sites.show', $failure->site) }}" class="text-[13px] font-medium no-underline hover:underline">
+            <a href="{{ route('sites.backups', $failure->site) }}" class="text-[13px] font-medium no-underline hover:underline">
                 {{ $failure->site->name }}
             </a>
         @endif

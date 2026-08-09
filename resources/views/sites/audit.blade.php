@@ -75,7 +75,7 @@
                                     @if ($event->succeeded())
                                         <x-status-badge tone="ok" label="Succeeded" />
                                     @else
-                                        <x-status-badge tone="bad" :label="$event->failure_reason ?? 'Failed'" />
+                                        <x-status-badge tone="bad" :label="App\Domain\Notifications\FailureReason::sentence($event->failure_reason) ?: 'Failed'" />
                                     @endif
                                 </td>
                             </tr>

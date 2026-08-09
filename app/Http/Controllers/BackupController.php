@@ -432,13 +432,24 @@ final class BackupController
             detail: 'Requested from the backups screen.',
         );
 
-        // "Is being asked" rather than "will start": the nudge is queued, not delivered, and whether
-        // the site answers is not something this platform knows yet. A site it cannot reach gets the
-        // sentence it has always got, because for that site nothing has changed.
+        /*
+         | "Will start shortly" rather than "has started", and rather than the passive construction
+         | this used to carry.
+         |
+         | The distinction 1.5.0 drew is still the right one and is kept: the nudge is queued, not
+         | delivered, and whether the site answers is not something this platform knows yet, so a
+         | message saying the backup has started would be a claim about something that has not
+         | happened. A site that cannot be reached still gets the sentence it has always had.
+         |
+         | What changed is the English. "The site is being asked to start it now" describes this
+         | platform's internal mechanics in the passive voice, to a reader who pressed a button and
+         | wants to know what happens next. The answer to that is when, and the honest when is
+         | shortly.
+        */
         return back()->with(
             'status',
             $this->nudges->canReach($site)
-                ? "Backup requested for {$site->name}. The site is being asked to start it now."
+                ? "Backup requested for {$site->name}. It will start shortly."
                 : "Backup requested for {$site->name}. It will run when the site next checks in."
         );
     }
@@ -565,28 +576,27 @@ final class BackupController
     {
         $sites = $queued === 1 ? 'site' : 'sites';
 
-        // Three shapes rather than one with a clause, because "0 are being asked to start now" is a
-        // sentence about a feature the reader may not know exists, in answer to a question they did
-        // not ask. A fleet nothing can be reached in should read exactly as it always has.
+        // Three shapes rather than one with a clause, because "0 will start shortly" is a sentence
+        // about a feature the reader may not know exists, in answer to a question they did not ask.
+        // A fleet nothing can be reached in should read exactly as it always has.
         if ($nudged === 0) {
             return sprintf('Backup requested for %d %s. Each will run when that site next checks in.', $queued, $sites);
         }
 
         if ($nudged === $queued) {
             return sprintf(
-                'Backup requested for %d %s. %s being asked to start now.',
+                'Backup requested for %d %s. %s start shortly.',
                 $queued,
                 $sites,
-                $queued === 1 ? 'The site is' : 'Each is',
+                $queued === 1 ? 'It will' : 'They will',
             );
         }
 
         return sprintf(
-            'Backup requested for %d %s. %d %s being asked to start now; the rest will run when each next checks in.',
+            'Backup requested for %d %s. %d of them will start shortly; the rest will run when each next checks in.',
             $queued,
             $sites,
             $nudged,
-            $nudged === 1 ? 'is' : 'are',
         );
     }
 

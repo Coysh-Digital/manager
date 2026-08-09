@@ -174,7 +174,7 @@
                     @foreach ($permittedSites as $site)
                         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3 last:border-b-0">
                             <div class="flex flex-col gap-0.5">
-                                <a href="{{ route('sites.show', $site) }}" class="text-[13px] font-medium no-underline hover:underline">
+                                <a href="{{ route('sites.backups', $site) }}" class="text-[13px] font-medium no-underline hover:underline">
                                     {{ $site->name }}
                                 </a>
                                 <span class="font-mono text-[11.5px] text-text-3">
@@ -363,11 +363,11 @@
                                         </td>
                                     @endif
                                     <td class="border-b border-border px-4 py-2.5">
-                                        <a href="{{ route('sites.show', $artifact->site) }}" class="no-underline hover:underline">
+                                        <a href="{{ route('sites.backups', $artifact->site) }}" class="no-underline hover:underline">
                                             {{ $artifact->site->name }}
                                         </a>
                                         @if ($artifact->failure_reason)
-                                            <span class="text-[11.5px] text-danger">{{ $artifact->failure_reason }}</span>
+                                            <span class="text-[11.5px] text-danger">{{ App\Domain\Notifications\FailureReason::sentence($artifact->failure_reason) }}</span>
                                         @endif
                                         {{-- Which recovery key opens this one. An organisation can have
                                              several, and rotating them means older backups need older

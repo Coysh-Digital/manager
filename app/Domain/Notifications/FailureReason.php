@@ -135,13 +135,42 @@ final class FailureReason
      */
     private static function adviceFor(string $sentence): ?string
     {
-        if (str_contains($sentence, 'no room left')) {
-            return 'This is a storage limit rather than a fault: the backup itself was fine, there '
-                .'was nowhere to put it. Shorten the retention on this site so older backups are '
-                .'removed sooner, or increase the storage available to this organisation. Until one '
-                .'of those changes, every backup for this organisation will be refused.';
-        }
+        $reason = strtolower($sentence);
 
-        return null;
+        return match (true) {
+            str_contains($reason, 'no room left') => 'This is a storage limit rather than a fault: '
+                .'the backup itself was fine, there was nowhere to put it. Shorten the retention on '
+                .'this site so older backups are removed sooner, or increase the storage available '
+                .'to this organisation. Until one of those changes, every backup for this '
+                .'organisation will be refused.',
+
+            str_contains($reason, 'larger than this connector is configured') => 'Raise '
+                ."maxBackupMegabytes in the site's config/manager-connector.php, or point that site "
+                .'at its own S3 bucket.',
+
+            str_contains($reason, 'no active recovery key') => 'Create a recovery key in Settings. '
+                .'Backups are encrypted to it, so there is nothing to encrypt to until one exists.',
+
+            str_contains($reason, 'declared but never uploaded') => 'The site started the upload and '
+                .'it did not arrive. Check the site can reach this installation, then run the backup '
+                .'again.',
+
+            str_contains($reason, 'did not match the declared checksum') => 'The bytes that arrived '
+                .'were not the bytes the site hashed. Run the backup again; if it repeats, the path '
+                .'between the two is altering data.',
+
+            default => null,
+        };
+    }
+
+    /**
+     * The reason as a sentence, for a caller that wants only that.
+     *
+     * A convenience for the screens, which render this in half a dozen places and want the string
+     * rather than the object.
+     */
+    public static function sentence(?string $raw): string
+    {
+        return $raw === null || trim($raw) === '' ? '' : self::from($raw)->sentence;
     }
 }

@@ -38,6 +38,29 @@ Nothing to do on upgrade. No migration, no configuration, and the webhook payloa
   plain-text part, which has to stand as a complete message on its own. No other failure gains
   advice: a guessed remedy teaches people the advice is worth ignoring.
 
+### On screen, not only in the inbox
+
+- **A failed backup now reads the same on the screen as it does in the alert.** The tidying above was
+  applied where the email is rendered and stopped there, so the backups screen kept showing
+  *"RuntimeException: The platform rejected the request (HTTP 422)…"* — which is the wrong way round:
+  the screen is where somebody is standing when they go and fix it. The reason is a sentence
+  everywhere it appears now, including the artifact rows, the activity log and the site's own audit.
+
+- **The remedy list had drifted into two.** The screen kept its own list of four recognised failures
+  and the email kept a separate one, so a backup refused for storage was given advice in the inbox
+  and none on the screen. One list now, in `FailureReason`, and both read from it.
+
+- **A site name on the backups screen goes to that site's backups.** It went to the site's overview,
+  which meant finding the Backups tab and clicking again — on a screen whose entire subject is
+  backups.
+
+- **"The site is being asked to start it now" is now "It will start shortly."** The distinction 1.5.0
+  drew is kept and still matters: the knock is queued rather than delivered, so a message saying the
+  backup *has started* would claim something that has not happened, and a site that cannot be reached
+  still gets the sentence it has always had. What changed is the English — the old wording described
+  this platform's internal mechanics in the passive voice to somebody who pressed a button and wanted
+  to know when it would happen.
+
 **The webhook payload is unchanged.** `context.reason` still carries the failure verbatim, exactly as
 1.5.1 promised — a consumer may be matching on the whole string. The tidying happens where the email
 is rendered, and there is a test pinning that distinction.

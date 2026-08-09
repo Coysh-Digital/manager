@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Backup;
 
+use App\Domain\Notifications\FailureReason;
 use App\Models\BackupArtifact;
 use App\Models\RemoteJob;
 use App\Models\Site;
@@ -159,7 +160,11 @@ final class FailedBackupJobs
         return $jobs->map(fn (RemoteJob $job): FailedBackupJob => new FailedBackupJob(
             jobId: $job->external_id,
             site: $job->site,
-            reason: (string) ($job->failure_reason ?: 'The backup did not complete.'),
+            // Tidied here rather than in the template, so the card, the email and anything else
+            // reading this DTO get the same sentence. What a connector reports is the message of
+            // the exception it caught, which is exact and is not something to put in front of
+            // somebody as an explanation.
+            reason: FailureReason::sentence($job->failure_reason) ?: 'The backup did not complete.',
             failedAt: Carbon::instance($job->updated_at),
             requestedBy: $job->requested_by_label,
         ))->values();

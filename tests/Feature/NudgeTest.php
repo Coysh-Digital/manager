@@ -157,11 +157,23 @@ it('promises an early start only when it has somewhere to knock', function (): v
     RemoteJob::query()->delete();
     $this->connector->forceFill(['nudge_path' => '/actions/manager-connector/nudge/poll'])->save();
 
-    // Reachable. "Being asked", never "will start" - the knock is queued, not delivered.
+    /*
+     | Reachable. "Will start shortly", and never "has started" - the knock is queued, not delivered,
+     | and whether the site answers is not something this platform knows yet.
+     |
+     | The wording moved from "the site is being asked to start it now", which held the same line and
+     | said it in the passive voice about this platform's own mechanics. What is asserted here is the
+     | line, not the sentence: a message claiming the backup has begun is the thing this test exists
+     | to keep out.
+    */
     $this->actingAs($owner)->withSession($recentAuth)
         ->post("/backups/sites/{$this->site->external_id}")
         ->assertRedirect()
-        ->assertSessionHas('status', fn (string $status): bool => str_contains($status, 'being asked to start it now'));
+        ->assertSessionHas('status', function (string $status): bool {
+            return str_contains($status, 'will start shortly')
+                && ! str_contains($status, 'has started')
+                && ! str_contains($status, 'Backup started');
+        });
 });
 
 it('cannot let a failed knock affect the job that was queued', function (): void {
