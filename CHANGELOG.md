@@ -8,10 +8,12 @@ here for exactly that reason.
 
 ## 1.5.1 — 2026-08-08
 
-An alert you can read at a glance on a phone.
+An alert you can read at a glance on a phone, and a round of hardening around outbound destinations
+and account enrolment.
 
-Nothing to do on upgrade. No migration, no configuration, no change to what a connector sends or to
-what a webhook receives.
+No migration, no configuration, no change to what a connector sends or to what a webhook receives.
+Nothing to do on upgrade unless a webhook destination of yours is reached through a NAT64 translator,
+which is now refused - see **Security**.
 
 ### Alert emails
 
@@ -31,6 +33,56 @@ what a webhook receives.
 
 The webhook payload is unchanged. `context.reason` still carries the failure verbatim; it is the
 `summary` prose around it that moved.
+
+### Security
+
+- **An outbound destination is now judged by the address it names, not by how that address was
+  written.** One address can be spelled more than one way, and the private-and-reserved list was
+  matching the spelling: an IPv4 address presented in its IPv6 form was tested against the IPv6
+  entries, which do not describe it, and never against the IPv4 entries, which do. Those forms are
+  reduced to the address they carry before the list is consulted, so one list covers every notation
+  rather than needing a second copy of itself. An ordinary destination is unaffected - a public
+  address stays reachable however it is written.
+
+  The NAT64 prefix is refused outright instead of being unwrapped. It is less an address than a
+  doorway: what reaches the IPv4 address in its low bits is a translator this platform does not run,
+  and judging that address would be trusting somebody else's routing to agree. **If a webhook
+  destination of yours is reached that way it will now be refused** - give it a name that resolves to
+  an address Manager can reach directly.
+
+- **An IPv6 address written straight into a webhook URL is now checked against that list at all.**
+  `parse_url` hands back `[::1]` with the brackets still on, which the address parser does not accept,
+  so these were refused for failing to resolve rather than for being loopback. Refused either way,
+  which is why nothing looked wrong - but every IPv6 entry in the list was unreachable on that path,
+  and a rejection that happens by accident is one a later change can remove without noticing.
+
+- **The enrolment secret for a second factor is no longer held in the session in the clear.** The
+  confirmed secret is encrypted on the user record, so that column never holds a readable one. Between
+  generating the secret and confirming it, though, it sat in the session - and the default session
+  driver writes to the database. Anyone who could read that table, or a dump or a replica of it, had a
+  working second factor for an account mid-enrolment, which is exactly what the encrypted column
+  exists to deny them. It is encrypted there now, and enrolment that cannot be read back is treated as
+  no enrolment rather than as an error.
+
+- **Password reset is limited by source, not only by the address asked for.** The password broker
+  bounds how often one mailbox can be sent a link, which counts addresses rather than requests: one
+  source asking for a different address each time was making a first request every time, passing that
+  check every time, and sending mail every time. Both submitting halves of the flow now carry a
+  per-source limit as well. Login and the two-factor challenge were already limited in their
+  controllers, where they can key on the account being attacked; a reset request deliberately does not
+  know whether the address exists, so the source is all there is to count.
+
+- **An oversized connector request is refused on its declared length, before its body is read.** The
+  limit was enforced by measuring the body, and measuring a body means already holding it. The
+  declared length is checked first now. The measurement stays, because a declared length is a claim
+  and can be absent or wrong - this only refuses, for free, the callers that admit it.
+
+- **A check now pins the set of routes that hand back a file to the one route that does.** Anything
+  deciding a session may read but not write starts from the HTTP method, because that is all there is
+  before dispatch, and then has to name the exceptions by hand. Both ways such a list rots are
+  invisible from where it is written: an exception recorded as a route name quietly stops matching if
+  the route is renamed, and a download added later was never on it. Adding a second one now fails the
+  build until somebody decides what it means for callers that were told reads are safe.
 
 ### Fixed
 

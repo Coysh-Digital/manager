@@ -83,6 +83,26 @@ final class VerifyConnectorSignature
             return $this->storeUnavailable($e, 'rate limiter unavailable');
         }
 
+        $maxPayload = (int) config('manager.connector.max_payload_bytes');
+
+        /*
+         | Body mode refuses on the declared length before reading anything.
+         |
+         | The check below this measures the body it has already read, which is the authority - a
+         | declared length is a claim, and one that can be absent or wrong. But taking only that
+         | measurement means the whole body is in memory by the time the request is judged too large
+         | to accept, which is the arrangement `Protocol::MAX_PAYLOAD_BYTES` says this does not have.
+         | Cheap and honest to check both: refuse a caller that admits to being oversized, then
+         | refuse one that turns out to be.
+         */
+        if (! $streamed) {
+            $declaredLength = $request->server('CONTENT_LENGTH');
+
+            if (is_numeric($declaredLength) && (int) $declaredLength > $maxPayload) {
+                return $this->reject('payload too large', 413);
+            }
+        }
+
         // In streamed mode the body is deliberately never touched. Reading it to hash it would mean
         // accepting gigabytes from an unauthenticated caller before deciding whether to trust them,
         // which is the whole thing this mode exists to avoid.
@@ -127,7 +147,7 @@ final class VerifyConnectorSignature
                 // context about the artifact has run.
                 return $this->reject("payload too large, limit is {$ceiling} bytes (MANAGER_BACKUP_MAX_BYTES)", 413);
             }
-        } elseif (strlen($body) > (int) config('manager.connector.max_payload_bytes')) {
+        } elseif (strlen($body) > $maxPayload) {
             return $this->reject('payload too large', 413);
         }
 

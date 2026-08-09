@@ -9,12 +9,14 @@ use App\Domain\Auth\RecoveryCodeService;
 use App\Domain\Auth\TotpService;
 use App\Models\AuditEvent;
 use App\Models\Organisation;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -65,6 +67,7 @@ final class AccountController
     public function security(Request $request): View
     {
         $user = $request->user();
+        $pendingSecret = $this->pendingTotpSecret($request);
 
         return view('settings.security', [
             'user' => $user,
@@ -79,13 +82,13 @@ final class AccountController
 
             // Held in the session between starting enrolment and confirming it. It is not written
             // to the user until a valid code proves the authenticator actually has it.
-            'pendingSecret' => $request->session()->get('totp.pending'),
-            'pendingQrCode' => $request->session()->has('totp.pending')
-                ? $this->totp->qrCodeSvg($user, (string) $request->session()->get('totp.pending'))
-                : null,
-            'pendingManualEntry' => $request->session()->has('totp.pending')
-                ? $this->totp->formatForManualEntry((string) $request->session()->get('totp.pending'))
-                : null,
+            'pendingSecret' => $pendingSecret,
+            'pendingQrCode' => $pendingSecret === null
+                ? null
+                : $this->totp->qrCodeSvg($user, $pendingSecret),
+            'pendingManualEntry' => $pendingSecret === null
+                ? null
+                : $this->totp->formatForManualEntry($pendingSecret),
 
             // Shown once, immediately after generating. Never retrievable afterwards.
             'freshRecoveryCodes' => $request->session()->get('recovery.fresh'),
@@ -97,9 +100,43 @@ final class AccountController
      */
     public function startTotp(Request $request): RedirectResponse
     {
-        $request->session()->put('totp.pending', $this->totp->generateSecret());
+        $request->session()->put(
+            'totp.pending',
+            Crypt::encryptString($this->totp->generateSecret()),
+        );
 
         return back();
+    }
+
+    /**
+     * The enrolment secret being set up, or null if there is not one.
+     *
+     * Encrypted while it sits in the session, because the session is not a private place. The
+     * confirmed secret is cast `encrypted` on the user, so the column never holds it in the clear -
+     * but between generating this and confirming it, the same secret was written to whatever backs
+     * the session, and the default driver here is the database. That put a working second factor in
+     * a table in plaintext, readable from a dump or a replica by anybody who could not read the
+     * column it was about to be stored in.
+     *
+     * Decryption failing is treated as "no enrolment in progress" rather than an error: the only
+     * ways to get there are a rotated application key or a hand-edited session, and both mean the
+     * value cannot be trusted. Starting again is the correct answer to either.
+     */
+    private function pendingTotpSecret(Request $request): ?string
+    {
+        $stored = $request->session()->get('totp.pending');
+
+        if (! is_string($stored) || $stored === '') {
+            return null;
+        }
+
+        try {
+            $secret = Crypt::decryptString($stored);
+        } catch (DecryptException) {
+            return null;
+        }
+
+        return $secret === '' ? null : $secret;
     }
 
     /**
@@ -109,9 +146,9 @@ final class AccountController
     {
         $validated = $request->validate(['code' => ['required', 'string', 'max:16']]);
 
-        $secret = (string) $request->session()->get('totp.pending');
+        $secret = $this->pendingTotpSecret($request);
 
-        if ($secret === '') {
+        if ($secret === null) {
             return back()->with('warning', 'Start enrolment again - that setup expired.');
         }
 

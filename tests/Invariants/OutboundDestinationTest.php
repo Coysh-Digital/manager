@@ -86,6 +86,71 @@ it('refuses reserved and documentation ranges', function (string $url): void {
     'reserved' => ['https://240.0.0.1/hook'],
 ]);
 
+/*
+|--------------------------------------------------------------------------------------------------
+| How an address is written
+|--------------------------------------------------------------------------------------------------
+|
+| These assert *why* a destination was refused, not only that it was.
+|
+| An address the guard does not recognise is refused too - it fails to resolve, and the caller sees a
+| refusal either way. That is the shape a hole hides in: the range list can stop covering an address
+| entirely while every test asserting "this is refused" stays green. So each case below insists on the
+| range refusal specifically, by the message only that path produces.
+|
+| A destination reaches the range check by the same route whether its address was written into the URL
+| or came back from a resolver, so a literal here stands in for a hostile AAAA record.
+|
+*/
+
+it('refuses an internal address dressed as IPv6', function (string $url): void {
+    // ::ffff:169.254.169.254 and 169.254.169.254 are one destination with two spellings. Judging the
+    // notation rather than the address is how a range list ends up with a hole in it.
+    expect(fn () => $this->guard->resolve($url))
+        ->toThrow(UnsafeDestinationException::class, 'private or reserved');
+})->with([
+    'mapped metadata' => ['https://[::ffff:169.254.169.254]/latest/meta-data/'],
+    'mapped loopback' => ['https://[::ffff:127.0.0.1]/hook'],
+    'mapped rfc1918 ten' => ['https://[::ffff:10.0.0.1]/hook'],
+    'mapped rfc1918 192' => ['https://[::ffff:192.168.1.1]/hook'],
+    'mapped carrier nat' => ['https://[::ffff:100.64.0.1]/hook'],
+    'mapped this host' => ['https://[::ffff:0.0.0.0]/hook'],
+]);
+
+it('refuses the NAT64 translation prefix', function (string $url): void {
+    // Not an address so much as a doorway: a translator forwards to the IPv4 address in the low bits.
+    // Reading that IPv4 address and judging it would mean trusting a translator this platform does not
+    // run to send the packet where the bits say.
+    expect(fn () => $this->guard->resolve($url))
+        ->toThrow(UnsafeDestinationException::class, 'private or reserved');
+})->with([
+    'nat64 metadata' => ['https://[64:ff9b::a9fe:a9fe]/'],
+    'nat64 loopback' => ['https://[64:ff9b::7f00:1]/'],
+    'nat64 local prefix' => ['https://[64:ff9b:1::1]/'],
+]);
+
+it('judges an IPv6 literal against the range list, not against the resolver', function (string $url): void {
+    // parse_url leaves the brackets on, which neither filter_var nor inet_pton accepts. These were
+    // refused before this was handled - but for failing to resolve, which meant every IPv6 range above
+    // was unreachable on this path.
+    expect(fn () => $this->guard->resolve($url))
+        ->toThrow(UnsafeDestinationException::class, 'private or reserved');
+})->with([
+    'loopback v6' => ['https://[::1]/hook'],
+    'link-local v6' => ['https://[fe80::1]/hook'],
+    'unique local v6' => ['https://[fd00::1]/hook'],
+    'unspecified v6' => ['https://[::]/hook'],
+]);
+
+it('still accepts a public address however it is written', function (string $url, string $address): void {
+    // The point is to judge the address, not to refuse everything unusual. A mapped address that
+    // carries a public IPv4 address is a public destination and stays reachable.
+    expect($this->guard->resolve($url)->address)->toBe($address);
+})->with([
+    'v6 literal' => ['https://[2606:4700::1111]/hook', '2606:4700::1111'],
+    'mapped public v4' => ['https://[::ffff:203.0.114.1]/hook', '::ffff:203.0.114.1'],
+]);
+
 it('refuses credentials embedded in the URL', function (): void {
     // A destination written that way was probably not written by whoever will receive it.
     expect(fn () => $this->guard->resolve('https://user:secret@203.0.114.1/hook'))

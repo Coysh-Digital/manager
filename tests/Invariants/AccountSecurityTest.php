@@ -8,6 +8,7 @@ use App\Models\AuditEvent;
 use App\Models\Membership;
 use App\Models\Organisation;
 use App\Models\User;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
@@ -190,7 +191,7 @@ it('will not confirm a second factor with the wrong code', function (): void {
     $this->actingAs($this->user)
         ->withSession([
             'auth.password_confirmed_at' => now()->timestamp,
-            'totp.pending' => $secret,
+            'totp.pending' => Crypt::encryptString($secret),
         ])
         ->post('/account/two-factor/confirm', ['code' => '000000'])
         ->assertSessionHasErrors('code');
@@ -198,6 +199,69 @@ it('will not confirm a second factor with the wrong code', function (): void {
     // Nothing is written until a valid code proves the authenticator really has the secret.
     expect($this->user->fresh()->totp_secret)->toBeNull()
         ->and($this->user->fresh()->hasConfirmedTotp())->toBeFalse();
+});
+
+it('limits reset requests by source, not only by the address asked for', function (): void {
+    // The password broker already bounds how often one mailbox can be asked for a link. It counts
+    // addresses, though, and every request below is the first for its address - so each one passes
+    // that check and sends mail. Counting the source is the only thing that sees this happening.
+    for ($i = 0; $i < 10; $i++) {
+        $this->post('/forgot-password', ['email' => "person{$i}@example.org"])
+            ->assertStatus(302);
+    }
+
+    $this->post('/forgot-password', ['email' => 'one-too-many@example.org'])
+        ->assertStatus(429);
+});
+
+it('limits attempts to submit a reset token', function (): void {
+    for ($i = 0; $i < 10; $i++) {
+        $this->post('/reset-password', [
+            'token' => 'not-a-real-token',
+            'email' => 'owner@example.org',
+            'password' => 'a-perfectly-fine-password',
+            'password_confirmation' => 'a-perfectly-fine-password',
+        ]);
+    }
+
+    $this->post('/reset-password', [
+        'token' => 'not-a-real-token',
+        'email' => 'owner@example.org',
+        'password' => 'a-perfectly-fine-password',
+        'password_confirmation' => 'a-perfectly-fine-password',
+    ])->assertStatus(429);
+});
+
+it('never parks an enrolment secret in the session in the clear', function (): void {
+    $this->actingAs($this->user)
+        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
+        ->post('/account/two-factor/start');
+
+    $stored = session('totp.pending');
+
+    // The confirmed secret is cast `encrypted` on the user, so the column never holds it readable.
+    // Between generating it and confirming it, it lives in the session instead - which the default
+    // driver writes to a database table, where a dump or a replica would have handed over a working
+    // second factor that the column it was headed for would not have.
+    expect($stored)->toBeString()
+        ->and(Crypt::decryptString($stored))->not->toBe('')
+        ->and($stored)->not->toBe(Crypt::decryptString($stored));
+});
+
+it('completes enrolment with a secret it has to decrypt first', function (): void {
+    $acting = $this->actingAs($this->user)
+        ->withSession(['auth.password_confirmed_at' => now()->timestamp]);
+
+    $acting->post('/account/two-factor/start');
+
+    // The round trip, not just the encryption: a secret that cannot be read back is a second factor
+    // nobody can ever enrol.
+    $secret = Crypt::decryptString(session('totp.pending'));
+
+    $acting->post('/account/two-factor/confirm', ['code' => currentTotpCode($secret)])
+        ->assertSessionHasNoErrors();
+
+    expect($this->user->fresh()->hasConfirmedTotp())->toBeTrue();
 });
 
 it('lets a user end another session but not forge one', function (): void {
