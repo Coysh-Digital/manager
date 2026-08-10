@@ -36,13 +36,13 @@
                     <div class="flex flex-col gap-1">
                         <span class="font-mono text-[10px] uppercase tracking-[0.07em] text-text-3">Key age</span>
                         <span class="font-mono text-[13px] tabular">
-                            {{ $trust['keyAgeDays'] === null ? '—' : $trust['keyAgeDays'].' days' }}
+                            {{ $trust['keyAgeDays'] === null ? '-' : $trust['keyAgeDays'].' days' }}
                         </span>
                     </div>
 
                     <div class="flex flex-col gap-1">
                         <span class="font-mono text-[10px] uppercase tracking-[0.07em] text-text-3">Paired</span>
-                        <span class="text-[13px]">{{ $trust['connector']->paired_at?->diffForHumans() ?? '—' }}</span>
+                        <span class="text-[13px]">{{ $trust['connector']->paired_at?->diffForHumans() ?? '-' }}</span>
                     </div>
 
                     <div class="flex flex-col gap-1">
@@ -101,7 +101,7 @@
         <h2 class="mb-2.5 text-[13.5px] font-semibold">
             Findings
             @if ($findings->isNotEmpty())
-                <span class="ml-1 font-normal text-text-2">— {{ $findings->count() }} outstanding</span>
+                <span class="ml-1 font-normal text-text-2">- {{ $findings->count() }} outstanding</span>
             @endif
         </h2>
 
@@ -200,7 +200,7 @@
                 <ul class="flex list-none flex-col gap-1 p-0">
                     @foreach ($unchecked as $capability => $rules)
                         <li class="text-[12.5px] text-text-2">
-                            <code class="font-mono text-[12px]">{{ $capability }}</code> —
+                            <code class="font-mono text-[12px]">{{ $capability }}</code> -
                             {{ implode(', ', $rules) }}
                         </li>
                     @endforeach
@@ -324,7 +324,7 @@
                     <div class="flex items-baseline justify-between gap-3">
                         <dt class="text-text-2">{{ $label }}</dt>
                         <dd class="{{ $notable ? 'font-medium text-amber' : '' }}">
-                            {{ $value === null ? '—' : ($value ? 'Yes' : 'No') }}
+                            {{ $value === null ? '-' : ($value ? 'Yes' : 'No') }}
                         </dd>
                     </div>
                 @endforeach
@@ -345,23 +345,23 @@
 
                 $posture = [
                     'Craft licence' => [
-                        $licence === null ? '—' : Str::title((string) ($licence['craft'] ?? 'unknown')),
+                        $licence === null ? '-' : Str::title((string) ($licence['craft'] ?? 'unknown')),
                         $licence !== null && in_array($licence['craft'] ?? '', ['invalid', 'mismatched'], true),
                     ],
                     'Plugin licences' => [
-                        $licence === null ? '—' : ($licence['plugins_valid'] ?? 0).' of '.($licence['plugins_total'] ?? 0).' valid',
+                        $licence === null ? '-' : ($licence['plugins_valid'] ?? 0).' of '.($licence['plugins_total'] ?? 0).' valid',
                         $licence !== null && ($licence['plugins_valid'] ?? 0) < ($licence['plugins_total'] ?? 0),
                     ],
                     'Trials in use' => [
-                        $licence === null ? '—' : (string) ($licence['trials_in_use'] ?? 0),
+                        $licence === null ? '-' : (string) ($licence['trials_in_use'] ?? 0),
                         $licence !== null && ($licence['trials_in_use'] ?? 0) > 0,
                     ],
                     'PHP' => [
-                        $updateReport?->value('php.current') ?? $site->php_version ?? '—',
+                        $updateReport?->value('php.current') ?? $site->php_version ?? '-',
                         $eol,
                     ],
                     'Security support until' => [
-                        $updateReport?->value('php.security_support_until') ?? '—',
+                        $updateReport?->value('php.security_support_until') ?? '-',
                         $eol,
                     ],
                     'Environment' => [Str::title($site->environment), false],

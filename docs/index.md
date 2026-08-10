@@ -36,7 +36,7 @@ confirmation. See [Permissions](/capabilities).
 ## Nothing is held back
 
 This repository is the whole product. Every monitoring, findings, jobs and backup feature is here,
-free to run for your own and your clients' sites — there is no reduced edition and nothing reserved
+free to run for your own and your clients' sites - there is no reduced edition and nothing reserved
 for a paid tier.
 
 A hosted option exists at [managerforcraft.com](https://managerforcraft.com) for people who would

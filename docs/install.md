@@ -28,7 +28,7 @@ That is an afternoon to install and an ongoing responsibility to run. Plenty of 
 that, and this documentation is written for them.
 
 If you would rather not take it on, a hosted option exists at
-[managerforcraft.com](https://managerforcraft.com) — same code, same boundaries, with the server and
+[managerforcraft.com](https://managerforcraft.com) - same code, same boundaries, with the server and
 the on-call rota ours rather than yours. Nothing on this page is affected either way, and moving
 between the two means re-pairing sites rather than rebuilding anything.
 
@@ -56,7 +56,7 @@ Edit `.env`. At minimum set `APP_KEY`, `APP_URL` and `DB_PASSWORD` - the contain
 without them, and refuses to start at all on a well-known default password, with `APP_DEBUG` on, or
 with `APP_ENV` set to anything but `production`. Every variable is documented in [env.md](env.md).
 
-Those three refusals used to be conditional on `APP_ENV=production`, which meant copying this file —
+Those three refusals used to be conditional on `APP_ENV=production`, which meant copying this file -
 which ships `APP_ENV=local` - skipped all of them. Both the file and the checks have been corrected:
 the example now carries the safe values, and the checks no longer depend on the setting that made
 them necessary.

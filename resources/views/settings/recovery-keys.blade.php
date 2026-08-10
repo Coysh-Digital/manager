@@ -36,16 +36,6 @@
                             we could read.
                         </p>
                     </div>
-                @elseif ($activeKeys->count() === 1)
-                    <div class="mb-4 rounded-lg border border-amber-line bg-amber-bg p-3">
-                        <p class="mb-1.5 text-[13px] font-medium">One recovery key</p>
-                        <p class="max-w-[80ch] text-[12.5px] leading-relaxed text-text-2">
-                            If it is lost, every backup encrypted to it becomes permanently unreadable.
-                            We cannot recover it - we have never held the other half, which is the whole
-                            point. Add a second key, kept somewhere the first is not. Every backup is
-                            sealed to every active key, so a second one costs nothing.
-                        </p>
-                    </div>
                 @endif
 
                 @forelse ($recoveryKeys as $key)
@@ -75,7 +65,7 @@
                                 <span class="text-[11.5px] text-text-3">
                                     @if ($key->isRevoked())
                                         Revoked {{ $key->revoked_at?->diffForHumans() }}
-                                        @if ($key->revoked_by_label) by {{ $key->revoked_by_label }}@endif —
+                                        @if ($key->revoked_by_label) by {{ $key->revoked_by_label }}@endif -
                                         backups taken before then still open with it.
                                     @elseif ($key->isActive())
                                         Proven {{ $key->last_proved_at?->diffForHumans() }}

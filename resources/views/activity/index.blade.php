@@ -7,8 +7,8 @@
     <div class="mb-5 flex flex-col gap-1.5">
         <h1 class="text-[22px] font-semibold tracking-[-0.015em]">Activity log</h1>
         <p class="text-[13px] text-text-2">
-            Append-only. Entries cannot be edited or deleted, and each one commits to the entry before it,
-            so any alteration is detectable.
+            Everything Manager does is recorded here. Entries cannot be edited or deleted by anyone,
+            and any attempt to change one afterwards would be visible.
 
             {{-- The command is only an answer to somebody who can run it. Hosted, the claim still
                  holds and is still worth stating; the instruction is for a machine they have no
@@ -57,9 +57,9 @@
                                      entry that caused it. --}}
                                 <x-audit-action :event="$event" :previous="$loop->index > 0 ? $events[$loop->index - 1] : null" />
                             </td>
-                            <td class="px-3 py-2.5 text-text-2">{{ $event->site_label ?? '—' }}</td>
+                            <td class="px-3 py-2.5 text-text-2">{{ $event->site_label ?? '-' }}</td>
                             <td class="px-3 py-2.5 text-text-2">{{ $event->actor_label ?? Str::title($event->actor_type) }}</td>
-                            <td class="whitespace-nowrap px-3 py-2.5 font-mono text-[11.5px] text-text-3">{{ $event->ip ?? '—' }}</td>
+                            <td class="whitespace-nowrap px-3 py-2.5 font-mono text-[11.5px] text-text-3">{{ $event->ip ?? '-' }}</td>
                             <td class="px-3 py-2.5">
                                 @if ($event->succeeded())
                                     <x-status-badge tone="ok" label="Succeeded" />

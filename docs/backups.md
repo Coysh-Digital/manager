@@ -223,7 +223,7 @@ actual date rather than claiming it happened immediately.
 
   From 1.3.0 an artifact arrives in bounded parts rather than as one request, so a self-hosted
   installation can accept one of any size without presigned uploads or an object store. A connector
-  older than 1.13 still sends the whole file in a single request, which cannot carry more than 5 GB —
+  older than 1.13 still sends the whole file in a single request, which cannot carry more than 5 GB -
   `manager:doctor` warns when the ceiling is raised past that point, and names those sites as the
   ones affected rather than the whole installation.
 - **Per organisation**: unset by default on self-hosted. Set `MANAGER_BACKUP_QUOTA_BYTES` if you

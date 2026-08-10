@@ -9,7 +9,7 @@
     // still falls back to the tone's own. It exists for the small number of badges where the tone
     // is right but its default mark is not - a fleet's update count is `info`, and "i 3 updates"
     // says less than "↑ 3 updates" for the same width.
-    $glyphs = ['ok' => '✓', 'warn' => '!', 'bad' => '✕', 'info' => 'i', 'grey' => '—'];
+    $glyphs = ['ok' => '✓', 'warn' => '!', 'bad' => '✕', 'info' => 'i', 'grey' => '-'];
 
     $classes = [
         'ok' => 'bg-ok-bg text-ok border-ok-line',

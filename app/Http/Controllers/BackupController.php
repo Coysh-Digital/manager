@@ -698,7 +698,7 @@ final class BackupController
 
         return back()->with('status', implode(' ', [
             'Backup cancelled.',
-            'We have stopped waiting for it and will refuse it if it arrives —',
+            'We have stopped waiting for it and will refuse it if it arrives -',
             'the site may still finish its own copy, which we cannot stop from here.',
         ]));
     }

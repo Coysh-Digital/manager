@@ -121,11 +121,11 @@
                 </div>
                 <div class="flex flex-col gap-1">
                     <span class="font-mono text-[10px] uppercase tracking-[0.07em] text-text-3">Paired</span>
-                    <span class="text-[13px]">{{ $connector?->paired_at?->diffForHumans() ?? '—' }}</span>
+                    <span class="text-[13px]">{{ $connector?->paired_at?->diffForHumans() ?? '-' }}</span>
                 </div>
                 <div class="flex flex-col gap-1">
                     <span class="font-mono text-[10px] uppercase tracking-[0.07em] text-text-3">Version</span>
-                    <span class="font-mono text-[13px]">{{ $connector?->connector_version ?? '—' }}</span>
+                    <span class="font-mono text-[13px]">{{ $connector?->connector_version ?? '-' }}</span>
                 </div>
                 <div class="flex flex-col gap-1">
                     <span class="font-mono text-[10px] uppercase tracking-[0.07em] text-text-3">Stored credentials</span>

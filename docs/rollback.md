@@ -3,7 +3,7 @@
 ## Application only
 
 If a release misbehaves but the schema has not changed. Replace the tag with the version you were on
-before the upgrade — `git tag --sort=-v:refname | head` lists them:
+before the upgrade - `git tag --sort=-v:refname | head` lists them:
 
 ```bash
 cd /opt/manager

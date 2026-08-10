@@ -143,7 +143,7 @@
                     <code class="font-mono text-[12px]">{{ $event->capability }}</code>
                     {{ $event->previous_state ? Str::of($event->previous_state)->append(' → ') : '' }}{{ $event->new_state }}
                     @if ($event->reason)
-                        <span class="text-text-2">— {{ $event->reason }}</span>
+                        <span class="text-text-2">- {{ $event->reason }}</span>
                     @endif
                 </span>
                 <span class="text-text-2">{{ $event->actor_label ?? 'System' }}</span>

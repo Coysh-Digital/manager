@@ -70,20 +70,22 @@ it('sends every "add one in Settings" link to the screen that adds one', functio
         ->assertSee('Recovery keys');
 });
 
-it('warns about a single point of failure while there is one key', function (): void {
+it('does not nag about holding a single key', function (): void {
+    /*
+     | This asserted the opposite until now, and the panel it asserted has gone.
+     |
+     | One active key is the ordinary case: it is what an organisation has the moment it finishes
+     | the setup instructions on this very screen. So the warning was not an exception being
+     | reported, it was permanent furniture - here, and on the fleet backups screen, and on every
+     | site's backups tab, via BackupReadiness. A warning that is always on is one people stop
+     | reading, and it was crowding out the blockers beside it, which are the ones that mean a
+     | backup will not be taken.
+     |
+     | Nothing about the risk changed and nothing here hides it: the instructions for making a key,
+     | a few lines below, still say what losing the secret half costs. Kept as a test rather than
+     | deleted so that reinstating the panel is a decision somebody makes on purpose.
+     */
     RecoveryKey::factory()->for($this->organisation)->create();
-
-    $this->actingAs($this->owner)->get('/settings/recovery-keys')
-        ->assertOk()
-        ->assertSee('One recovery key')
-        ->assertSee('permanently unreadable')
-        // Said plainly, in the place somebody would look for reassurance. Softening it here is how a
-        // customer ends up believing there is a support process that does not exist.
-        ->assertSee('We cannot recover it', false);
-});
-
-it('does not warn once there are two', function (): void {
-    RecoveryKey::factory()->count(2)->for($this->organisation)->create();
 
     $this->actingAs($this->owner)->get('/settings/recovery-keys')
         ->assertOk()

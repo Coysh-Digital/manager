@@ -112,7 +112,7 @@
             <p class="mb-3 text-[12.5px] text-text-2">
                 Pair against
                 <code class="rounded bg-surface-2 px-1.5 py-0.5 font-mono text-[12px]">{{ $pairingAddress }}</code>
-                — enter that as the Manager platform address on the site. It is deliberately not the
+                - enter that as the Manager platform address on the site. It is deliberately not the
                 address of this page: a backup is a single request carrying the whole database, and
                 connector traffic is served separately so that it can carry one.
             </p>

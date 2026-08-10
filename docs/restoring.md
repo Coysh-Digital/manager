@@ -30,12 +30,12 @@ That installs from Packagist, over TLS, against a `composer.lock` you can commit
 
 Where it comes from matters more here than usual: this is the one program that will ever hold your
 recovery private key. It is MIT-licensed with no runtime dependencies beyond `manager-protocol`, so
-reading it end to end before you trust it is a realistic afternoon rather than a gesture — and that
+reading it end to end before you trust it is a realistic afternoon rather than a gesture - and that
 is deliberate, because it has to be usable by somebody who no longer trusts us.
 
 ::: warning There is no signed phar
 This page used to describe downloading `manager-restore.phar` and checking it with
-`gpg --verify manager-restore.phar.asc`. **Neither file has ever existed** — nothing builds a phar,
+`gpg --verify manager-restore.phar.asc`. **Neither file has ever existed** - nothing builds a phar,
 and `manager-restore` publishes no GitHub releases at all. The instruction would have failed for
 anybody who followed it, at the worst possible moment: mid-restore, holding a key, deciding whether
 to trust the tool.
