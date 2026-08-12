@@ -323,6 +323,14 @@ it('shows work in progress quietly, and lets a failure take the slot instead', f
 it('says nothing at all when there is nothing outstanding', function (): void {
     $html = $this->actingAs($this->owner)->get('/sites')->assertOk()->getContent();
 
-    // A nav entry carrying a permanent zero teaches people to stop reading it.
-    expect($html)->toMatch('/>Backups<\/span>\s*+<\/a>/');
+    /*
+     | A nav entry carrying a permanent zero teaches people to stop reading it, and that is still
+     | what this is about.
+     |
+     | The pattern moved because the slot gained a wrapper. The poller keeps this count current now
+     | that pressing "Back up now" does not reload the page, and it needs something to write into -
+     | so the assertion is that the wrapper is *empty*, which renders exactly as nothing. Matching
+     | the old shape would now be asserting the absence of the element that makes the count live.
+    */
+    expect($html)->toMatch('/>Backups<\/span>\s*+<span data-backup-badge>\s*+<\/span>\s*+<\/a>/');
 });

@@ -6,11 +6,19 @@
  * broken, and the observable consequence is somebody pressing "Back up now" again - which is another
  * full dump of a production database.
  *
- * So: poll, narrowly. Only while there is something outstanding, only for the phase and the elapsed
- * time, and only for a while. When a job leaves the outstanding set its artifact row needs to appear
- * in a table this does not own, so that one case reloads the page rather than pretending to know how
- * to render it.
+ * So: poll, narrowly. Only while there is something outstanding, only for as long as that is
+ * plausible, and stopping at the first sign the answer is not coming.
+ *
+ * **This used to reload the page when a job finished.** The comment said the stored artifact belongs
+ * in a table this script does not own, which was true and is still true - so the region is swapped
+ * with markup the server rendered, and everything outside it is left alone and said to be left
+ * alone. A settled backup produces a sentence and a Reload button rather than taking the page out
+ * from under somebody who is reading it. The table, the summary tiles and the "Last backup" strip
+ * are stale until that button is pressed, and pretending otherwise is the one thing a live screen
+ * must not do.
  */
+import { toast } from './toast.js';
+
 const INTERVAL = 10000;
 
 // Half an hour. Long enough for a dump and an upload on a large site; short enough that a tab left
@@ -19,28 +27,16 @@ const GIVE_UP_AFTER = 30 * 60 * 1000;
 
 const MAX_FAILURES = 3;
 
-function phaseFor(node) {
-    return node.dataset.backupPhase;
+function reload() {
+    window.location.reload();
 }
 
-function render(node, entry) {
-    if (phaseFor(node) === entry.phase) {
-        return;
-    }
-
-    node.dataset.backupPhase = entry.phase;
-
-    const badge = node.querySelector('[data-status-badge-label]');
-
-    if (badge !== null) {
-        badge.textContent = entry.label;
-    }
-
-    node.querySelectorAll('[data-backup-step]').forEach((step) => {
-        const reached = Number(step.dataset.backupStep) <= entry.step;
-
-        step.classList.toggle('bg-primary', reached);
-        step.classList.toggle('bg-border-2', !reached);
+function announce(settled) {
+    settled.forEach((entry) => {
+        toast(entry.sentence, entry.tone === 'warning' ? 'warning' : 'ok', {
+            label: 'Reload to see it',
+            run: reload,
+        });
     });
 }
 
@@ -51,9 +47,39 @@ function start(list) {
         return;
     }
 
-    const startedAt = Date.now();
+    const items = list.querySelector('[data-backup-progress-items]') ?? list;
+    const badge = document.querySelector('[data-backup-badge]');
+
+    /*
+     | The jobs this tab has actually drawn.
+     |
+     | Kept so that a job leaving the outstanding set can be asked about by name. Without it the
+     | server would have to answer "what settled recently", which would announce a scheduled backup
+     | that ran while this screen sat open, or a colleague's manual one - work this tab never showed
+     | and nobody here is waiting on.
+    */
+    const watching = new Set();
+
+    const remember = () => {
+        items.querySelectorAll('[data-backup-progress]').forEach((node) => {
+            watching.add(node.dataset.backupJob);
+        });
+    };
+
+    remember();
+
+    let startedAt = Date.now();
     let failures = 0;
     let timer = null;
+
+    /*
+     | Which run of the loop is current.
+     |
+     | A press can land while a request is already in the air, and that request is about to answer
+     | "nothing outstanding" and shut the loop down - taking the job just queued with it, so the card
+     | would never appear. A stale request checks this before deciding anything and drops out.
+    */
+    let generation = 0;
 
     const stop = () => {
         if (timer !== null) {
@@ -63,6 +89,8 @@ function start(list) {
     };
 
     const tick = async () => {
+        const mine = generation;
+
         if (Date.now() - startedAt > GIVE_UP_AFTER) {
             stop();
 
@@ -70,7 +98,11 @@ function start(list) {
         }
 
         try {
-            const response = await fetch(url, {
+            const query = watching.size > 0
+                ? `${url}${url.includes('?') ? '&' : '?'}jobs=${encodeURIComponent(Array.from(watching).join(','))}`
+                : url;
+
+            const response = await fetch(query, {
                 headers: { Accept: 'application/json' },
                 credentials: 'same-origin',
             });
@@ -79,38 +111,47 @@ function start(list) {
                 throw new Error(String(response.status));
             }
 
-            const { in_flight: entries } = await response.json();
+            const answer = await response.json();
 
-            failures = 0;
-
-            const byJob = new Map(entries.map((entry) => [entry.job_id, entry]));
-            const nodes = list.querySelectorAll('[data-backup-progress]');
-
-            // Something finished. The stored artifact belongs in a table this script does not own,
-            // so hand the whole page back to the server rather than half-updating it here.
-            const finished = Array.from(nodes).some((node) => !byJob.has(node.dataset.backupJob));
-
-            if (finished || entries.length > nodes.length) {
-                stop();
-                window.location.reload();
-
+            // Superseded while this was in the air. The run that replaced it is already scheduled.
+            if (mine !== generation) {
                 return;
             }
 
-            nodes.forEach((node) => {
-                const entry = byJob.get(node.dataset.backupJob);
+            failures = 0;
 
-                if (entry !== undefined) {
-                    render(node, entry);
-                }
-            });
+            // Rendered by Blade, from the same component the page was built with. Swapped whole
+            // rather than patched, so the elapsed line and the "No change" badge move too - patching
+            // only the phase is why a card used to read "2m at this phase" twenty minutes in.
+            if (typeof answer.html === 'string') {
+                items.innerHTML = answer.html;
+            }
 
-            if (entries.length === 0) {
+            const outstanding = answer.in_flight || [];
+
+            list.hidden = outstanding.length === 0;
+
+            if (badge !== null && typeof answer.badge_html === 'string') {
+                badge.innerHTML = answer.badge_html;
+            }
+
+            // Only jobs this tab was watching. The server was asked about exactly these, so anything
+            // that comes back is something somebody here saw start.
+            announce(answer.settled || []);
+
+            (answer.settled || []).forEach((entry) => watching.delete(entry.job_id));
+            outstanding.forEach((entry) => watching.add(entry.job_id));
+
+            if (outstanding.length === 0) {
                 stop();
 
                 return;
             }
         } catch {
+            if (mine !== generation) {
+                return;
+            }
+
             failures += 1;
 
             // A signed-out session or a server that has gone away. Backing off forever is worse than
@@ -125,12 +166,64 @@ function start(list) {
         timer = window.setTimeout(tick, INTERVAL);
     };
 
-    timer = window.setTimeout(tick, INTERVAL);
+    /*
+     | Started by something happening, not by the page loading.
+     |
+     | A screen with nothing outstanding polls not at all, which is most screens most of the time.
+     | Pressing a button restarts the clock as well as the loop, so a tab somebody keeps working in
+     | keeps answering rather than reaching the half-hour ceiling once and staying quiet.
+    */
+    const wake = () => {
+        generation += 1;
+        startedAt = Date.now();
+        failures = 0;
+
+        stop();
+
+        // A second rather than immediately. The action that fired this has only just returned, and
+        // the row it wrote is committed - but asking on the same breath reads as a flicker, and a
+        // job's first phase is never going to have changed in that time anyway.
+        timer = window.setTimeout(tick, 1000);
+    };
+
+    if (items.querySelector('[data-backup-progress]') !== null) {
+        timer = window.setTimeout(tick, INTERVAL);
+    }
+
+    document.addEventListener('manager:acted', wake);
 
     // Nothing to poll for once the tab is closed or navigated away from.
     window.addEventListener('pagehide', stop);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('[data-backup-progress-list]').forEach(start);
+    const lists = document.querySelectorAll('[data-backup-progress-list]');
+
+    if (lists.length > 0) {
+        lists.forEach(start);
+
+        return;
+    }
+
+    /*
+     | Every other screen.
+     |
+     | There is no progress region to fill here, but there is a sidebar count and there are settled
+     | backups worth being told about - somebody presses Refresh on a site's Overview tab, or leaves
+     | the fleet screen open while a backup they started elsewhere finishes. The endpoint is the
+     | organisation-wide one, named in a meta tag by the layout.
+     |
+     | An element rather than a bare loop, so `start` has the same shape of thing to work with
+     | either way: it is never rendered, so hiding and filling it are both no-ops.
+    */
+    const endpoint = document.querySelector('meta[name="backup-status-endpoint"]')?.content;
+
+    if (!endpoint) {
+        return;
+    }
+
+    const shadow = document.createElement('div');
+    shadow.dataset.backupStatusUrl = endpoint;
+
+    start(shadow);
 });

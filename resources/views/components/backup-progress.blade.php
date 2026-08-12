@@ -48,7 +48,7 @@
              the distinction lives: we stop accepting the backup, we do not stop the site making
              one, and a button labelled "Cancel" with nothing beside it would imply otherwise. --}}
         @if ($canCancel)
-            <form method="POST" action="{{ route('backups.cancel') }}"
+            <form method="POST" action="{{ route('backups.cancel') }}" data-async
                   onsubmit="return confirm('Stop waiting for this backup? It will be refused if it arrives. The site may still finish its own copy - nothing here can reach it to stop that.');">
                 @csrf
                 <input type="hidden" name="job" value="{{ $backup->jobId }}">

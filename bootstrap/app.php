@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Exceptions\ConnectorErrorResponse;
+use App\Http\Middleware\AnswerInPlace;
 use App\Http\Middleware\EnsureSecondFactorWhenRequired;
 use App\Http\Middleware\EnsureSetupIsAvailable;
 use App\Http\Middleware\EnsureSiteBelongsToOrganisation;
@@ -58,6 +59,10 @@ return Application::configure(basePath: dirname(__DIR__))
             // Applied to every route with a {site} parameter. Tenant scoping is not something an
             // action should have to remember.
             'site.scoped' => EnsureSiteBelongsToOrganisation::class,
+
+            // Per route, never global. Which routes may carry it is a decision with a rule behind
+            // it - see the block above them in routes/web.php, and the invariant that pins the list.
+            'in-place' => AnswerInPlace::class,
         ]);
 
         /*

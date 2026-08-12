@@ -18,6 +18,7 @@ import './schedule.js';
 import './backups.js';
 import './changelog.js';
 import './bulk.js';
+import './submit.js';
 
 const STORAGE_KEY = 'manager.theme';
 

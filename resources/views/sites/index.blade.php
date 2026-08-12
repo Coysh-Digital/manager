@@ -22,7 +22,7 @@
             @if ($summary['total'] > 0)
                 {{-- Queues a job per site rather than fetching anything: the platform never calls out.
                      The message says how many were queued and how many were skipped. --}}
-                <form method="POST" action="{{ route('sites.refresh-all') }}">
+                <form method="POST" action="{{ route('sites.refresh-all') }}" data-async>
                     @csrf
                     <button type="submit"
                             class="flex h-8 items-center whitespace-nowrap rounded-[7px] border border-border-2 bg-surface px-3 text-[12.5px] text-text hover:bg-row-hover">
@@ -204,7 +204,7 @@
                 see that file, and the note at the top of bulk.js for why the attribute names a
                 region rather than a form.
             --}}
-            <form method="POST" action="{{ route('backups.store-many') }}" data-bulk-scope>
+            <form method="POST" action="{{ route('backups.store-many') }}" data-bulk-scope data-async>
                 @csrf
 
                 @php

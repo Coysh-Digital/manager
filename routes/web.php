@@ -174,6 +174,33 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
     Route::get('backups/status', [BackupController::class, 'status'])->name('backups.status');
 
     /*
+     |--------------------------------------------------------------------------
+     | `in-place`, and the rule for who may carry it
+     |--------------------------------------------------------------------------
+     |
+     | Six routes below are marked `in-place`. It lets the browser perform them without following
+     | the redirect afterwards, so pressing "Back up now" stops reloading a screen that has not
+     | changed yet. See App\Http\Middleware\AnswerInPlace.
+     |
+     | **A route may carry it only if performing it twice is harmless.** resources/js/submit.js
+     | re-posts the form the ordinary way whenever it cannot read the answer - an expired session, a
+     | network that went away, an error page instead of JSON - so a route that is not safe to repeat
+     | is not safe to enhance. That is invariant 16 read from the browser's side rather than the
+     | queue's.
+     |
+     | Every one of them satisfies it: `backups.store`, `backups.store-many`, `sites.refresh`,
+     | `sites.refresh-all` and `updates.refresh` all pass an idempotency key to
+     | JobService::enqueue(), which returns the outstanding job rather than queuing a second; and
+     | `backups.cancel` converges - cancelling a finished job answers "that backup had already
+     | finished" and changes nothing.
+     |
+     | Nothing that destroys is on the list, and nothing behind `password.confirm` is either - that
+     | gate exists to produce a full page, and a route that has to interrupt somebody is not a route
+     | that should answer quietly. tests/Invariants/AsyncActionSurfaceTest.php pins all of this, so
+     | adding a seventh means saying why in a test rather than only in a diff.
+     */
+
+    /*
      | Asking for a backup, and saying when to ask for one automatically.
      |
      | These used to sit behind recent authentication, on the argument that asking a production site
@@ -190,7 +217,9 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
      | Administrators either way. Nothing here changed about who may press the button - only about
      | how recently they proved they are still the person holding the session.
      */
-    Route::post('backups/sites', [BackupController::class, 'storeMany'])->name('backups.store-many');
+    Route::post('backups/sites', [BackupController::class, 'storeMany'])
+        ->middleware('in-place')
+        ->name('backups.store-many');
 
     /*
      | Clearing a "Did not complete" notice.
@@ -208,7 +237,9 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
      | backup, and is worth having at the moment somebody realises they did not want it - which is
      | usually the moment they are least willing to go and find their password.
      */
-    Route::post('backups/cancel', [BackupController::class, 'cancel'])->name('backups.cancel');
+    Route::post('backups/cancel', [BackupController::class, 'cancel'])
+        ->middleware('in-place')
+        ->name('backups.cancel');
 
     Route::post('backups/failures/dismiss', [BackupController::class, 'dismissFailure'])
         ->name('backups.failures.dismiss');
@@ -250,7 +281,9 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
 
         // The single-site half of "Back up now", gated exactly as the fleet-wide button above is -
         // which is to say not at all. See the comment there for why.
-        Route::post('backups/sites/{site}', [BackupController::class, 'store'])->name('backups.store');
+        Route::post('backups/sites/{site}', [BackupController::class, 'store'])
+            ->middleware('in-place')
+            ->name('backups.store');
 
         // Deciding that a production database is dumped on a repeating schedule, which is the same
         // act the button above performs and is now open for the same reason. It kept whatever gate
@@ -262,7 +295,9 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
         // Enqueues a job rather than reaching into the site: the platform cannot contact a
         // connector, so this waits for the site to come and ask. That makes it the same kind of act
         // as `sites.refresh` below, and it is gated the same way.
-        Route::post('updates/{site}/refresh', [UpdateController::class, 'refresh'])->name('updates.refresh');
+        Route::post('updates/{site}/refresh', [UpdateController::class, 'refresh'])
+            ->middleware('in-place')
+            ->name('updates.refresh');
 
         /*
          | Issuing an enrolment code for a site that already exists.
@@ -297,9 +332,11 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
     // Refreshing asks a site to re-send what it already sends on a schedule. No recent-auth gate and no
     // administrator requirement: it is the least privileged useful action here, and gating it would
     // only make people wait for cron.
-    Route::post('sites/refresh-all', [SiteController::class, 'refreshAll'])->name('sites.refresh-all');
+    Route::post('sites/refresh-all', [SiteController::class, 'refreshAll'])
+        ->middleware('in-place')
+        ->name('sites.refresh-all');
     Route::post('sites/{site}/refresh', [SiteController::class, 'refresh'])
-        ->middleware('site.scoped')
+        ->middleware(['site.scoped', 'in-place'])
         ->name('sites.refresh');
 
     // Acknowledging a finding and reopening one are triage: they change which screen a conclusion
