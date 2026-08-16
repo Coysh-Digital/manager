@@ -27,7 +27,7 @@ ordinary test output.
 | 13 | Secrets never in logs, exceptions, analytics or exports | `AuditLogIntegrityTest`, `AccountSecurityTest`, `DataMinimisationTest`, `OutboundDestinationTest` |
 | 14 | Removing a site immediately revokes its credentials | `NoRemoteExecutionTest` |
 | 15 | Security-sensitive actions fail closed | `ConnectorSignatureTest`, `SelfHostedHardeningTest` |
-| 16 | Retries must not cause an action to run twice | `ConnectorSignatureTest`, `BackupPipelineTest` |
+| 16 | Retries must not cause an action to run twice | `ConnectorSignatureTest`, `BackupPipelineTest`, `AsyncActionSurfaceTest` |
 | 17 | Connector and platform updates use verifiable artifacts | `ReleaseArtifactTest` |
 | 18 | No application content or user records collected for monitoring | `DataMinimisationTest` |
 

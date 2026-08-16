@@ -109,7 +109,7 @@
 
                             <td class="px-3 py-3 text-right">
                                 @if ($canRequest)
-                                    <form method="POST" action="{{ route('updates.refresh', $site) }}">
+                                    <form method="POST" action="{{ route('updates.refresh', $site) }}" data-async>
                                         @csrf
                                         <button type="submit"
                                                 class="h-[30px] whitespace-nowrap rounded-[7px] border border-border bg-surface px-2.5 text-[12.5px] text-text-2 hover:bg-row-hover hover:text-text">
@@ -156,7 +156,7 @@
                                 </td>
                                 <td class="px-3 py-3 text-right">
                                     @if ($canRequest && $site->hasCapability('updates:read'))
-                                        <form method="POST" action="{{ route('updates.refresh', $site) }}">
+                                        <form method="POST" action="{{ route('updates.refresh', $site) }}" data-async>
                                             @csrf
                                             <button type="submit"
                                                     class="h-[30px] whitespace-nowrap rounded-[7px] border border-border bg-surface px-2.5 text-[12.5px] text-text-2 hover:bg-row-hover hover:text-text">

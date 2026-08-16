@@ -97,10 +97,6 @@
             @endisset
         </a>
 
-        {{-- Two counts, one slot. A failure outranks work in progress: a backup that did not happen
-             is the thing somebody has to act on, and one that is still running resolves itself. So
-             the red count wins the space when there is one, and the running count takes it
-             otherwise - never both, because a nav entry is not a dashboard. --}}
         <a href="{{ route('backups.index') }}"
            @class([
                'flex items-center justify-between rounded-md px-2.5 py-[7px] text-[13.5px] font-medium no-underline',
@@ -108,14 +104,11 @@
                'text-text-2 hover:bg-row-hover hover:text-text' => ! request()->routeIs('backups.*'),
            ])>
             <span>Backups</span>
-            @if (($backupsFailed ?? 0) > 0)
-                <span class="rounded border border-danger-line bg-danger-bg px-1.5 py-px font-mono text-[11px] text-danger">{{ $backupsFailed }}</span>
-            @elseif (($backupsRunning ?? 0) > 0)
-                {{-- No border and no fill. Work in progress is not a state to interrupt anybody
-                     about; it is there so pressing "Back up now" and navigating away still shows
-                     that something is happening. --}}
-                <span class="font-mono text-[11px] text-text-3">{{ $backupsRunning }}</span>
-            @endif
+
+            {{-- The wrapper is the poller's target, so the counts stay honest on a page that no
+                 longer reloads when a backup lands. What goes inside it - and which of the two
+                 counts wins the slot - is decided in one place, by the partial. --}}
+            <span data-backup-badge>@include('layouts.partials.backup-badge')</span>
         </a>
 
         <div class="px-2.5 pb-2 pt-[18px] font-mono text-[10px] uppercase tracking-[0.08em] text-text-3">Access</div>

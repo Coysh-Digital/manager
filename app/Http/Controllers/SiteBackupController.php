@@ -12,6 +12,7 @@ use App\Domain\Backup\FailedBackupJobs;
 use App\Domain\Backup\InFlightBackups;
 use App\Domain\Backup\RecoveryKeyService;
 use App\Domain\Backup\RetentionPolicy;
+use App\Domain\Backup\SettledBackups;
 use App\Domain\Capability\CapabilityService;
 use App\Http\Controllers\Concerns\ResolvesSiteContext;
 use App\Models\BackupArtifact;
@@ -42,6 +43,7 @@ final class SiteBackupController
         private readonly BackupService $backups,
         private readonly InFlightBackups $inFlight,
         private readonly FailedBackupJobs $failed,
+        private readonly SettledBackups $settled,
         private readonly BackupReadiness $readiness,
         private readonly RecoveryKeyService $recoveryKeys,
         private readonly AuditRecorder $audit,
@@ -282,13 +284,34 @@ final class SiteBackupController
 
     /**
      * This site's outstanding backups, as JSON. See BackupController::status().
+     *
+     * The same four keys, scoped to one site. `badge_html` is the organisation's count rather than
+     * this site's, because the badge it patches is the sidebar's and the sidebar is the same on
+     * every screen - a per-site number in it would be a different question answered in the same
+     * place.
      */
-    public function status(Site $site): JsonResponse
+    public function status(Request $request, Site $site): JsonResponse
     {
+        $inFlight = $this->inFlight->forSite($site);
+
         return response()->json([
-            'in_flight' => $this->inFlight->forSite($site)
+            'in_flight' => $inFlight->map(fn ($backup): array => $backup->toArray())->all(),
+
+            'settled' => $this->settled
+                ->forSite($site, BackupController::watchedJobs($request))
                 ->map(fn ($backup): array => $backup->toArray())
                 ->all(),
+
+            'html' => view('backups.partials.progress-list', [
+                'inFlight' => $inFlight,
+                'checkInWindow' => $this->inFlight->checkInWindow(),
+                'canCancel' => app(Membership::class)->canAdminister(),
+            ])->render(),
+
+            'badge_html' => view('layouts.partials.backup-badge', [
+                'backupsRunning' => $this->inFlight->countForOrganisation($site->organisation_id),
+                'backupsFailed' => $this->failed->countForOrganisation($site->organisation_id),
+            ])->render(),
         ]);
     }
 }

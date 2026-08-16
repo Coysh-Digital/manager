@@ -216,6 +216,31 @@
     }
 
     /*
+     * A toast arriving.
+     *
+     * The first animation in this file, and it is here rather than as a utility because the element
+     * is built in JavaScript and a class is the smallest thing to hand it. Kept to one short slide:
+     * something appearing in a corner while somebody is reading the middle of the screen needs
+     * enough movement to be noticed and no more.
+     *
+     * Inside a no-preference query rather than merely shortened for reduced motion. A person who has
+     * asked their system for no animation has asked for none, and a toast is perfectly legible
+     * arriving instantly.
+     */
+    @media (prefers-reduced-motion: no-preference) {
+        .toast-enter {
+            animation: toast-enter 160ms ease-out;
+        }
+
+        @keyframes toast-enter {
+            from {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+        }
+    }
+
+    /*
      * Release notes, written by somebody else.
      *
      * Styled here rather than with utility classes because there is no template to hang classes on:

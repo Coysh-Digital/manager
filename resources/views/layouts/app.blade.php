@@ -5,6 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="palette-endpoint" content="{{ route('palette') }}">
+
+    {{--
+        Where the in-progress backup list is asked for on a screen that does not render one.
+
+        The two backup screens carry their own URL on the region itself - the fleet's is
+        organisation-wide and a site's is that site's - and this is the fallback for everywhere
+        else, so that pressing Refresh on a site's Overview tab can still bring the sidebar count
+        up to date without a navigation.
+    --}}
+    <meta name="backup-status-endpoint" content="{{ route('backups.status') }}">
+
     <meta name="robots" content="noindex, nofollow">
     <title>@yield('title', 'Manager for Craft')</title>
 
@@ -73,6 +84,25 @@
             @yield('content')
         </main>
     </div>
+</div>
+
+{{--
+    Where an action answered in place says what it did.
+
+    Rendered here, empty, on every page rather than created by JavaScript when first needed: a live
+    region has to already be in the document for what is put into it to be announced, and building
+    the region and its contents in one tick is the usual reason a toast is silent to a screen reader.
+
+    Two regions, because the two urgencies are genuinely different. "Backup requested" should wait
+    for a gap in whatever is being read; "this site has no active connector" should not.
+
+    Nothing renders here without JavaScript, and nothing needs to. The bands above <main> are the
+    path this file does not touch, and they are still the only feedback an installation with scripts
+    blocked gets - which is why they were left exactly as they were.
+--}}
+<div class="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex flex-col gap-2 p-3 sm:inset-x-auto sm:right-0 sm:w-[380px] sm:items-end">
+    <div data-toasts="assertive" role="alert" aria-live="assertive" class="contents"></div>
+    <div data-toasts="polite" role="status" aria-live="polite" class="contents"></div>
 </div>
 </body>
 </html>

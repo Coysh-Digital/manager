@@ -109,7 +109,7 @@
                              The blocking conditions are the ones the job service and the connector
                              apply anyway; the difference is that they used to apply minutes later,
                              after this screen had already said "Backup requested". --}}
-                        <form method="POST" action="{{ route('backups.store', $site) }}" class="ml-auto">
+                        <form method="POST" action="{{ route('backups.store', $site) }}" class="ml-auto" data-async>
                             @csrf
                             <button type="submit"
                                     @disabled(! $readiness['ready'])
@@ -327,14 +327,18 @@
                     </div>
                 @endif
 
-                @if ($inFlight->isNotEmpty())
-                    <div data-backup-progress-list
-                         data-backup-status-url="{{ route('sites.backups.status', $site) }}">
-                        @foreach ($inFlight as $backup)
-                            <x-backup-progress :backup="$backup" :window="$checkInWindow" :can-cancel="$membership->canAdminister()" />
-                        @endforeach
+                {{-- Always rendered, hidden while empty. See the same region on the fleet screen:
+                     "Back up now" no longer reloads the page, so the first card needs somewhere to
+                     arrive that does not depend on the server having already seen the job. --}}
+                <div {{ $inFlight->isEmpty() ? 'hidden' : '' }}
+                     data-backup-progress-list
+                     data-backup-status-url="{{ route('sites.backups.status', $site) }}">
+                    <div data-backup-progress-items>
+                        @include('backups.partials.progress-list', [
+                            'canCancel' => $membership->canAdminister(),
+                        ])
                     </div>
-                @endif
+                </div>
 
                 @if ($failedJobs->isNotEmpty())
                     <div class="border-t border-border">

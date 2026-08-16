@@ -116,20 +116,28 @@
         </div>
 
         {{-- Requested and not yet arrived. Above the stored artifacts, because it is the thing
-             somebody who just pressed the button came back to look for. --}}
-        @if ($inFlight->isNotEmpty())
-            <div class="mb-3.5 overflow-hidden rounded-[10px] border border-border bg-surface shadow-[var(--shadow)]"
-                 data-backup-progress-list
-                 data-backup-status-url="{{ route('backups.status') }}">
-                <div class="border-b border-border px-4 py-3 text-[13.5px] font-medium">
-                    In progress
-                </div>
+             somebody who just pressed the button came back to look for.
 
-                @foreach ($inFlight as $backup)
-                    <x-backup-progress :backup="$backup" :window="$checkInWindow" show-site :can-cancel="$membership->canAdminister()" />
-                @endforeach
+             Rendered whether or not there is anything in it, and hidden when there is not. Pressing
+             "Back up now" no longer reloads the screen, so the first card has to have somewhere to
+             arrive - and a region that only exists once the server has already seen the job is a
+             region that can only appear on a navigation. bulk.js does the same thing in reverse with
+             its selection bar: Blade renders the state, and the script takes it away. --}}
+        <div class="mb-3.5 overflow-hidden rounded-[10px] border border-border bg-surface shadow-[var(--shadow)]"
+             {{ $inFlight->isEmpty() ? 'hidden' : '' }}
+             data-backup-progress-list
+             data-backup-status-url="{{ route('backups.status') }}">
+            <div class="border-b border-border px-4 py-3 text-[13.5px] font-medium">
+                In progress
             </div>
-        @endif
+
+            <div data-backup-progress-items>
+                @include('backups.partials.progress-list', [
+                    'showSite' => true,
+                    'canCancel' => $membership->canAdminister(),
+                ])
+            </div>
+        </div>
 
         @if ($failedJobs->isNotEmpty())
             <div class="mb-3.5 overflow-hidden rounded-[10px] border border-amber-line bg-surface shadow-[var(--shadow)]">
@@ -202,7 +210,7 @@
                                         @endforeach
                                     @endunless
 
-                                    <form method="POST" action="{{ route('backups.store', $site) }}">
+                                    <form method="POST" action="{{ route('backups.store', $site) }}" data-async>
                                         @csrf
                                         <button type="submit"
                                                 @disabled(! $siteReadiness['ready'])

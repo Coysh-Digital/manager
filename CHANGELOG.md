@@ -6,6 +6,53 @@ Entries are written for somebody about to upgrade a running installation. Anythi
 action is under **Before you upgrade** - that section is the one to read, and `docs/upgrade.md` points
 here for exactly that reason.
 
+## 1.6.0 — 2026-08-12
+
+Pressing a button stops reloading the page.
+
+Nothing to do on upgrade. No migration, no configuration, and the webhook payload is unchanged.
+
+### Asking for something no longer reloads the screen
+
+- **"Back up now", "Refresh", "Refresh all", "Check again" and "Cancel" answer where you pressed
+  them.** None of these was ever synchronous — each writes a row and the request is over, because
+  nothing here reaches out to a site — but each one ended in a redirect, so the screen reloaded and
+  came back looking identical. A backup waits for the site to check in, which is up to five minutes
+  away and longer on a site whose scheduler runs off web traffic, so for that whole time the page was
+  correct and looked broken. The observable consequence was people pressing the button again, which
+  is another full dump of a production database.
+
+  The sentence that used to appear as a band across the top now appears as a message in the corner,
+  and the page stays where it was.
+
+- **A refusal is visible on screens where it was not.** Asking an unpaired site to refresh flashes
+  *"Nothing to refresh: this site has no active connector"*, and five of the seven site tabs carrying
+  that button had nowhere to render it — so the sentence was written and thrown away. It is now said
+  out loud.
+
+- **With JavaScript blocked, nothing changed at all.** Every one of these is still an ordinary form
+  with an ordinary submit button, and still redirects and renders the band it always did. The
+  enhancement is opt-in per route, and only routes it is harmless to perform twice may carry it —
+  each of these is either keyed so a second press returns the job already queued, or converges on the
+  same state. There is an invariant test asserting the list.
+
+### A finished backup no longer takes the page out from under you
+
+- **The in-progress panel updates in place, and stops reloading the document.** When a backup landed,
+  the screen reloaded itself — correct, because six things change at once, and jarring, because it
+  threw away the scroll position at a moment nobody chose. The panel now updates on its own, and a
+  backup that stores, fails, expires or is cancelled says so in the corner with a **Reload** link
+  beside it. The artifact table and the summary tiles are honestly stale until that is pressed, which
+  is better than a screen that quietly looks current and is not.
+
+- **The elapsed line stops going stale.** The panel used to be patched one attribute at a time and
+  only the phase was written, so a card could read "2m at this phase" twenty minutes in. The whole
+  card is now re-rendered by the server, so the elapsed time, the "No change" badge and the
+  explanatory sentence all move together.
+
+- **The sidebar count keeps up.** It was only ever correct because every action ended in a
+  navigation.
+
 ## 1.5.2 — 2026-08-09
 
 A failed-backup alert that reads like a message rather than a stack trace, and a round of corrections

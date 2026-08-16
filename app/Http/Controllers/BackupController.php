@@ -12,6 +12,7 @@ use App\Domain\Backup\BackupTimeline;
 use App\Domain\Backup\FailedBackupJobs;
 use App\Domain\Backup\InFlightBackups;
 use App\Domain\Backup\RecoveryKeyService;
+use App\Domain\Backup\SettledBackups;
 use App\Domain\Capability\CapabilityService;
 use App\Domain\Connector\NudgeDispatcher;
 use App\Domain\Job\JobRejectedException;
@@ -58,6 +59,7 @@ final class BackupController
         private readonly JobService $jobs,
         private readonly InFlightBackups $inFlight,
         private readonly FailedBackupJobs $failed,
+        private readonly SettledBackups $settled,
         private readonly BackupTimeline $timeline,
         private readonly BackupReadiness $readiness,
         private readonly RecoveryKeyService $recoveryKeys,
@@ -357,14 +359,64 @@ final class BackupController
      * Read only and deliberately thin: identifiers and a phase name, nothing a page cannot already
      * see. A backup waits on a site checking in, which can be five minutes away, and a screen that
      * looks frozen for five minutes teaches people to press the button again.
+     *
+     * Three things travel beside `in_flight`, and all three exist because the screen stopped
+     * reloading itself when something finished:
+     *
+     *  - `html`, the in-progress cards rendered here rather than rebuilt in JavaScript. One
+     *    renderer, inside the templates every view invariant reads.
+     *  - `settled`, what became of the jobs the caller names in `?jobs=`. Asked by identifier so a
+     *    tab is only told about work it was already showing.
+     *  - `badge_html`, the sidebar count, which used to be correct only because every action ended
+     *    in a navigation.
      */
-    public function status(Organisation $organisation): JsonResponse
+    public function status(Request $request, Organisation $organisation): JsonResponse
     {
+        $inFlight = $this->inFlight->forOrganisation($organisation->id);
+
         return response()->json([
-            'in_flight' => $this->inFlight->forOrganisation($organisation->id)
+            'in_flight' => $inFlight->map(fn ($backup): array => $backup->toArray())->all(),
+
+            'settled' => $this->settled
+                ->forOrganisation($organisation->id, $this->watchedJobs($request))
                 ->map(fn ($backup): array => $backup->toArray())
                 ->all(),
+
+            'html' => view('backups.partials.progress-list', [
+                'inFlight' => $inFlight,
+                'checkInWindow' => $this->inFlight->checkInWindow(),
+                'showSite' => true,
+                'canCancel' => app(Membership::class)->canAdminister(),
+            ])->render(),
+
+            'badge_html' => view('layouts.partials.backup-badge', [
+                'backupsRunning' => $inFlight->count(),
+                'backupsFailed' => $this->failed->countForOrganisation($organisation->id),
+            ])->render(),
         ]);
+    }
+
+    /**
+     * The jobs a caller says it is watching.
+     *
+     * A list rather than a window: "everything that settled recently" would announce somebody
+     * else's manual backup, or a scheduled one that ran while a screen sat open, to a tab that
+     * never saw it start. Bounded and filtered here; {@see SettledBackups} scopes it to the tenant.
+     *
+     * @return list<string>
+     */
+    public static function watchedJobs(Request $request): array
+    {
+        $raw = $request->query('jobs');
+
+        if (! is_string($raw) || $raw === '') {
+            return [];
+        }
+
+        return array_values(array_filter(
+            array_map('trim', explode(',', $raw)),
+            static fn (string $id): bool => $id !== '' && strlen($id) <= 64,
+        ));
     }
 
     /**

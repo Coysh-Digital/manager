@@ -57,7 +57,7 @@
         {{-- Queues a job rather than fetching anything: the platform never calls out to a site.
              The confirmation message says so, because a button that looked instantaneous and
              was not would be worse than no button. --}}
-        <form method="POST" action="{{ route('sites.refresh', $site) }}">
+        <form method="POST" action="{{ route('sites.refresh', $site) }}" data-async>
             @csrf
             <button type="submit"
                     class="inline-flex h-[34px] items-center rounded-[7px] border border-border-2 bg-surface px-3.5 text-[13px] text-text hover:bg-row-hover">
