@@ -165,6 +165,7 @@ final class SitePosture
      *     backupCount: int,
      *     backupBytes: int,
      *     oldestBackup: Carbon|null,
+     *     readableCount: int,
      * }
      */
     public function exposure(Site $site): array
@@ -178,7 +179,7 @@ final class SitePosture
         $backups = BackupArtifact::query()
             ->where('site_id', $site->id)
             ->stored()
-            ->get(['plaintext_bytes', 'taken_at']);
+            ->get(['plaintext_bytes', 'taken_at', 'format_version']);
 
         return [
             'grants' => $grants,
@@ -190,6 +191,20 @@ final class SitePosture
             'backupCount' => $backups->count(),
             'backupBytes' => (int) $backups->sum('plaintext_bytes'),
             'oldestBackup' => $backups->min('taken_at'),
+
+            /*
+             | How many of those this platform could actually open.
+             |
+             | Carried so the screen can say "nothing here opens it" only where that is true. A v2
+             | artifact's key is sealed to the organisation's recovery keys and to nothing else; a v1
+             | artifact, taken before any recovery key was enrolled, has its key sealed to the
+             | platform. Both still exist, so the honest sentence depends on which this site has, and
+             | a screen that answers an auditor is the last place to state the comfortable half of
+             | that and stop.
+             */
+            'readableCount' => $backups->filter(
+                static fn (BackupArtifact $artifact): bool => $artifact->isReadableByPlatform(),
+            )->count(),
         ];
     }
 }

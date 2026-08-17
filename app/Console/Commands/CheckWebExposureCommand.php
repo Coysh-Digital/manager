@@ -4,12 +4,10 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
-use App\Domain\Security\ProbeReading;
-use App\Domain\Security\SiteProbe;
+use App\Domain\Security\ProbeRecorder;
 use App\Models\ProbeReport;
 use App\Models\Site;
 use Illuminate\Console\Command;
-use Illuminate\Support\Carbon;
 
 /**
  * Looks at each site the way a visitor does.
@@ -33,7 +31,7 @@ final class CheckWebExposureCommand extends Command
 
     protected $description = 'Look at what each site serves to somebody outside it';
 
-    public function handle(SiteProbe $probe): int
+    public function handle(ProbeRecorder $recorder): int
     {
         $query = Site::query()->active();
 
@@ -45,31 +43,21 @@ final class CheckWebExposureCommand extends Command
         $problems = 0;
 
         foreach ($query->cursor() as $site) {
-            $reading = $probe->probe($site);
-
-            ProbeReport::query()->create([
-                'site_id' => $site->id,
-                'payload' => $reading->toPayload(),
-                'status' => $reading->status,
-                'redirects_to_https' => $reading->redirectsToHttps,
-                'answers_everything' => $reading->answersEverything,
-
-                // Null rather than zero when the answer could not be trusted. Zero would read as
-                // "nothing is exposed", which is a claim the control request says cannot be made.
-                'exposed_count' => $reading->answersEverything === false ? count($reading->exposed) : null,
-                'error' => $reading->error,
-                'probed_at' => Carbon::now(),
-            ]);
+            // `record()` rather than `recordIfStale()`. A sweep on a clock has already decided how
+            // often it wants to look, and an operator running this by hand is asking for an answer
+            // now - skipping because the Refresh button was pressed nine minutes ago would make this
+            // command silently do nothing.
+            $report = $recorder->record($site);
 
             $checked++;
 
-            if (! $reading->succeeded()) {
-                $this->line("  {$site->expected_domain}: {$reading->error}");
+            if (! $report->succeeded()) {
+                $this->line("  {$site->expected_domain}: {$report->error}");
 
                 continue;
             }
 
-            $notes = $this->notes($reading);
+            $notes = $this->notes($report);
 
             if ($notes !== []) {
                 $problems++;
@@ -88,24 +76,30 @@ final class CheckWebExposureCommand extends Command
     /**
      * The headline facts, for somebody scanning a sweep's output.
      *
+     * Read off the stored report rather than the reading it came from, so this and the screen answer
+     * from the same place. That is not only tidiness: `exposedPaths()` returns nothing unless
+     * `exposureIsConclusive()`, and a reading whose control request failed has a populated `exposed`
+     * list the screen deliberately refuses to draw any conclusion from. Reading the raw list here
+     * printed "3 file(s) reachable" about sites the interface was, correctly, saying nothing about.
+     *
      * @return list<string>
      */
-    private function notes(ProbeReading $reading): array
+    private function notes(ProbeReport $report): array
     {
         $notes = [];
 
-        if ($reading->exposed !== []) {
-            $notes[] = count($reading->exposed).' file(s) reachable';
+        if ($report->exposedPaths() !== []) {
+            $notes[] = count($report->exposedPaths()).' file(s) reachable';
         }
 
-        if ($reading->redirectsToHttps === false) {
+        if ($report->redirects_to_https === false) {
             $notes[] = 'plain HTTP is not redirected';
         }
 
         $missing = 0;
 
         foreach (['strict-transport-security', 'x-content-type-options', 'x-frame-options', 'referrer-policy'] as $header) {
-            if ($reading->header($header) === null) {
+            if ($report->header($header) === null) {
                 $missing++;
             }
         }

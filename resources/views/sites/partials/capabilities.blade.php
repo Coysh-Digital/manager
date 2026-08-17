@@ -8,6 +8,45 @@
     answers the less useful half of the question - what is *not* permitted is usually what somebody
     came to check.
 --}}
+@php
+    // Read off the same array the rows below render from, so the button and the rows cannot disagree
+    // about what is outstanding. `grantable` is CapabilityService::grantableFromInterface(), which
+    // invariant 7 keeps backups:create out of - so this cannot come to include it by accident.
+    $outstanding = array_filter(
+        $capabilities,
+        static fn (array $capability): bool => $capability['grantable'] && ! $capability['granted'],
+    );
+@endphp
+
+{{--
+    Hidden once there is nothing left, and hidden without a connector, mirroring the condition on the
+    per-row Grant button further down. A button that cannot change anything is how a screen teaches
+    people not to trust it.
+
+    No confirmation dialog, deliberately, where the Revoke button beside each row has one. Revoking
+    takes a permission away from a live site and cannot be undone by pressing the same button again;
+    this is additive, every capability in it is read-only, and each is reversible from the row it
+    came from. A dialog on the one action somebody performs on every newly paired site is how dialogs
+    stop being read. The sentence beside the button carries what the dialog would have said.
+--}}
+@if ($outstanding !== [] && $connector)
+    <div class="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-[10px] border border-border bg-surface-2 px-4 py-3">
+        <span class="text-[12.5px] text-text-2">
+            {{ count($outstanding) }} read-only {{ Str::plural('capability', count($outstanding)) }}
+            not yet granted. Taking a backup is not one of them - that reads the whole database, and
+            is granted on its own below.
+        </span>
+
+        <form method="POST" action="{{ route('sites.capabilities.grant-all', $site) }}">
+            @csrf
+            <button type="submit"
+                    class="h-8 flex-none whitespace-nowrap rounded-[7px] border border-primary bg-primary px-3 text-[12.5px] font-medium text-primary-fg hover:border-primary-hover hover:bg-primary-hover">
+                Grant all read-only
+            </button>
+        </form>
+    </div>
+@endif
+
 <div class="flex flex-col gap-3">
     @foreach ($capabilities as $capability)
         <div class="overflow-hidden rounded-[10px] border border-border bg-surface">

@@ -52,5 +52,20 @@
             the fail-closed behaviour that invariant 15 turns on.
         -->
         <env name="REDIS_CLIENT" value="predis"/>
+
+        <!--
+            Off here, and on everywhere else.
+
+            The queue connection above is `sync`, and SiteFactory gives every site a real-looking
+            faker domain. So a test that posts sites.refresh without this would perform live DNS
+            lookups and HTTP requests, from CI, against domains belonging to strangers - and it would
+            do so silently, because the probe records a failure rather than throwing.
+
+            Left to each test to remember, this comes back the first time somebody adds a case that
+            presses Refresh for an unrelated reason. So the default is off and the tests that mean to
+            probe turn it on with config(), which also makes "does this test make outbound requests"
+            a question answered by reading the test.
+        -->
+        <env name="MANAGER_PROBE_ON_REFRESH" value="false"/>
     </php>
 </phpunit>

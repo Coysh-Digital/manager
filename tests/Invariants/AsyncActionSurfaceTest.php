@@ -3,6 +3,11 @@
 declare(strict_types=1);
 
 use App\Http\Middleware\AnswerInPlace;
+use App\Models\Membership;
+use App\Models\Organisation;
+use App\Models\ProbeReport;
+use App\Models\Site;
+use App\Models\User;
 use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Support\Facades\Route;
 
@@ -28,6 +33,13 @@ use Illuminate\Support\Facades\Route;
  * The first five pass an idempotency key to JobService::enqueue(), which returns the job already
  * outstanding rather than queuing a second. The sixth converges: cancelling a job that has already
  * finished answers "that backup had already finished" and changes nothing.
+ *
+ * `sites.refresh` needs a second half to that account. It also queues a look at what the site serves
+ * to the public, and that is an outbound request to somebody else's server rather than a row in a
+ * table - so "harmless to perform twice" cannot rest on the idempotency key, which says nothing
+ * about it. What it rests on is the floor in ProbeRecorder::recordIfStale(), and there is a test at
+ * the bottom of this file that presses the button twice and counts the probes. If that floor is ever
+ * removed, this route stops qualifying for the list above.
  *
  * @var list<string>
  */
@@ -150,4 +162,33 @@ it('is not in the global stack, and reaches no connector route', function (): vo
         // response middleware written for a browser has no business in that pipeline.
         expect($route->getName())->not->toStartWith('connector.');
     }
+});
+
+it('will not probe a site twice for one in-place route', function (): void {
+    /*
+     | The half of `sites.refresh`'s claim to be on the permitted list that an idempotency key on a
+     | queued connector job does not cover.
+     |
+     | submit.js re-posts the form the ordinary way whenever it cannot read the answer, so this route
+     | genuinely is performed twice in the ordinary course of things. For the connector jobs that is
+     | free - `enqueue()` returns the outstanding one. For the probe it is not free: it is up to ten
+     | requests to a customer's server, and nothing in the queue layer bounds them.
+     |
+     | Unfaked queue and a domain that cannot resolve, so this counts real behaviour rather than
+     | dispatches. If the floor in ProbeRecorder is ever removed, this fails and the route above
+     | should come off the list.
+    */
+    config(['manager.security.probe_on_refresh' => true]);
+
+    $organisation = Organisation::factory()->create();
+    $owner = User::factory()->create(['email_verified_at' => now()]);
+    Membership::factory()->for($owner)->for($organisation)->owner()->create();
+
+    $site = Site::factory()->for($organisation)->connected()
+        ->create(['expected_domain' => 'nothing-here.invalid']);
+
+    $this->actingAs($owner)->post(route('sites.refresh', $site));
+    $this->actingAs($owner)->post(route('sites.refresh', $site));
+
+    expect(ProbeReport::query()->where('site_id', $site->id)->count())->toBe(1);
 });

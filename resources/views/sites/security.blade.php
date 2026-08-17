@@ -198,7 +198,8 @@
             @if ($probe === null)
                 <p class="px-4 py-6 text-center text-[13px] text-text-2">
                     Not checked yet. The sweep runs once a day, and a site added since the last one
-                    has nothing recorded rather than nothing wrong.
+                    has nothing recorded rather than nothing wrong - press <strong>Refresh</strong>
+                    at the top of the page to look now.
                 </p>
             @elseif (! $probe->succeeded())
                 <p class="px-4 py-6 text-center text-[13px] text-text-2">
@@ -463,8 +464,35 @@
                         {{ Str::plural('backup', $exposure['backupCount']) }}
                         ({{ number_format($exposure['backupBytes'] / 1048576, 1) }} MB uncompressed), the
                         oldest taken {{ $exposure['oldestBackup']?->diffForHumans() }}.
+
+                        {{-- The half this panel used to omit, and the half an auditor asks second.
+                             It quoted a plaintext megabyte figure for a copy of somebody's entire
+                             database and never once said the word "encrypted", which reads far worse
+                             than the truth. --}}
+                        @if ($exposure['readableCount'] === 0)
+                            Each was encrypted on the site with its own key before it was uploaded,
+                            and that key is sealed to this organisation's recovery keys - which exist
+                            only where you put them - so <strong>nothing held here opens one</strong>,
+                            by us or by anybody who reaches this storage.
+                        @else
+                            {{-- Never softened, and never left to the Backups screen to mention. A
+                                 v1 artifact's key was sealed to this platform, so the unqualified
+                                 sentence above would be false about the exact files it is about. --}}
+                            <strong>{{ $exposure['readableCount'] }}</strong> of them
+                            {{ $exposure['readableCount'] === 1 ? 'was' : 'were' }} taken before any
+                            recovery key was enrolled and {{ $exposure['readableCount'] === 1 ? 'is' : 'are' }}
+                            encrypted to a key this platform can unwrap, so
+                            {{ $exposure['readableCount'] === 1 ? 'it' : 'they' }} can be read here.
+                            @if ($exposure['backupCount'] > $exposure['readableCount'])
+                                The rest are sealed to this organisation's recovery keys alone - which
+                                exist only where you put them - and nothing held here opens one.
+                            @endif
+                        @endif
                     @else
-                        No backup has been stored yet.
+                        No backup has been stored yet. When one is, it is encrypted on the site with
+                        its own key before it is uploaded, and that key is sealed to this
+                        organisation's recovery keys - so what arrives here is ciphertext this
+                        platform cannot open.
                     @endif
                 @else
                     Manager holds <strong>operational metadata only</strong> for this site - versions,

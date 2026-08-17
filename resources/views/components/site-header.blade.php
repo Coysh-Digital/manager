@@ -54,9 +54,18 @@
     </div>
 
     <div class="flex flex-none items-center gap-2">
-        {{-- Queues a job rather than fetching anything: the platform never calls out to a site.
-             The confirmation message says so, because a button that looked instantaneous and
-             was not would be worse than no button. --}}
+        {{-- Two different things, and this comment used to claim only the first.
+
+             Most of a refresh is work queued for the connector to collect on its next check-in: the
+             platform cannot push it, so the message says "queued" rather than pretending to be
+             instantaneous. A button that looked instantaneous and was not would be worse than no
+             button.
+
+             The exception is what the site serves to the public. A response header is decided by
+             whatever answers the request, so a site behind a CDN cannot see what its own edge did on
+             the way out and the only way to know is to ask from here. Queued too, so this request
+             never waits on somebody else's server, and at most once every ten minutes however often
+             the button is pressed. --}}
         <form method="POST" action="{{ route('sites.refresh', $site) }}" data-async>
             @csrf
             <button type="submit"

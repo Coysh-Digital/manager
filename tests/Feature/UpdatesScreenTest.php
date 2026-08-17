@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Domain\Capability\CapabilityService;
 use App\Domain\Capability\UnknownCapabilityException;
 use App\Domain\Updates\UpdatesIngestService;
+use App\Models\CapabilityEvent;
 use App\Models\CapabilityGrant;
 use App\Models\Connector;
 use App\Models\InventoryReport;
@@ -134,6 +135,109 @@ it('grants a read capability from the interface', function (): void {
         ->assertRedirect();
 
     expect($site->fresh()->hasCapability('updates:read'))->toBeTrue();
+});
+
+it('grants every remaining read capability in one press', function (): void {
+    $site = Site::factory()->for($this->organisation)->connected()->create();
+    Connector::factory()->for($site)->create();
+
+    app(CapabilityService::class)->grant($site, 'inventory:read', $this->user);
+    CapabilityEvent::query()->delete();
+
+    $this->actingAs($this->user)
+        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
+        ->post(route('sites.capabilities.grant-all', $site))
+        ->assertRedirect();
+
+    expect($site->fresh()->grantedCapabilities())
+        ->toEqualCanonicalizing(CapabilityService::grantableFromInterface())
+        // One event each, and none for the capability that was already held. Nothing is collapsed
+        // into a single "granted everything" row, because the history has to read the same whether
+        // somebody pressed this once or the individual buttons six times.
+        ->and(CapabilityEvent::query()->count())->toBe(6);
+});
+
+it('names what it granted, and does not name what it did not', function (): void {
+    $site = Site::factory()->for($this->organisation)->connected()->create();
+    Connector::factory()->for($site)->create();
+
+    $this->actingAs($this->user)
+        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
+        ->post(route('sites.capabilities.grant-all', $site))
+        ->assertSessionHas('status', fn (string $status): bool => str_contains($status, 'updates:read')
+            && ! str_contains($status, 'backups:create'));
+});
+
+it('changes nothing when everything is already granted', function (): void {
+    $site = Site::factory()->for($this->organisation)->connected()->create();
+    Connector::factory()->for($site)->create();
+
+    app(CapabilityService::class)->grantAllFromInterface($site, $this->user);
+    CapabilityEvent::query()->delete();
+
+    // Only reachable from a stale page or a crafted post, since the button is not rendered. It is a
+    // state rather than a fault, so it answers as one.
+    $this->actingAs($this->user)
+        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
+        ->post(route('sites.capabilities.grant-all', $site))
+        ->assertSessionHasNoErrors()
+        ->assertSessionHas('status');
+
+    expect(CapabilityEvent::query()->count())->toBe(0);
+});
+
+it('refuses grant-all to somebody who is not an administrator', function (): void {
+    $member = User::factory()->create(['email_verified_at' => now()]);
+    Membership::factory()->for($member)->for($this->organisation)->create();
+
+    $this->actingAs($member)
+        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
+        ->post(route('sites.capabilities.grant-all', $this->site))
+        ->assertForbidden();
+});
+
+it('refuses grant-all without recent authentication', function (): void {
+    $this->actingAs($this->user)
+        ->post(route('sites.capabilities.grant-all', $this->site))
+        ->assertRedirect(route('password.confirm'));
+});
+
+it('hides another organisation site from grant-all', function (): void {
+    $other = Site::factory()->for(Organisation::factory())->connected()->create();
+
+    $this->actingAs($this->user)
+        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
+        ->post(route('sites.capabilities.grant-all', $other))
+        ->assertNotFound();
+});
+
+it('offers grant-all only while there is something left to grant', function (): void {
+    $site = Site::factory()->for($this->organisation)->connected()->create();
+    Connector::factory()->for($site)->create();
+
+    $this->actingAs($this->user)
+        ->get(route('sites.settings', $site))
+        ->assertOk()
+        ->assertSee('Grant all read-only');
+
+    app(CapabilityService::class)->grantAllFromInterface($site, $this->user);
+
+    // A button that cannot change anything is how a screen teaches people not to trust it.
+    $this->actingAs($this->user)
+        ->get(route('sites.settings', $site))
+        ->assertOk()
+        ->assertDontSee('Grant all read-only');
+});
+
+it('does not offer grant-all on a site with no connector', function (): void {
+    // Matches the per-row Grant buttons, which are also hidden: there is nothing to grant a
+    // permission to until a connector has authenticated.
+    $site = Site::factory()->for($this->organisation)->create();
+
+    $this->actingAs($this->user)
+        ->get(route('sites.settings', $site))
+        ->assertOk()
+        ->assertDontSee('Grant all read-only');
 });
 
 it('refuses to grant a capability that modifies the site', function (): void {

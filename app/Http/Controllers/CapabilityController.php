@@ -15,6 +15,7 @@ use App\Models\Site;
 use coyshdigital\managerprotocol\Protocol;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 /**
  * Changing what Manager is permitted to do on a site.
@@ -84,6 +85,48 @@ final class CapabilityController
         );
 
         return back()->with('status', "Granted {$validated['capability']}.");
+    }
+
+    /**
+     * Grant everything that can be granted with a switch.
+     *
+     * **The request names no capability at all**, and that is the security design rather than an
+     * omission. The set comes from {@see CapabilityService::grantableFromInterface()} on the server,
+     * so a crafted POST has nothing to put in it - unlike {@see self::grant()}, where the validation
+     * rule is the thing standing between a request and `backups:create`.
+     *
+     * Three independent barriers keep backups out of this, and no one of them is relied upon:
+     * nothing in the request can name a capability; the list iterated is one invariant 7 already
+     * pins as excluding it; and {@see CapabilityService::grant()} refuses anything not read-only
+     * whatever it is handed.
+     */
+    public function grantAll(Request $request, Site $site): RedirectResponse
+    {
+        $this->authoriseAdministrator();
+
+        $validated = $request->validate([
+            'reason' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $granted = $this->capabilities->grantAllFromInterface(
+            site: $site,
+            actor: $request->user(),
+            reason: $validated['reason'] ?? null,
+        );
+
+        // Only reachable from a stale page or a crafted request - the button is not rendered when
+        // there is nothing outstanding. Answered as a state rather than an error, because nothing
+        // went wrong: the thing being asked for is already true.
+        if ($granted === []) {
+            return back()->with('status', 'Nothing to grant: every capability that can be granted with a switch already is.');
+        }
+
+        return back()->with('status', sprintf(
+            'Granted %d %s: %s.',
+            count($granted),
+            Str::plural('capability', count($granted)),
+            implode(', ', $granted),
+        ));
     }
 
     /**

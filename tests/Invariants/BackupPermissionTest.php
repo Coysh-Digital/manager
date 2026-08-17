@@ -112,6 +112,41 @@ it('refuses to grant through the ordinary route', function (): void {
     expect($this->site->fresh()->grantedCapabilities())->not->toContain('backups:create');
 });
 
+it('is not swept in by granting everything at once', function (): void {
+    // The bulk button grants the whole read-only set in one press, which is the one place a mistake
+    // would be worth far more than it is on any single button.
+    $this->actingAs($this->owner)->withSession($this->recentAuth)
+        ->post("/sites/{$this->site->external_id}/capabilities/grant-all")
+        ->assertSessionHasNoErrors();
+
+    expect($this->site->fresh()->grantedCapabilities())
+        ->toEqualCanonicalizing(CapabilityService::grantableFromInterface())
+        ->not->toContain('backups:create');
+});
+
+it('cannot be named in a request to grant everything at once', function (): void {
+    // The design that makes the test above hold rather than happen to pass: the route takes no
+    // capability, so there is nothing for a crafted post to put one in. Naming it changes nothing.
+    $this->actingAs($this->owner)->withSession($this->recentAuth)
+        ->post("/sites/{$this->site->external_id}/capabilities/grant-all", [
+            'capability' => 'backups:create',
+            'capabilities' => ['backups:create'],
+        ])
+        ->assertSessionHasNoErrors();
+
+    expect($this->site->fresh()->grantedCapabilities())->not->toContain('backups:create')
+        ->and(CapabilityEvent::query()->where('capability', 'backups:create')->count())->toBe(0);
+});
+
+it('says beside the bulk button that it does not include backups', function (): void {
+    // The screen has to say so. A button labelled "Grant all" beside a row that reads the entire
+    // database is a sentence somebody will finish in their head, and they will finish it wrongly.
+    $this->actingAs($this->owner)
+        ->get(route('sites.settings', $this->site))
+        ->assertOk()
+        ->assertSee('Taking a backup is not one of them');
+});
+
 // --------------------------------------------------------------------------------------------------
 // It cannot arrive without confirmation
 // --------------------------------------------------------------------------------------------------

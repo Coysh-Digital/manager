@@ -91,7 +91,8 @@ which of the two it is, and names the checks that could not run.
 
 ### What a site serves to the public
 
-Once a day Manager for Craft makes an ordinary request to each site and records what came back:
+Once a day — and whenever somebody presses **Refresh** on a site — Manager for Craft makes an
+ordinary request to that site and records what came back:
 `Strict-Transport-Security`, `Content-Security-Policy` (including report-only, which is a different
 state from both "set" and "absent"), `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`,
 `Permissions-Policy`, whether plain HTTP is redirected, and which software the response announces.
@@ -143,6 +144,22 @@ sites with the loosest routing would be the ones accused of publishing their cre
 
 A `401` or `403` is not a finding. It means the file is there and protected, which is the correct
 configuration.
+
+### Checking a site now, rather than tomorrow
+
+Pressing **Refresh** on a site checks this as well as asking the connector to report. A site added
+this morning otherwise showed an empty panel until the next sweep, with no way to hurry it — which is
+the worst moment for the answer to be missing, because it is the moment somebody is fixing headers
+and wants to see whether it worked.
+
+Two things bound it. The same site is not looked at more than once every ten minutes however often
+the button is pressed, and **Refresh all** on the fleet screen does not do it at all: one press
+turning into ten requests to each of two hundred customers' servers is a different thing from
+checking the site you are looking at. To sweep the fleet on demand, run
+`php artisan manager:web:check`.
+
+Set `MANAGER_PROBE_ON_REFRESH=false` to leave the daily sweep as the only thing that does this. See
+[Environment reference](/env).
 
 ## Updates
 
