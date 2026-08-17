@@ -21,6 +21,7 @@ use App\Domain\Findings\Rules\PendingMigrations;
 use App\Domain\Findings\Rules\PhpEndOfLife;
 use App\Domain\Findings\Rules\PluginSecurityRelease;
 use App\Domain\Findings\Rules\RepeatedFailedLogins;
+use App\Domain\Findings\Rules\ShortMaxExecutionTime;
 use App\Domain\Findings\Rules\SiteNotReporting;
 use App\Domain\Findings\Rules\SlowResponseTimes;
 use App\Domain\Findings\Rules\UpdatesAllowedInProduction;
@@ -93,6 +94,7 @@ final class FindingsEvaluator
             new PendingMigrations,
             new FailedQueueJobs,
             new SlowResponseTimes,
+            new ShortMaxExecutionTime,
             new UpdatesAllowedInProduction,
             new OpcacheDisabledInProduction,
         ];
