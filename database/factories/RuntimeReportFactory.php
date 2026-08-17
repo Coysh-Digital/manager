@@ -97,4 +97,54 @@ class RuntimeReportFactory extends Factory
             return ['payload' => $payload];
         });
     }
+
+    /**
+     * What a connector sending `system.v3` reports, on a site with nothing wrong with it.
+     *
+     * A separate state rather than the default, deliberately. The default has to keep describing a
+     * site whose connector is *not* yet on v3, because most of a fleet is not on the day a version
+     * ships - and a default that answered these would make every test that happens to create a
+     * report assert against a shape half the fleet does not send.
+     *
+     * @param  array<string, mixed>  $overrides  merged into the v3 sections
+     * @return array<string, mixed>
+     */
+    public static function craftPayload(array $overrides = []): array
+    {
+        $payload = self::samplePayload();
+        $payload['schema_version'] = 'system.v3';
+
+        $payload['php']['missing_extensions'] = [];
+        $payload['php']['image_driver'] = 'imagick';
+
+        $payload['craft'] = [
+            'deprecation_count' => 0,
+            'session_rows' => 29,
+            'security_key_set' => true,
+            'cp_trigger_default' => true,
+        ];
+        $payload['database'] = ['size_bytes' => 21_390_950];
+        $payload['paths'] = ['storage' => true, 'cpresources' => true, 'config_project' => true];
+
+        foreach ($overrides as $section => $values) {
+            $payload[$section] = is_array($values) && is_array($payload[$section] ?? null)
+                ? [...$payload[$section], ...$values]
+                : $values;
+        }
+
+        return $payload;
+    }
+
+    /**
+     * A site whose connector reports `system.v3`.
+     *
+     * @param  array<string, mixed>  $overrides
+     */
+    public function describingCraft(array $overrides = []): static
+    {
+        return $this->state(fn (): array => [
+            'schema_version' => 'system.v3',
+            'payload' => self::craftPayload($overrides),
+        ]);
+    }
 }

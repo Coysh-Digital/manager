@@ -18,6 +18,48 @@ page and a fixed list of file paths, from your Manager server. If your sites sit
 that rate-limits or alerts on repeated requests, this is the thing that will trigger it. The requests
 identify themselves as `Manager/1.0 (+security-check)` in the user agent.
 
+### Sites can now describe their Craft install, not just the disk under it
+
+Needs **connector 1.15.0** on the site. A site running anything older keeps reporting exactly what it
+reported before and none of the findings below can fire on it — the platform says which report
+version it accepts and the plugin sends the newest both sides know, so neither has to move first.
+
+- **The database size is on the Health screen, beside the disk figures.** That placement is the
+  point: a backup is a dump of it, so it is the number the free-space figures exist to be read
+  against. Until now the report described every asset volume and the disk underneath them while
+  saying nothing about the size of the thing being backed up.
+
+- **A site with no security key set is critical.** Craft derives every encrypted value, every CSRF
+  token, every "remember me" cookie and every password reset link from it. Without one they are all
+  built on an empty string, which makes session tokens forgeable — and the site keeps working, which
+  is why nothing on any screen showed it. The finding warns that setting a key makes anything
+  encrypted under a different one unreadable, so it is done deliberately rather than quickly.
+
+- **Directories Craft cannot write to are reported, and the finding says what each one costs.**
+  `storage` fails at the next deploy rather than now; `cpresources` fails when somebody opens an
+  unstyled control panel; the project config directory accepts an administrator's change on screen
+  and does not persist it. All three look fine until the moment they need not to be.
+
+- **A missing required PHP extension is reported with its symptom.** The symptom rarely looks like
+  the cause — missing `intl` presents as a date formatting bug, missing `fileinfo` as uploads failing
+  for some file types, missing `zip` as updates that will not apply — so each gets investigated as an
+  application bug first. This usually appears without anybody changing the site: a container rebuilt
+  from a slimmer base image, or a PHP minor upgrade where an extension was not reinstalled.
+
+- **Deprecation warnings are a finding only when they are about to matter.** Every Craft site of any
+  age has some and none break anything today, so a count alone would be amber across a fleet forever.
+  Deprecated code is a bill that comes due at the next major upgrade and at no other moment — so this
+  is **medium** when there are warnings *and* the available Craft release is a breaking one, which is
+  the window in which clearing them is cheap, and **low** when there are a great many with no upgrade
+  pending. Manager holds the count, never the messages: each one names a template and a line of your
+  code, and the finding says where to read them instead.
+
+- **The control panel's address is shown and never flagged.** Craft's default is `/admin` and most
+  sites leave it there, so a badge would be amber across most of a fleet to describe a choice almost
+  everybody has made. The screen says whether it moved and deliberately never says where to — the
+  wire schema has nowhere to carry the address, so writing it into a dashboard is not possible rather
+  than merely avoided.
+
 ### A certificate is now judged, not just read
 
 - **Three faults a browser refuses are now reported, none of which were visible before.** The check

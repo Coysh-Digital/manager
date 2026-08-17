@@ -12,7 +12,9 @@ use App\Domain\Findings\Rules\CertificateExpiring;
 use App\Domain\Findings\Rules\CertificateUntrusted;
 use App\Domain\Findings\Rules\ContentSecurityPolicyNotEnforced;
 use App\Domain\Findings\Rules\CraftSecurityRelease;
+use App\Domain\Findings\Rules\DeprecationWarnings;
 use App\Domain\Findings\Rules\DevModeInProduction;
+use App\Domain\Findings\Rules\DirectoriesNotWritable;
 use App\Domain\Findings\Rules\DiskAlmostFull;
 use App\Domain\Findings\Rules\FailedQueueJobs;
 use App\Domain\Findings\Rules\HttpsNotEnforced;
@@ -23,7 +25,9 @@ use App\Domain\Findings\Rules\PendingMigrations;
 use App\Domain\Findings\Rules\PhpEndOfLife;
 use App\Domain\Findings\Rules\PluginSecurityRelease;
 use App\Domain\Findings\Rules\RepeatedFailedLogins;
+use App\Domain\Findings\Rules\RequiredExtensionMissing;
 use App\Domain\Findings\Rules\SecurityHeadersMissing;
+use App\Domain\Findings\Rules\SecurityKeyMissing;
 use App\Domain\Findings\Rules\SensitiveFileExposed;
 use App\Domain\Findings\Rules\ShortMaxExecutionTime;
 use App\Domain\Findings\Rules\SiteNotReporting;
@@ -77,6 +81,7 @@ final class FindingsEvaluator
         return [
             new CraftSecurityRelease,
             new PluginSecurityRelease,
+            new SecurityKeyMissing,
             new PhpEndOfLife,
             new DiskAlmostFull,
             new SiteNotReporting,
@@ -110,6 +115,9 @@ final class FindingsEvaluator
             new AdminChangesInProduction,
             new AccountsLockedOut,
             new PendingMigrations,
+            new DirectoriesNotWritable,
+            new RequiredExtensionMissing,
+            new DeprecationWarnings,
             new FailedQueueJobs,
             new SlowResponseTimes,
             new ShortMaxExecutionTime,
