@@ -174,6 +174,19 @@ class Site extends Model
     }
 
     /**
+     * Looks this platform took at the site from outside it.
+     *
+     * The one report relation on this model whose rows the site did not send. A response header is
+     * decided by whatever serves the response, and the origin cannot see what its own CDN did to it.
+     *
+     * @return HasMany<ProbeReport, $this>
+     */
+    public function probeReports(): HasMany
+    {
+        return $this->hasMany(ProbeReport::class);
+    }
+
+    /**
      * @return HasMany<SiteNote, $this>
      */
     public function notes(): HasMany

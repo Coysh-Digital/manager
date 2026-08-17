@@ -85,6 +85,61 @@ that is a question asked one client at a time.
 health: a rule whose capability is not granted is skipped rather than passed, so each site says
 which of the two it is, and names the checks that could not run.
 
+### What a site serves to the public
+
+Once a day Manager for Craft makes an ordinary request to each site and records what came back:
+`Strict-Transport-Security`, `Content-Security-Policy` (including report-only, which is a different
+state from both "set" and "absent"), `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`,
+`Permissions-Policy`, whether plain HTTP is redirected, and which software the response announces.
+
+**This is checked from outside, and that is the point.** A response header is added or removed by
+whatever serves the response — nginx, a CDN, a WAF — and PHP on the origin sees none of that. A site
+whose edge strips a header the application sets looks correct from inside and is not; one whose edge
+adds a header the application does not looks broken from inside and is fine. A plugin checking a
+site's own headers is reading them at the wrong end of the chain, and can be wrong in both
+directions. Manager for Craft asks from where a visitor stands.
+
+It also notices a header sent **twice**. Two values for the same header is not a stricter site, it is
+an undefined one — browsers disagree about which wins — and the usual cause is the application and
+the web server each setting it without knowing about the other. That one is invisible from inside the
+site precisely because both halves are working.
+
+### Files that should not be reachable
+
+The same sweep asks whether a short, fixed list of files answers over the web:
+
+```
+/.env              every credential the site has
+/.git/config       proof the whole repository is downloadable, history included
+/composer.json
+/composer.lock     the exact version of every dependency
+/backup.sql
+/database.sql
+/db.sql.gz         somebody's entire database, to anyone who guesses the name
+```
+
+That list is a constant in the application. It is not configurable, and nothing a site sends can add
+to it.
+
+Every one of these is a `HEAD` request, and there is deliberately no fallback to `GET`. Discarding a
+response body still transfers it, and a database dump left in a webroot is exactly what this is
+looking for — so a fallback would pull gigabytes off a customer's server, over their bandwidth, in
+order to report that the file should not be there. A server that refuses `HEAD` produces no answer,
+recorded as no answer rather than as an all-clear.
+
+::: tip A site that answers 200 for everything is told nothing
+Some sites return `200` for any path at all — a catch-all route, a single-page front end, a
+permissive proxy fallback. On one of those, "your `.env` returned 200" is a fact about the routing
+and not about the file.
+
+So the sweep also asks for a path that certainly does not exist. If that answers too, the file
+results are marked inconclusive and **no exposure finding is raised**. Without that control, the
+sites with the loosest routing would be the ones accused of publishing their credentials.
+:::
+
+A `401` or `403` is not a finding. It means the file is there and protected, which is the correct
+configuration.
+
 ## Updates
 
 One screen for the whole fleet: which sites are behind, on what, and by how much.
@@ -274,6 +329,12 @@ does not know what any of them say.
 
 If you want to know what changed in a specific entry, Manager for Craft is the wrong tool. It
 watches infrastructure, not content.
+
+The two checks that reach out to a site — the certificate and the public-facing request — hold to the
+same line from the other direction. The certificate check completes a handshake and reads no HTTP at
+all. The web check reads response headers and discards every response body, so nothing a site
+publishes is stored anywhere here. It is not a crawler, it does not index pages, and the only paths
+it ever asks for are the fixed list above.
 
 ## Related
 

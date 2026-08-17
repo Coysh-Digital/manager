@@ -239,21 +239,30 @@ it('takes a site and nothing else when it dispatches a nudge', function (): void
         ->and($method->getParameters()[0]->getType()?->getName())->toBe(Site::class);
 });
 
-it('composes a site-facing address in only the two reviewed places', function (): void {
+it('composes a site-facing address in only the reviewed places', function (): void {
     /*
-     | Two, and both are here because somebody decided they should be:
+     | Three, and every one of them is here because somebody decided it should be:
      |
      |   CertificateInspector   reads the certificate a visitor would validate, which the connector
      |                          genuinely cannot see because TLS terminates at the edge
      |   NudgeDispatcher        asks a site to check in now
+     |   SiteProbe              reads the response headers a visitor receives, which the connector
+     |                          cannot see either - they are decided by whatever serves the response,
+     |                          and the origin sees nothing of what its own CDN did on the way out
      |
-     | Both build the address from `sites.expected_domain` and hand it to OutboundUrlGuard. A third
-     | file appearing here is a third place to review whenever that rule changes, and the one nobody
-     | remembers - so it fails until somebody adds it deliberately.
+     | All three build the address from `sites.expected_domain` and hand it to OutboundUrlGuard. A
+     | fourth file appearing here is a fourth place to review whenever that rule changes, and the one
+     | nobody remembers - so it fails until somebody adds it deliberately.
+     |
+     | This used to look for `https://` alone, which was a hole rather than a simplification: a file
+     | composing `http://` from a variable host is exactly as much of an SSRF surface, and would have
+     | passed. SiteProbe does compose one - the redirect check has to ask what happens on port 80 —
+     | so the pattern now covers both and this is the list either of them may appear in.
     */
     $permitted = [
         'Domain/Connector/NudgeDispatcher.php',
         'Domain/Security/CertificateInspector.php',
+        'Domain/Security/SiteProbe.php',
     ];
 
     $found = [];
@@ -263,7 +272,7 @@ it('composes a site-facing address in only the two reviewed places', function ()
             continue;
         }
 
-        if (preg_match("/'https:\/\/'\s*\.\s*\\\$/", (string) file_get_contents($file->getPathname())) === 1) {
+        if (preg_match("/'https?:\/\/'\s*\.\s*\\\$/", (string) file_get_contents($file->getPathname())) === 1) {
             $found[] = str_replace(app_path().'/', '', $file->getPathname());
         }
     }

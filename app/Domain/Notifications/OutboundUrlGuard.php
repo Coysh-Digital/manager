@@ -26,6 +26,11 @@ namespace App\Domain\Notifications;
  *
  * A hostname resolving to several addresses must have *all* of them acceptable. One good answer
  * alongside one pointing at the metadata service is not a pass.
+ *
+ * The first of those three is the only one with an exception, and it is a separate method rather
+ * than a flag: {@see resolvePlainHttp()} exists for the one check that has to be made on port 80,
+ * because the whole question it asks is what a site does with plain HTTP. Nothing travels on that
+ * request. The address checks are identical - they are the same code, not a second copy.
  */
 final class OutboundUrlGuard
 {
@@ -97,8 +102,57 @@ final class OutboundUrlGuard
             );
         }
 
-        $host = $parts['host'];
-        $port = $parts['port'] ?? 443;
+        return $this->validate($url, $parts, 443);
+    }
+
+    /**
+     * Validate a plain-HTTP address, for the one check that has to make one.
+     *
+     * Separate from {@see resolve()} rather than a flag on it, because the HTTPS-only rule there is
+     * not a default to be relaxed - it exists because a notification names which site has an
+     * outstanding security release, and that is not something to put on the wire in the clear. There
+     * is an invariant test asserting `resolve()` refuses `http://`, and it should keep passing.
+     *
+     * This exists for a single caller: checking whether a site redirects plain HTTP to HTTPS. That
+     * check cannot be made over HTTPS - the whole question is what happens on port 80 - and it is
+     * safe to make in the clear because nothing travels on it. No credential, no signature, no site
+     * name, no header of ours beyond a user agent; the request is `GET /`, and the answer we keep is
+     * a status code and whether the `Location` was HTTPS.
+     *
+     * **Every address check is the same one.** The scheme is the only difference, and the ranges,
+     * the both-families resolution and the address pinning below are shared rather than
+     * reimplemented - a second copy of that list is how one of them comes to be missing an entry.
+     *
+     * @throws UnsafeDestinationException
+     */
+    public function resolvePlainHttp(string $url): ResolvedDestination
+    {
+        $parts = parse_url($url);
+
+        if ($parts === false || ! isset($parts['scheme'], $parts['host'])) {
+            throw new UnsafeDestinationException('That is not a usable URL.');
+        }
+
+        // Exactly http, and nothing else. Not "anything that is not https" - that would accept
+        // file://, gopher:// and every other scheme curl has ever supported.
+        if (strtolower($parts['scheme']) !== 'http') {
+            throw new UnsafeDestinationException('That is not a plain-HTTP address.');
+        }
+
+        return $this->validate($url, $parts, 80);
+    }
+
+    /**
+     * Everything about a destination except which scheme it may use.
+     *
+     * @param  array<string, mixed>  $parts
+     *
+     * @throws UnsafeDestinationException
+     */
+    private function validate(string $url, array $parts, int $defaultPort): ResolvedDestination
+    {
+        $host = (string) $parts['host'];
+        $port = $parts['port'] ?? $defaultPort;
 
         // Credentials in the URL are refused rather than stripped: a destination written that way was
         // probably not written by the person who will receive it.

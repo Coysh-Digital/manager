@@ -10,8 +10,13 @@ here for exactly that reason.
 
 Pressing a button stops reloading the page, and a TLS certificate is judged rather than just read.
 
-**Before you upgrade:** there is a migration. It adds four nullable columns to `sites` and touches
-nothing else, so it runs in well under a second on any fleet. The webhook payload is unchanged.
+**Before you upgrade:** there are two migrations — four nullable columns on `sites`, and one new
+table. Both run in well under a second on any fleet. The webhook payload is unchanged.
+
+**Manager now makes one more set of outbound requests.** A daily check asks each site for its home
+page and a fixed list of file paths, from your Manager server. If your sites sit behind a firewall
+that rate-limits or alerts on repeated requests, this is the thing that will trigger it. The requests
+identify themselves as `Manager/1.0 (+security-check)` in the user agent.
 
 ### A certificate is now judged, not just read
 
@@ -42,6 +47,41 @@ nothing else, so it runs in well under a second on any fleet. The webhook payloa
   failing one. Without that last case, the first sweep after deploying to a minimal container would
   have opened a high-severity finding against every site in the fleet — each one describing this
   server rather than the site it named.
+
+### Manager now looks at what a site serves to the public
+
+- **Once a day it makes an ordinary request to each site and records what came back.** The security
+  headers, whether plain HTTP is redirected, which software the response announces, and whether a
+  short fixed list of files — `.env`, `.git/config`, the lockfile, three common database dump names —
+  answers over the web.
+
+  **Checked from outside, which is the whole point.** A response header is added or removed by
+  whatever serves the response, and PHP on the origin sees none of that: a site whose CDN strips a
+  header the application sets looks correct from inside and is not. This is the one class of check
+  a plugin running on the site itself cannot get right, and it can be wrong in both directions.
+
+- **A header sent twice is reported.** Two values for the same header is not a stricter site, it is
+  an undefined one — browsers disagree about which wins. The usual cause is the application and the
+  web server each setting it without knowing about the other, which is invisible from inside the site
+  because both halves are doing their job.
+
+- **A site that answers `200` for everything is told nothing.** The sweep also asks for a path that
+  certainly does not exist, and if that answers too, the file results are marked inconclusive and no
+  exposure finding is raised. Without that control the sites with the loosest routing — a catch-all
+  route, a single-page front end — would be the ones accused of publishing their credentials.
+
+- **The file checks are `HEAD`, with no fallback to `GET`.** Discarding a response body still
+  transfers it, and a database dump in a webroot is exactly what this looks for, so a fallback would
+  pull gigabytes off a customer's server to report that the file should not be there.
+
+- **This release records and displays; it does not yet raise findings from it.** The site's Security
+  tab has a *Served to the public* panel. The rules come next, so the observation can be read and
+  sanity-checked against real sites before anything opens a finding off it.
+
+The path list is a constant in the application — not configuration, and nothing a site sends can add
+to it. `OutboundUrlGuard` gained a second entry point for the plain-HTTP redirect check, because that
+question cannot be asked over HTTPS; it shares every address check with the existing one, and the
+HTTPS-only rule on notification destinations is untouched.
 
 ### Two PHP limits that were being collected and never read
 
