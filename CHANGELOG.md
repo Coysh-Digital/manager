@@ -74,9 +74,47 @@ identify themselves as `Manager/1.0 (+security-check)` in the user agent.
   transfers it, and a database dump in a webroot is exactly what this looks for, so a fallback would
   pull gigabytes off a customer's server to report that the file should not be there.
 
-- **This release records and displays; it does not yet raise findings from it.** The site's Security
-  tab has a *Served to the public* panel. The rules come next, so the observation can be read and
-  sanity-checked against real sites before anything opens a finding off it.
+- **The site's Security tab has a *Served to the public* panel**, showing what came back whether or
+  not anything is wrong with it.
+
+### Four findings from what a site serves, and the ones deliberately left out
+
+Every rule here fires on what a visitor receives rather than on what the site believes, and none of
+them takes a capability — the probe reads a public web page, and a grant would be asking a site's
+permission to look at what it already serves to everybody.
+
+- **Missing security headers, as one finding rather than three.** HSTS, `X-Content-Type-Options` and
+  framing control. A site missing these is almost never missing exactly one of them — the cause is a
+  server that was never configured for it — so three rows would describe one afternoon's work three
+  times. **Medium** when all three are absent, **low** otherwise.
+
+  A CSP with `frame-ancestors` counts in place of `X-Frame-Options`, because it supersedes it and
+  browsers prefer it. Without that, this rule would have flagged the best-configured sites in a fleet
+  and told them to go backwards.
+
+- **A Content-Security-Policy that enforces nothing.** Fires on report-only, and **not** on absent —
+  which is the opposite of the obvious version and the point of the rule. A site with no CSP has
+  usually decided that on purpose. A site with a report-only policy is one where somebody wrote a
+  policy, deployed it, meant to come back and enforce it, and a sprint ended: from that day it has
+  looked protected to anybody reading its headers while browsers ignored every violation it
+  describes. **Low**, because nothing got worse — what changed is that somebody now believes
+  otherwise.
+
+- **Plain HTTP served without a redirect.** **High** in production. This sits beside the existing
+  *HTTPS is not enforced* rather than replacing it, and the pair is the clearest illustration of why
+  the check exists: one is what Craft's `baseUrl` says, the other is what happens when somebody types
+  the domain without a scheme. A site can fail either without failing the other, and only one of them
+  is about what happens to people.
+
+- **A disclosed software version.** `Server: nginx` is something an attacker could have guessed;
+  `Server: nginx/1.24.0` is a specific build to look up in an advisory database. **The version is the
+  finding, not the header** — flagging the header would fire on nearly every site on the web and be
+  muted within a week, and the sites that then stopped being read are the ones publishing a patch
+  level. **Low**, and it earns its row because the fix is one configuration line that lasts forever.
+
+**`Referrer-Policy` and `Permissions-Policy` are shown and never flagged.** Every current browser
+defaults `Referrer-Policy` sensibly, and almost nobody sets `Permissions-Policy` or needs to. Both
+would fire across most of a fleet to say very little, which is how a findings list stops being read.
 
 The path list is a constant in the application — not configuration, and nothing a site sends can add
 to it. `OutboundUrlGuard` gained a second entry point for the plain-HTTP redirect check, because that

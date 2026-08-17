@@ -10,20 +10,24 @@ use App\Domain\Findings\Rules\AccountsLockedOut;
 use App\Domain\Findings\Rules\AdminChangesInProduction;
 use App\Domain\Findings\Rules\CertificateExpiring;
 use App\Domain\Findings\Rules\CertificateUntrusted;
+use App\Domain\Findings\Rules\ContentSecurityPolicyNotEnforced;
 use App\Domain\Findings\Rules\CraftSecurityRelease;
 use App\Domain\Findings\Rules\DevModeInProduction;
 use App\Domain\Findings\Rules\DiskAlmostFull;
 use App\Domain\Findings\Rules\FailedQueueJobs;
 use App\Domain\Findings\Rules\HttpsNotEnforced;
+use App\Domain\Findings\Rules\HttpsRedirectMissing;
 use App\Domain\Findings\Rules\InvalidLicence;
 use App\Domain\Findings\Rules\OpcacheDisabledInProduction;
 use App\Domain\Findings\Rules\PendingMigrations;
 use App\Domain\Findings\Rules\PhpEndOfLife;
 use App\Domain\Findings\Rules\PluginSecurityRelease;
 use App\Domain\Findings\Rules\RepeatedFailedLogins;
+use App\Domain\Findings\Rules\SecurityHeadersMissing;
 use App\Domain\Findings\Rules\ShortMaxExecutionTime;
 use App\Domain\Findings\Rules\SiteNotReporting;
 use App\Domain\Findings\Rules\SlowResponseTimes;
+use App\Domain\Findings\Rules\SoftwareVersionDisclosed;
 use App\Domain\Findings\Rules\UpdatesAllowedInProduction;
 use App\Domain\Notifications\NotificationEvent;
 use App\Domain\Notifications\Notifier;
@@ -86,7 +90,16 @@ final class FindingsEvaluator
             new CertificateExpiring,
             new RepeatedFailedLogins,
             new DevModeInProduction,
+
+            // What a visitor actually gets, observed from outside. HttpsRedirectMissing sits next to
+            // HttpsNotEnforced rather than replacing it: one is what the site believes about itself
+            // and the other is what happens on port 80, and a site can fail either without failing
+            // the other.
+            new HttpsRedirectMissing,
             new HttpsNotEnforced,
+            new SecurityHeadersMissing,
+            new ContentSecurityPolicyNotEnforced,
+            new SoftwareVersionDisclosed,
             new InvalidLicence,
             new AbandonedPlugin,
             new AdminChangesInProduction,
@@ -114,6 +127,11 @@ final class FindingsEvaluator
             capabilities: $site->grantedCapabilities(),
             runtime: $site->runtimeReports()->latest('received_at')->first(),
             logins: $site->loginReports()->latest('received_at')->first(),
+
+            // The one report the site did not send. Loaded here rather than read off the Site model
+            // inside a rule, so a rule stays something that reads a snapshot and never becomes
+            // something that issues its own query.
+            probe: $site->probeReports()->latest('probed_at')->first(),
         );
 
         $tally = ['opened' => 0, 'updated' => 0, 'resolved' => 0, 'skipped' => 0];
