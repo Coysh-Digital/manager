@@ -54,18 +54,15 @@ cp ../../.env.example .env
 
 Clone it wherever you like. Nothing in the build refers to the path - the compose file's build
 context is relative - so the only requirement is a directory you can write to as the user running
-Docker. This page used to say `/opt/manager`, which is a reasonable convention on a server and needs
-root on a fresh one; the rest of the documentation writes `/path/to/manager` and means whatever you
-chose here.
+Docker. `/opt/manager` is a reasonable convention on a server, and needs root to create on a fresh
+one. The rest of the documentation writes `/path/to/manager` and means whatever you chose here.
 
 Edit `.env`. At minimum set `APP_KEY`, `APP_URL` and `DB_PASSWORD` - the container refuses to start
 without them, and refuses to start at all on a well-known default password, with `APP_DEBUG` on, or
 with `APP_ENV` set to anything but `production`. Every variable is documented in [env.md](env.md).
 
-Those three refusals used to be conditional on `APP_ENV=production`, which meant copying this file -
-which ships `APP_ENV=local` - skipped all of them. Both the file and the checks have been corrected:
-the example now carries the safe values, and the checks no longer depend on the setting that made
-them necessary.
+None of those refusals is conditional on `APP_ENV`, and the example ships the safe values, so there
+is no combination of settings that skips them quietly.
 
 Generate a key:
 
@@ -108,6 +105,13 @@ The stack binds `127.0.0.1:8080`, and nothing else - TLS is the reverse proxy's 
 already holds 8080, `docker compose up` stops with `Bind for 127.0.0.1:8080 failed: port is already
 allocated`; set `MANAGER_HTTP_PORT` in this same `.env` and run it again. The port inside the
 container does not move, so the proxy examples still apply - only their upstream number changes.
+
+`APP_URL` is a separate question from that port, and the two are only the same number when nothing is
+in front of the application. On a server it is the public HTTPS address the proxy answers on, and
+changing `MANAGER_HTTP_PORT` does not affect it. Evaluating on a laptop with no proxy, it has to
+carry the port you chose - `http://localhost:8543` and not `http://localhost` - or links, cookies and
+the setup screen are built against an address nothing is listening on. `manager:doctor` reports what
+it is set to.
 
 ## If nobody can log in
 
@@ -158,12 +162,14 @@ Set up two-factor authentication straight afterwards. Manager for Craft will pro
    php craft manager-connector/pair mgr_enrol_...
    ```
 
-4. Add the schedule:
+That is the whole of it. The site reports from here on without anything further being set up.
 
-   ```cron
-   */5 * * * *  cd /path/to/site && php craft manager-connector/heartbeat
-   0   * * * *  cd /path/to/site && php craft manager-connector/report
-   ```
+**Cron is optional, and is a recommendation rather than a requirement.** The plugin runs its schedule
+off ordinary web traffic by default, which works on hosting that has no cron at all. What cron
+changes is *when*, not *whether*: off web traffic a task fires on the first request after its
+interval has elapsed, so a site with no overnight visitors reports in the morning rather than
+overnight. If exact timing matters, [The Craft plugin](/craft-plugin#scheduling) has the full
+crontab and the setting to turn off first.
 
 If the connector pairs from a host that differs from the one you recorded, pairing is held and
 nothing is reported until you confirm it. That is deliberate: it is the check that catches a request

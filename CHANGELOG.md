@@ -68,6 +68,19 @@ the fleet on demand, run `php artisan manager:web:check`.
   supported. It now says the passkey is offered at the next step.
 - **The scheduled-tasks panel no longer names a connector version.** "Connector 1.5.0 and later" was
   a fact about our release history that a reader has no way to act on.
+- **The install page no longer presents cron as a step you have to do.** It listed a crontab as
+  numbered step 4 of adding a site, with no hint it was optional - while the plugin's own page said
+  "Cron is optional. Everything works out of the box without it." The install page was also two
+  entries short of the real crontab, which is what a second copy of something always becomes. It now
+  says what cron changes - *when* a site reports, not *whether* - and links to the one page that
+  carries the full schedule.
+- **The documentation has stopped dating its own features.** "Since 1.1.0", "from 1.3.0", "from
+  connector 1.11.0" and the paragraph about what `.env.example` used to ship were all facts about
+  our release history rather than about the software somebody is running, and one of them had gone
+  stale enough to be untrue. Version numbers that are a *requirement* stay, because those are
+  actionable: Postgres 15+, Craft 4.4+, and a connector older than 1.13 still sending a backup in
+  one request. So do the worked examples in the getting-started, upgrade and rollback pages, which
+  are where this repository states the version it is on.
 
 ### The documented install now works as written
 

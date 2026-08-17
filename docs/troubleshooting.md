@@ -33,6 +33,23 @@ fails here rather than at start-up, because the entrypoint's checks are about co
 dangerous, not about it being reachable. Manager for Craft needs Postgres 15+, not MySQL - the audit
 log depends on triggers and revoked table privileges that MySQL has no equivalent for.
 
+**`role "manager" does not exist`, or a database that is not there, after changing `.env`.** Postgres
+initialises its data directory once, from `DB_DATABASE` and `DB_USERNAME` as they were the first time
+the stack came up, and ignores both ever afterwards. Changing either later leaves the application
+asking for a role the database has never heard of. `docker compose down` does **not** clear this -
+it removes containers and keeps volumes, which is what you want everywhere except here.
+
+On an installation with nothing in it yet, start the database over:
+
+```bash
+docker compose down -v      # deletes the volumes, and therefore the data
+docker compose up -d
+```
+
+**On an installation with data in it, do not run that.** Create the role and database by hand, or put
+`DB_DATABASE` and `DB_USERNAME` back to what they were. Note that `docker compose ps` reports Postgres
+as healthy throughout: `pg_isready` answers for the server, not for a role that was never created.
+
 ## Everything returns 503
 
 Almost always Redis.

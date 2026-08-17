@@ -208,11 +208,8 @@ actual date rather than claiming it happened immediately.
 - **Per artifact**: **no ceiling by default.** Set `MANAGER_BACKUP_MAX_BYTES`, in bytes, if you want
   one, and the refusal then names both the artifact's size and this setting.
 
-  It used to default to 2 GB, inherited from the wire contract: until `manager-protocol` 1.5.0
-  `backup.v2` carried its own 2 GB maximum, so this setting could only refuse more, never permit it.
-  When the protocol stopped enforcing a maximum the default stayed, and it went on refusing real
-  backups on sites whose databases had simply grown - a wall nobody had chosen and few people knew
-  was there. A limit you set is a policy; a limit you inherited is an accident.
+  There is no inherited maximum behind it: a limit you set is a policy, and one you did not set is
+  not quietly applied on your behalf.
 
   With no ceiling set, the real limit is whatever your reverse proxy and PHP will carry. That is
   worth knowing because it fails badly: a proxy refuses the upload before Manager for Craft sees it,
@@ -221,7 +218,7 @@ actual date rather than claiming it happened immediately.
   `manager:doctor` reports PHP's limit under **Upload path ceiling** and fails when it is below a
   ceiling you configured; it cannot see the proxy.
 
-  From 1.3.0 an artifact arrives in bounded parts rather than as one request, so a self-hosted
+  An artifact arrives in bounded parts rather than as one request, so a self-hosted
   installation can accept one of any size without presigned uploads or an object store. A connector
   older than 1.13 still sends the whole file in a single request, which cannot carry more than 5 GB -
   `manager:doctor` warns when the ceiling is raised past that point, and names those sites as the
@@ -231,10 +228,10 @@ actual date rather than claiming it happened immediately.
 - **On the Craft side**: `maxBackupMegabytes`, default 2048. A safety valve so an unexpectedly huge
   dump fails early with a clear message rather than late with a full disk.
 
-From connector 1.11.0 the per-artifact ceiling is sent to sites on the signed claim response, so a
+The per-artifact ceiling is sent to sites on the signed claim response, so a
 site whose database is larger than it will refuse **before** taking a dump rather than after dumping,
 encrypting and offering one. With no ceiling set the platform sends zero, which sites read as "no
-limit" and skip the check - the same as an older platform that sends nothing at all.
+limit" and skip the check - the same as a platform that sends nothing at all.
 
 ## What Manager for Craft is never told
 
