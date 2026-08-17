@@ -6,6 +6,79 @@ Entries are written for somebody about to upgrade a running installation. Anythi
 action is under **Before you upgrade** - that section is the one to read, and `docs/upgrade.md` points
 here for exactly that reason.
 
+## 1.7.0 — 2026-08-17
+
+Six small things, one of which changes when this platform makes a request to a managed site.
+
+**Before you upgrade:** pressing **Refresh** on a site now also checks what that site serves to the
+public, which means this installation originates a request to a customer's host on somebody's
+timing rather than only on the 05:30 schedule. It is floored to once per site per ten minutes,
+**Refresh all** does not do it at all, and `MANAGER_PROBE_ON_REFRESH=false` turns it off while
+leaving the daily sweep exactly as it was. If your own monitoring alerts on outbound patterns, this
+is the line to read. No migrations.
+
+### Granting a site's read permissions no longer takes seven presses
+
+A newly paired site arrives with `inventory:read` and nothing else, and the six remaining read-only
+capabilities each had their own button. **Grant all read-only** does them in one press.
+
+`backups:create` is not in it and cannot be. The request carries no capability name at all - the set
+is derived on the server from the same list invariant 7 keeps backups out of - so unlike the single
+grant route, there is nothing here for a crafted request to name. Taking a copy of a site's database
+still needs its own confirmation, with the site's name typed out. The button says so, beside itself.
+
+Each capability still writes its own history entry and its own audit event, so the permission log
+reads the same whether somebody pressed this once or the individual buttons six times. The button is
+not rendered once there is nothing left to grant, or on a site with no connector.
+
+### What a site serves to the public can be checked now, rather than tomorrow
+
+That panel was filled by a daily sweep and by nothing else, so a site added this morning showed
+"Not checked yet" until 05:30 the next day - which is the worst moment for it to be empty, because
+it is the moment somebody is correcting headers and wants to know whether it worked.
+
+Refresh now queues that check alongside the connector jobs it already queued. It is queued rather
+than done inline, so the button never waits on somebody else's server, and it is floored to once
+every ten minutes per site however often the button is pressed. That floor is not a nicety: this
+route answers without reloading the page, and the browser re-posts the form whenever it cannot read
+the answer, so "safe to do twice" has to be true of the outbound requests and not only of the queued
+jobs.
+
+**A site with no active connector is now checked too**, where pressing Refresh previously answered
+that there was nothing to do. It is the one site where the view from outside is the only view there
+is, and it is exactly the site somebody presses Refresh on while they are waiting for pairing.
+
+**Refresh all does not do this**, deliberately. One press turning into ten requests to each of two
+hundred customers' servers within the same few seconds is a different thing from checking the site
+you are looking at, and it would undo the staggering the daily sweep is arranged around. To sweep
+the fleet on demand, run `php artisan manager:web:check`.
+
+### Said more plainly
+
+- **What Manager holds on this site** now says what happens to a backup, which it never did. It
+  quoted a plaintext size for a copy of somebody's entire database without once mentioning
+  encryption, which reads considerably worse than the truth. It now says that each backup is
+  encrypted on the site and sealed to this organisation's recovery keys, so nothing held here opens
+  one — **and says so only where it is true.** A backup taken before any recovery key was enrolled
+  is encrypted to a key this platform can unwrap, and where a site still has one of those, the panel
+  names how many rather than making a claim about the whole set.
+- **The login screen mentions passkeys.** A passkey is a second factor here and never a way in on
+  its own, which is a deliberate decision and is unchanged. What it left behind was a sign-in screen
+  with no mention of them at all, so somebody who had registered one had no way to tell it was
+  supported. It now says the passkey is offered at the next step.
+- **The scheduled-tasks panel no longer names a connector version.** "Connector 1.5.0 and later" was
+  a fact about our release history that a reader has no way to act on.
+
+### Fixed
+
+- **The second Refresh button on a site's Overview reloads the page** where the one in the header a
+  few pixels above it does not. Its form was missed when that route learned to answer in place.
+- The refresh message put "including an update check" after "when it next checks in", which read as
+  though the update check were part of the checking in.
+- The daily sweep's console output could report files as reachable on a site the screen was
+  deliberately drawing no conclusion about — it read the raw list rather than the one gated on
+  whether the control request succeeded. The two now answer from the same place.
+
 ## 1.6.0 — 2026-08-12
 
 Pressing a button stops reloading the page, and a TLS certificate is judged rather than just read.

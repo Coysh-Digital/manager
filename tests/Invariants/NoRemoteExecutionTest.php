@@ -254,6 +254,11 @@ it('composes a site-facing address in only the reviewed places', function (): vo
      | fourth file appearing here is a fourth place to review whenever that rule changes, and the one
      | nobody remembers - so it fails until somebody adds it deliberately.
      |
+     | ProbeRecorder and the ProbeSite job are deliberately *not* on this list, and that is the point
+     | of how they are written: both take a Site and hand it to SiteProbe, and neither composes an
+     | address of its own. A new caller of the probe should stay off this list too. If one ever needs
+     | to appear here, that is the review this test exists to force.
+     |
      | This used to look for `https://` alone, which was a hole rather than a simplification: a file
      | composing `http://` from a variable host is exactly as much of an SSRF surface, and would have
      | passed. SiteProbe does compose one - the redirect check has to ask what happens on port 80 —

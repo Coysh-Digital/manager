@@ -415,6 +415,19 @@ return [
     */
     'security' => [
         'hsts_seconds' => (int) (env('MANAGER_HSTS_SECONDS') ?: 31536000),
+
+        /*
+         | Whether pressing Refresh on a site also looks at what it serves to the public.
+         |
+         | On by default, because a check somebody has to remember to run is a check that reports a
+         | site's posture as it was yesterday. It is a switch at all for the same reason
+         | MANAGER_NUDGE_ENABLED is one: it makes this platform originate requests to a customer's
+         | host on somebody's timing rather than on a schedule, and an operator whose own monitoring
+         | alerts on that pattern should be able to say no without giving up the daily sweep.
+         |
+         | Turning it off leaves `manager:web:check` running exactly as before.
+        */
+        'probe_on_refresh' => filter_var(env('MANAGER_PROBE_ON_REFRESH', true), FILTER_VALIDATE_BOOLEAN),
     ],
 
     /*

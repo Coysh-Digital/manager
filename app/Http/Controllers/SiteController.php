@@ -13,8 +13,10 @@ use App\Domain\Health\UptimeWindow;
 use App\Domain\Job\JobRejectedException;
 use App\Domain\Job\JobService;
 use App\Domain\Pairing\EnrolmentService;
+use App\Domain\Security\ProbeRecorder;
 use App\Domain\Site\SiteRemovalService;
 use App\Http\Controllers\Concerns\ResolvesSiteContext;
+use App\Jobs\ProbeSite;
 use App\Models\AuditEvent;
 use App\Models\BackupArtifact;
 use App\Models\Membership;
@@ -147,11 +149,19 @@ final class SiteController
     }
 
     /**
-     * Ask a site to report again now.
+     * Ask a site to report again now, and look at it from outside.
      *
-     * Queues the work rather than doing it: the platform never calls out to a site, so a refresh is a
-     * job the connector collects on its next check-in. The wording says so, because a button that
-     * looked instantaneous and was not would be worse than no button.
+     * Two mechanisms, and this docblock used to describe only the first. Most of a refresh is work
+     * queued for the connector to collect on its next check-in - the platform cannot push it, so the
+     * wording says "queued" rather than pretending to be instantaneous.
+     *
+     * The exception is what the site serves to the public. A response header is decided by whatever
+     * answers the request, so the origin cannot see what its own edge did on the way out, and the
+     * only way to know is to ask from here. That check used to happen once a day and nowhere else,
+     * which meant a site added this morning had an empty panel until tomorrow and no way to hurry
+     * it. It is queued too, so this request never waits on somebody else's server, and floored at
+     * {@see ProbeRecorder::FRESH_FOR_MINUTES} so pressing the button repeatedly does not become a
+     * way to make requests to a customer's host.
      *
      * Any member may press it. It asks a site to re-send what it already sends on a schedule, which is
      * the least privileged useful thing in the interface, and the idempotency key means pressing it
@@ -160,18 +170,80 @@ final class SiteController
     public function refresh(Request $request, Site $site, JobService $jobs): RedirectResponse
     {
         $queued = $this->queueRefresh($site, $jobs, $request->user());
+        $probing = $this->queueProbe($site);
 
-        if ($queued === []) {
+        // A site with no connector is still worth looking at from outside - it is the one site where
+        // that is the *only* view available, and it is exactly the site somebody presses Refresh on
+        // while they are waiting for pairing to work. So this stops being an error the moment there
+        // is something to report.
+        if ($queued === [] && ! $probing) {
             return back()->withErrors([
                 'refresh' => 'Nothing to refresh: this site has no active connector.',
             ]);
         }
 
-        return back()->with('status', $this->refreshMessage($site, $queued));
+        if ($queued === []) {
+            return back()->with('status', sprintf(
+                'Checking what %s serves to the public. There is no active connector, so nothing else can be asked for.',
+                $site->name,
+            ));
+        }
+
+        return back()->with('status', $this->refreshMessage($site, $queued, $probing));
+    }
+
+    /**
+     * Queue a look at what this site serves to the public, unless one would be a repeat.
+     *
+     * The recency question is asked here *and* in {@see ProbeRecorder::recordIfStale()}, and the two
+     * are not duplicates of each other. This one decides what the sentence on the screen says. That
+     * one decides whether a request to somebody else's server is made, and has to be there because
+     * two presses in the same second both reach this point before either has written a row.
+     *
+     * Delete either and there is a real fault: without this, the flash claims a check that is about
+     * to be skipped; without that, `sites.refresh` stops being safe to perform twice, which is the
+     * whole basis on which `AsyncActionSurfaceTest` lets it answer in place.
+     */
+    private function queueProbe(Site $site): bool
+    {
+        if (! config('manager.security.probe_on_refresh')) {
+            return false;
+        }
+
+        // Archived sites are left alone here for the reason the sweep leaves them alone: a site
+        // somebody has finished with should not keep generating requests to a domain that may now
+        // belong to somebody else. `site.scoped` does not filter them out, so this has to.
+        if ($site->isArchived()) {
+            return false;
+        }
+
+        if (app(ProbeRecorder::class)->lookedAtRecently($site)) {
+            return false;
+        }
+
+        ProbeSite::dispatch($site->id)->afterCommit();
+
+        return true;
     }
 
     /**
      * Ask every connected site to report again.
+     *
+     * **This deliberately does not probe, where {@see self::refresh()} does**, and the asymmetry is a
+     * decision rather than an oversight.
+     *
+     * One press here would become N sites × up to ten outbound requests to N different customers'
+     * servers within the same few seconds. The daily sweep is staggered half an hour behind the
+     * certificate sweep precisely so that a fleet is not opening two sets of connections to the same
+     * hosts at once - a fleet-wide button on a screen people scan would undo that reasoning from the
+     * interface. The per-site floor is also much weaker protection at a fan-out of two hundred, and
+     * this route answers in place, so a re-post multiplies it again.
+     *
+     * There is already a supported way to sweep on demand: `php artisan manager:web:check`, run
+     * deliberately by an operator, which reports what it found.
+     *
+     * The consequence is that the note on the fleet button - that this queues a job per site rather
+     * than fetching anything - stays true, and should be left alone.
      */
     public function refreshAll(Request $request, Organisation $organisation, JobService $jobs): RedirectResponse
     {
@@ -266,15 +338,22 @@ final class SiteController
     /**
      * @param  list<string>  $queued
      */
-    private function refreshMessage(Site $site, array $queued): string
+    private function refreshMessage(Site $site, array $queued, bool $probing = false): string
     {
         $including = in_array(Jobs::UPDATES_CHECK, $queued, true) ? ', including an update check' : '';
+
+        // Its own sentence rather than another clause, because it is a different mechanism: the rest
+        // of this message is about work a site collects, and this is about a request this server
+        // makes itself.
+        $publicly = $probing
+            ? ' Its public response headers are being read from here at the same time.'
+            : '';
 
         // "Being asked" rather than "will report": the nudge is queued, not delivered, and a site
         // behind a firewall answers nothing. That site gets the sentence it has always got.
         return $this->nudges->canReach($site)
-            ? sprintf('Refresh queued for %s%s. The site is being asked to report now.', $site->name, $including)
-            : sprintf('Refresh queued for %s. It will report when it next checks in%s.', $site->name, $including);
+            ? sprintf('Refresh queued for %s%s. The site is being asked to report now.%s', $site->name, $including, $publicly)
+            : sprintf('Refresh queued for %s%s. It will report when it next checks in.%s', $site->name, $including, $publicly);
     }
 
     /**

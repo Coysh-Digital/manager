@@ -42,9 +42,14 @@ CRON;
          they will otherwise conclude is impossible. --}}
     <div class="rounded-lg border border-ok-line bg-ok-bg px-3 py-2.5">
         <p class="mb-1 text-[12.5px] font-medium text-ok">No cron? Nothing to do.</p>
+        {{-- No version number here on purpose. This named the release that introduced traffic-driven
+             scheduling, which was useful while some sites were older than it and is now a detail
+             about our own history that a reader has no way to act on - their connector is whatever
+             Composer installed. If a floor ever matters again, say what to do about it rather than
+             leaving somebody to work out which side of it they are on. --}}
         <p class="text-[12px] text-text-2">
-            Connector 1.5.0 and later drive this from ordinary traffic to the site: when something is
-            due, the next visitor's request queues it and Craft's queue does the work. Each task runs at
+            The connector drives this from ordinary traffic to the site: when something is due, the
+            next visitor's request queues it and Craft's queue does the work. Each task runs at
             most once per interval however busy the site is, and nobody waits for it.
             It needs Craft's queue to be running, which is Craft's default.
         </p>

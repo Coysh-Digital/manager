@@ -224,6 +224,50 @@ final class CapabilityService
     }
 
     /**
+     * Grant everything that can be granted with a switch, in one transaction.
+     *
+     * The counterpart to {@see self::revokeAll()}, and deliberately not its mirror image. That one
+     * calls {@see self::apply()} directly, because a revocation must never be refused. This one goes
+     * through {@see self::grant()} for every capability, so each still passes the read-only guard on
+     * the way. If somebody ever adds a write capability to {@see self::grantableFromInterface()},
+     * this throws rather than granting it seven-at-a-time - which is the one place a bulk action
+     * could do far more damage than the single button it replaces.
+     *
+     * `User` rather than `?User`: this path only ever comes from a person pressing a button. There is
+     * no pairing or system caller, and the audit trail should not have to represent one.
+     *
+     * Nothing is collapsed. Each capability writes its own grant row, its own history entry and its
+     * own audit event, exactly as pressing Grant seven times would - so the permission history reads
+     * as seven lines sharing a timestamp rather than as one line that has to be interpreted.
+     *
+     * @return list<string> the capabilities that actually changed state, in the order granted
+     *
+     * @throws UnknownCapabilityException
+     */
+    public function grantAllFromInterface(Site $site, User $actor, ?string $reason = null): array
+    {
+        return DB::transaction(function () use ($site, $actor, $reason): array {
+            $granted = [];
+
+            foreach (self::grantableFromInterface() as $capability) {
+                // `apply()` already returns early on a no-op transition, so skipping here changes
+                // nothing about what is written. It is here so the return value is honest: the flash
+                // message names what this press did, and a list including capabilities the site
+                // already held would be a report of work that did not happen.
+                if ($site->hasCapability($capability)) {
+                    continue;
+                }
+
+                $this->grant($site, $capability, $actor, $reason);
+
+                $granted[] = $capability;
+            }
+
+            return $granted;
+        });
+    }
+
+    /**
      * Write the transition, its history entry and its audit event as one unit.
      */
     private function apply(

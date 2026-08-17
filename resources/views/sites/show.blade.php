@@ -15,17 +15,26 @@
                 <div class="flex flex-wrap items-start justify-between gap-3">
                     <div class="flex flex-col gap-0.5">
                         <span class="text-[13px] font-medium text-info">Paired, but nothing reported yet</span>
+                        {{-- Narrowed from "Manager never calls out to a site", which was the claim
+                             this made until the platform started reading what a site serves to the
+                             public. What was always meant is the part that is still true and is the
+                             part that answers the confusion: a report is pushed by the site and
+                             never pulled out of it. --}}
                         <span class="text-[12.5px] text-text-2">
                             The connector has authenticated. Nothing is sent until something on the site
-                            asks it to - <strong>Manager never calls out to a site</strong> - and by
-                            default the next few visitors are what asks. The first report usually
-                            arrives within a few minutes of the site being used. Nothing to set up:
+                            asks it to - <strong>a report is pushed by the site, never pulled out of
+                            it</strong> - and by default the next few visitors are what asks. The
+                            first report usually arrives within a few minutes of the site being used.
+                            Nothing to set up:
                             <a href="{{ route('sites.settings', $site) }}#connector" class="text-info hover:text-primary-hover">cron is optional</a>
                             and makes the timing predictable on a site with quiet spells.
                         </span>
                     </div>
 
-                    <form method="POST" action="{{ route('sites.refresh', $site) }}">
+                    {{-- `data-async` so this behaves like the Refresh button in the header a few
+                         pixels above it. The route has carried `in-place` since it gained it; only
+                         this form was missed, so the two buttons on one screen behaved differently. --}}
+                    <form method="POST" action="{{ route('sites.refresh', $site) }}" data-async>
                         @csrf
                         <button type="submit"
                                 class="h-8 whitespace-nowrap rounded-[7px] border border-primary bg-primary px-3 text-[12.5px] font-medium text-primary-fg hover:bg-primary-hover">

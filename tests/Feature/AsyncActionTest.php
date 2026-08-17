@@ -104,7 +104,15 @@ it('does not re-announce a message left over from the previous request', functio
      | sharp: it flashes `errors` and no `status` at all, so a `status` in the answer can only have
      | come from the session. The session is seeded as it genuinely looks on a second request - the
      | value present, and the list of keys flashed *by this request* empty.
+     |
+     | The probe is off explicitly rather than by inheriting the default in phpunit.xml, because that
+     | is what makes this site silent. With it on, an unpaired site *does* have something to report -
+     | what it serves to the public - and answers with a status, which is deliberate and is asserted
+     | in WebExposureTest. This test is about the flash, so it needs the case where there is genuinely
+     | nothing to say.
     */
+    config(['manager.security.probe_on_refresh' => false]);
+
     $silent = Site::factory()->for($this->organisation)->create(['name' => 'Unpaired Site']);
 
     $response = $this->actingAs($this->owner)
@@ -140,7 +148,12 @@ it('makes a refresh failure visible, which it is not on five of the seven site t
      |
      | The band half of that is untouched here and still open. The toast half is closed by this
      | route answering in place, which is the first time the message reaches anybody on those tabs.
+     |
+     | Probe off, for the reason given on the flash test above: with it on there is no refusal to
+     | make visible, because looking at the site from outside needs no connector.
     */
+    config(['manager.security.probe_on_refresh' => false]);
+
     $silent = Site::factory()->for($this->organisation)->create(['name' => 'Unpaired Site']);
 
     $response = $this->actingAs($this->owner)

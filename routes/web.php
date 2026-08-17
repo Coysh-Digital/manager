@@ -194,6 +194,12 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
      | `backups.cancel` converges - cancelling a finished job answers "that backup had already
      | finished" and changes nothing.
      |
+     | `sites.refresh` needs one more sentence than the others. It also queues a look at what the
+     | site serves to the public, which is an outbound request to somebody else's server, and an
+     | idempotency key on a queued connector job says nothing about that. What makes it safe to
+     | repeat is the recency floor in App\Domain\Security\ProbeRecorder - remove that and this route
+     | no longer qualifies to be on this list.
+     |
      | Nothing that destroys is on the list, and nothing behind `password.confirm` is either - that
      | gate exists to produce a full page, and a route that has to interrupt somebody is not a route
      | that should answer quietly. tests/Invariants/AsyncActionSurfaceTest.php pins all of this, so
@@ -332,6 +338,9 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
     // Refreshing asks a site to re-send what it already sends on a schedule. No recent-auth gate and no
     // administrator requirement: it is the least privileged useful action here, and gating it would
     // only make people wait for cron.
+    //
+    // The per-site one also queues a look at what that site serves to the public, floored to once
+    // every ten minutes. The fleet one deliberately does not - see SiteController::refreshAll().
     Route::post('sites/refresh-all', [SiteController::class, 'refreshAll'])
         ->middleware('in-place')
         ->name('sites.refresh-all');
@@ -448,6 +457,12 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
 
             Route::post('sites/{site}/capabilities/grant-confirmed', [CapabilityController::class, 'grantConfirmed'])
                 ->name('capabilities.grant-confirmed');
+
+            // Everything the interface can grant with a switch, in one press. It carries no
+            // capability name - the set is derived on the server - so this is not a wider door into
+            // the same room as `grant` below, it is a door with no handle to turn the wrong way.
+            Route::post('sites/{site}/capabilities/grant-all', [CapabilityController::class, 'grantAll'])
+                ->name('sites.capabilities.grant-all');
             Route::post('sites/{site}/capabilities/grant', [CapabilityController::class, 'grant'])
                 ->name('sites.capabilities.grant');
             Route::post('sites/{site}/capabilities/revoke', [CapabilityController::class, 'revoke'])

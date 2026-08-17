@@ -38,7 +38,25 @@
         </button>
     </form>
 
-    <p class="mt-4 text-[12.5px]">
+    {{--
+        Said here because this screen is where somebody decides whether their passkey is any use.
+
+        A passkey is a *second* factor in Manager, never a way in on its own - the reasoning is in
+        AppServiceProvider, and PasskeyAndMfaEnforcementTest holds it. That decision is sound and
+        this changes none of it. What it left behind was a login screen with no mention of passkeys
+        at all, which reads as "not supported" rather than "not yet": somebody who registered one
+        gets to the password field, sees nothing, and has no way to know the button is one step
+        further on.
+
+        A sentence, not a button. A button here would have to either sign somebody in on a passkey
+        alone - which is the thing that must not happen - or collect a password first and be a
+        button that does nothing, which is worse than the silence it replaced.
+    --}}
+    <p class="mt-4 text-[12.5px] text-text-2">
+        Registered a passkey? Sign in here first, and you will be offered it instead of a code.
+    </p>
+
+    <p class="mt-2 text-[12.5px]">
         <a href="{{ route('password.request') }}" class="text-primary hover:text-primary-hover">Forgotten your password?</a>
     </p>
 @endsection

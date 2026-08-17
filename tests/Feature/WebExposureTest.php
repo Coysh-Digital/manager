@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 use App\Domain\Notifications\OutboundUrlGuard;
 use App\Domain\Notifications\UnsafeDestinationException;
+use App\Domain\Security\ProbeRecorder;
 use App\Domain\Security\SiteProbe;
+use App\Jobs\ProbeSite;
 use App\Models\Membership;
 use App\Models\Organisation;
 use App\Models\ProbeReport;
 use App\Models\Site;
 use App\Models\User;
+use Illuminate\Support\Facades\Queue;
 
 /**
  * Looking at a site the way a visitor does.
@@ -220,4 +223,123 @@ it('says on screen when nothing can be concluded about files', function (): void
         // scanning the screen takes the filename and not the caveat.
         ->assertDontSee('/.env')
         ->assertSee('answers');
+});
+
+/*
+|--------------------------------------------------------------------------------------------------
+| Checking a site now, rather than tomorrow
+|--------------------------------------------------------------------------------------------------
+|
+| `MANAGER_PROBE_ON_REFRESH` is false in phpunit.xml, so a probe is opt-in per test rather than
+| something every test that presses Refresh does by accident. See the note in that file: the queue is
+| sync here and SiteFactory hands out real-looking domains, so the alternative is CI making live
+| requests to somebody else's server.
+*/
+
+it('looks at a site from outside when somebody presses Refresh', function (): void {
+    config(['manager.security.probe_on_refresh' => true]);
+    Queue::fake();
+
+    $site = ($this->site)();
+
+    $this->actingAs($this->owner)
+        ->post(route('sites.refresh', $site))
+        ->assertSessionHas('status');
+
+    Queue::assertPushed(ProbeSite::class, fn (ProbeSite $job): bool => $job->siteId === $site->id);
+});
+
+it('checks a site with no connector, because that is the one view it still has', function (): void {
+    // The site somebody presses Refresh on while they are waiting for pairing to work. It used to
+    // answer with an error, which was true about the connector and unhelpful about everything else.
+    config(['manager.security.probe_on_refresh' => true]);
+    Queue::fake();
+
+    $site = Site::factory()->for($this->organisation)->create();
+
+    $this->actingAs($this->owner)
+        ->post(route('sites.refresh', $site))
+        ->assertSessionHas('status')
+        ->assertSessionHasNoErrors();
+
+    Queue::assertPushed(ProbeSite::class);
+});
+
+it('does not look twice when the button is pressed twice', function (): void {
+    // Unfaked, and against a domain that cannot resolve: the probe runs for real, fails for real,
+    // and records that it failed. What is under test is that the second call makes no requests at
+    // all - which is what lets `sites.refresh` answer in place.
+    $site = ($this->site)(['expected_domain' => 'nothing-here.invalid']);
+    $recorder = app(ProbeRecorder::class);
+
+    expect($recorder->recordIfStale($site))->not->toBeNull()
+        ->and($recorder->recordIfStale($site))->toBeNull()
+        ->and(ProbeReport::query()->where('site_id', $site->id)->count())->toBe(1);
+});
+
+it('looks again once the floor has passed', function (): void {
+    $site = ($this->site)(['expected_domain' => 'nothing-here.invalid']);
+    $recorder = app(ProbeRecorder::class);
+
+    $recorder->recordIfStale($site);
+
+    $this->travel(ProbeRecorder::FRESH_FOR_MINUTES + 1)->minutes();
+
+    expect($recorder->recordIfStale($site))->not->toBeNull()
+        ->and(ProbeReport::query()->where('site_id', $site->id)->count())->toBe(2);
+});
+
+it('leaves an archived site alone when the job runs', function (): void {
+    // Checked when the job runs rather than when it is dispatched, so a site archived in between is
+    // still left alone. A domain somebody has finished with may already belong to someone else.
+    $site = ($this->site)(['expected_domain' => 'nothing-here.invalid', 'archived_at' => now()]);
+
+    (new ProbeSite($site->id))->handle(app(ProbeRecorder::class));
+
+    expect(ProbeReport::query()->where('site_id', $site->id)->count())->toBe(0);
+});
+
+it('does not probe the fleet when the fleet button is pressed', function (): void {
+    // The asymmetry with the per-site button, pinned. One press here would otherwise become ten
+    // requests to each of however many sites an organisation has, in the same few seconds, undoing
+    // the staggering the daily sweep is deliberately arranged around.
+    config(['manager.security.probe_on_refresh' => true]);
+    Queue::fake();
+
+    ($this->site)();
+    ($this->site)();
+
+    $this->actingAs($this->owner)->post(route('sites.refresh-all'));
+
+    Queue::assertNotPushed(ProbeSite::class);
+});
+
+it('can be told not to look at all', function (): void {
+    config(['manager.security.probe_on_refresh' => false]);
+    Queue::fake();
+
+    $site = ($this->site)();
+
+    $this->actingAs($this->owner)->post(route('sites.refresh', $site));
+
+    Queue::assertNotPushed(ProbeSite::class);
+});
+
+it('records the same row whether the sweep or the button asked', function (): void {
+    // The reason ProbeRecorder exists at all. The mapping from a reading to a row used to live
+    // inline in the sweep, and a second caller would have meant a second copy of it.
+    $site = ($this->site)(['expected_domain' => 'nothing-here.invalid']);
+    $recorder = app(ProbeRecorder::class);
+
+    $swept = $recorder->record($site);
+
+    $this->travel(ProbeRecorder::FRESH_FOR_MINUTES + 1)->minutes();
+
+    $pressed = $recorder->recordIfStale($site);
+
+    expect($pressed)->not->toBeNull()
+        ->and($pressed->status)->toBe($swept->status)
+        ->and($pressed->error)->toBe($swept->error)
+        ->and($pressed->answers_everything)->toBe($swept->answers_everything)
+        ->and($pressed->exposed_count)->toBe($swept->exposed_count);
 });
