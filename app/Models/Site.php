@@ -44,6 +44,10 @@ use Illuminate\Support\Carbon;
  * @property string|null $certificate_issuer
  * @property string|null $certificate_subject
  * @property string|null $certificate_error
+ * @property bool|null $certificate_hostname_matches
+ * @property bool|null $certificate_trusted
+ * @property bool|null $certificate_self_signed
+ * @property int|null $certificate_chain_length
  */
 class Site extends Model
 {
@@ -77,6 +81,15 @@ class Site extends Model
             'backup_scheduled_at' => 'datetime',
             'certificate_checked_at' => 'datetime',
             'certificate_expires_at' => 'datetime',
+
+            // Cast rather than left to the driver, because these are the columns where the
+            // difference between false and null carries the meaning. SQLite hands back 0 and 1,
+            // Postgres hands back booleans, and a screen comparing with === would read one of them
+            // as "not judged" while the other read as "judged and wrong".
+            'certificate_hostname_matches' => 'boolean',
+            'certificate_trusted' => 'boolean',
+            'certificate_self_signed' => 'boolean',
+            'certificate_chain_length' => 'integer',
             'last_seen_at' => 'datetime',
             'last_inventory_at' => 'datetime',
             'archived_at' => 'datetime',

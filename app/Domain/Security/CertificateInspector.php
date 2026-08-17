@@ -7,10 +7,11 @@ namespace App\Domain\Security;
 use App\Domain\Notifications\OutboundUrlGuard;
 use App\Domain\Notifications\UnsafeDestinationException;
 use Illuminate\Support\Carbon;
+use OpenSSLCertificate;
 use Throwable;
 
 /**
- * Reading the TLS certificate a site's visitors actually see.
+ * Reading the TLS certificate a site's visitors actually see, and judging it.
  *
  * This is the one thing in Manager the platform goes and looks at itself, and the departure is worth
  * justifying rather than sliding past. Everything else is reported by the connector, deliberately: a
@@ -34,11 +35,27 @@ use Throwable;
  *  - **Bounded.** A short timeout, because a fleet check that hangs on one unreachable host is a fleet
  *    check that never finishes.
  *
- * Verification is deliberately **off** at the socket level. That looks wrong and is not: the job is to
- * report on a certificate including when it is expired, self-signed or misissued, and a verifying
- * connection refuses those instead of describing them. Nothing is trusted as a result - no data
- * crosses this connection in either direction, and the certificate is evidence rather than
- * authentication.
+ * ## Why there are two handshakes, and why the verifying one goes first
+ *
+ * This used to make exactly one connection, with verification off, and the comment explaining that
+ * was right about half of the problem. Verification off is genuinely necessary: the job is to report
+ * on a certificate *including* when it is expired, self-signed or misissued, and a verifying
+ * connection refuses those instead of describing them.
+ *
+ * What that reasoning missed is that refusing is itself the answer to a different question. A
+ * permissive handshake can read an expiry and an issuer, and it cannot tell you whether a browser
+ * would accept the chain - so a site serving a certificate for somebody else's domain, or missing its
+ * intermediate, read as perfectly healthy right up until a visitor saw the interstitial.
+ *
+ * So: the verifying handshake runs **first**, and on a site with nothing wrong it is the only one that
+ * runs. It answers trust, hostname and self-signature by succeeding. Only when it fails does the
+ * permissive handshake run, to describe what the verifying one refused. That ordering matters for the
+ * fleet sweep - the healthy majority costs one connection, and the second is spent only on sites that
+ * have something to explain.
+ *
+ * A failure of *both* is not a certificate problem. It is a host that did not answer, and it is
+ * reported as one: the judgements stay null rather than becoming false, because "unreachable" and
+ * "untrusted" send somebody to look at completely different things.
  */
 final class CertificateInspector
 {
@@ -77,19 +94,60 @@ final class CertificateInspector
             );
         }
 
+        // Whether this server can judge trust at all. A container with no CA bundle would otherwise
+        // report every site in the fleet as untrusted on the same morning, which is the single most
+        // expensive way for this check to be wrong.
+        $canVerify = $this->hasCertificateAuthorities();
+
+        if ($canVerify) {
+            $verified = $this->handshake($host, $port, verifying: true);
+
+            if ($verified !== null) {
+                // It verified. Trust, hostname and self-signature are all answered by that, and there
+                // is nothing left for a second connection to find out.
+                return $this->describe($host, $verified, trusted: true);
+            }
+        }
+
+        $permissive = $this->handshake($host, $port, verifying: false);
+
+        if ($permissive === null) {
+            // Neither handshake completed. That is a host that did not answer - DNS, a firewall, a
+            // site that has moved - and calling it a certificate problem would send somebody to look
+            // at the wrong thing.
+            return CertificateReading::failed('The site did not complete a TLS handshake.');
+        }
+
+        // The permissive handshake worked where the verifying one did not, so the refusal was about
+        // the certificate rather than about reaching the host. Unless this server had no authorities
+        // to judge against, in which case nothing was refused and trust is simply unknown.
+        return $this->describe($host, $permissive, trusted: $canVerify ? false : null);
+    }
+
+    /**
+     * Complete one handshake and keep what it presented.
+     *
+     * Null on any failure, with no distinction between the kinds - the caller derives meaning from
+     * *which* of the two handshakes failed, and a reason string here would be a system message that
+     * can name an IP, a path or a resolver.
+     *
+     * @return array{certificate: OpenSSLCertificate, chain: int}|null
+     */
+    private function handshake(string $host, int $port, bool $verifying): ?array
+    {
         $context = stream_context_create([
             'ssl' => [
                 'capture_peer_cert' => true,
+
+                // Only ever the count is kept from this. The chain is read to answer "did the server
+                // send its intermediate", which is a number, not a list of certificates to store.
+                'capture_peer_cert_chain' => true,
                 'SNI_enabled' => true,
                 'peer_name' => $host,
 
-                // Off on purpose. The point is to report on a certificate that may be expired,
-                // self-signed or for the wrong name, and a verifying connection refuses those rather
-                // than describing them. Nothing is trusted as a result: no data crosses this
-                // connection, and the certificate is evidence rather than authentication.
-                'verify_peer' => false,
-                'verify_peer_name' => false,
-                'allow_self_signed' => true,
+                'verify_peer' => $verifying,
+                'verify_peer_name' => $verifying,
+                'allow_self_signed' => ! $verifying,
             ],
         ]);
 
@@ -103,36 +161,104 @@ final class CertificateInspector
         );
 
         if ($client === false) {
-            // The system's message can name an IP, a path or a resolver. Reduced to a fixed phrase
-            // rather than passed through, because this string is stored and shown.
-            return CertificateReading::failed('The site did not complete a TLS handshake.');
+            return null;
         }
 
         try {
             $params = stream_context_get_params($client);
             $certificate = $params['options']['ssl']['peer_certificate'] ?? null;
 
-            if ($certificate === null) {
-                return CertificateReading::failed('The site presented no certificate.');
+            if (! $certificate instanceof OpenSSLCertificate) {
+                return null;
             }
 
-            $parsed = openssl_x509_parse($certificate);
+            $chain = $params['options']['ssl']['peer_certificate_chain'] ?? null;
 
-            if ($parsed === false || ! isset($parsed['validTo_time_t'])) {
-                return CertificateReading::failed('The certificate could not be read.');
-            }
-
-            return new CertificateReading(
-                expiresAt: Carbon::createFromTimestamp((int) $parsed['validTo_time_t']),
-                issuer: $this->name($parsed['issuer'] ?? []),
-                subject: $this->name($parsed['subject'] ?? []),
-                error: null,
-            );
+            return [
+                'certificate' => $certificate,
+                'chain' => is_array($chain) ? count($chain) : 0,
+            ];
         } catch (Throwable) {
-            return CertificateReading::failed('The certificate could not be read.');
+            return null;
         } finally {
             fclose($client);
         }
+    }
+
+    /**
+     * Turn one handshake's certificate into a reading.
+     *
+     * @param  array{certificate: OpenSSLCertificate, chain: int}  $result
+     */
+    private function describe(string $host, array $result, ?bool $trusted): CertificateReading
+    {
+        try {
+            $parsed = openssl_x509_parse($result['certificate']);
+        } catch (Throwable) {
+            return CertificateReading::failed('The certificate could not be read.');
+        }
+
+        if (! is_array($parsed) || ! isset($parsed['validTo_time_t'])) {
+            return CertificateReading::failed('The certificate could not be read.');
+        }
+
+        return new CertificateReading(
+            expiresAt: Carbon::createFromTimestamp((int) $parsed['validTo_time_t']),
+            issuer: $this->name($parsed['issuer'] ?? []),
+            subject: $this->name($parsed['subject'] ?? []),
+            error: null,
+            hostnameMatches: CertificateNames::matches($parsed, $host),
+            trusted: $trusted,
+            selfSigned: $this->isSelfSigned($parsed),
+
+            // Zero would read on a screen as "this server sent no certificates", which cannot be true
+            // of a handshake that produced one. It means the chain was not captured.
+            chainLength: $result['chain'] > 0 ? $result['chain'] : null,
+        );
+    }
+
+    /**
+     * Whether the certificate signed itself.
+     *
+     * Compared as the parsed name arrays rather than as the readable strings this class renders
+     * elsewhere: {@see name()} returns the first of CN, O or OU that is set, so two genuinely
+     * different names sharing an organisation would compare equal and a real certificate would be
+     * reported as self-signed.
+     *
+     * @param  array<string, mixed>  $parsed
+     */
+    private function isSelfSigned(array $parsed): ?bool
+    {
+        $issuer = $parsed['issuer'] ?? null;
+        $subject = $parsed['subject'] ?? null;
+
+        if (! is_array($issuer) || ! is_array($subject) || $issuer === [] || $subject === []) {
+            return null;
+        }
+
+        return $issuer == $subject;
+    }
+
+    /**
+     * Whether this server has anything to verify a chain against.
+     *
+     * Worth checking rather than assuming. A minimal container with no `ca-certificates` package
+     * verifies nothing, and without this the first sweep after deploying to one would open a
+     * high-severity finding against every site in the fleet on the same morning - all of them wrong,
+     * and all of them about this server rather than about the sites named in them.
+     */
+    private function hasCertificateAuthorities(): bool
+    {
+        $locations = openssl_get_cert_locations();
+
+        $file = $locations['default_cert_file'] ?? null;
+        $directory = $locations['default_cert_dir'] ?? null;
+
+        if (is_string($file) && $file !== '' && is_readable($file)) {
+            return true;
+        }
+
+        return is_string($directory) && $directory !== '' && is_dir($directory);
     }
 
     /**

@@ -133,6 +133,24 @@ what the arrangement above exists to avoid.
 Manager for Craft checks the certificate each site presents and warns you before it expires - thirty
 days out, then more urgently inside a week, then loudly once it has gone.
 
+It also checks whether a browser would accept the certificate at all, which is a separate question
+from how long it has left. Three faults are reported, and each has a different fix:
+
+| What is wrong | Why it happens | What a visitor sees |
+|---|---|---|
+| The certificate is for a different domain | The wrong certificate was installed, or a wildcard was used on the apex it does not cover | A full-page browser warning |
+| The certificate is self-signed | A placeholder left behind after the server was set up, or automatic issuance that never completed | A full-page browser warning |
+| The chain is incomplete | The intermediate certificate was left out of the bundle | Often **nothing** - see below |
+
+The third is the one worth knowing about. Desktop browsers fetch a missing intermediate themselves
+and show no warning, so a site can look perfectly healthy to whoever is testing it while failing on
+Android devices, on `curl`, and for anything calling it as an API. It is the shape of fault that
+survives for months because the person investigating cannot reproduce it.
+
+A certificate that has never been checked, one on a host that did not answer, and one on a server
+with no certificate authorities installed are all recorded as **not determined** rather than as
+passing. A tick against something nobody checked is worse than no tick at all.
+
 This is the one thing Manager for Craft goes and looks at itself rather than waiting to be told, and
 that is worth explaining because everything else works the other way round.
 
@@ -146,6 +164,12 @@ certificate and closes. Nothing is sent, no HTTP request is made, no response bo
 connection is guarded the same way notification webhooks are: a domain that resolves to a loopback,
 private or metadata address is refused, because a site whose domain pointed at `169.254.169.254`
 would otherwise turn a monitoring check into a request for cloud instance credentials.
+
+A healthy site costs exactly one connection. The check verifies first - which answers trust, the
+domain and self-signature all at once by succeeding - and only opens a second, non-verifying
+connection when the first is refused, in order to describe what was wrong with it. If neither
+completes, that is a host which did not answer rather than a certificate problem, and it is recorded
+as one.
 
 A site Manager for Craft could not reach is recorded as unreachable rather than as having an expiry
 problem. Those are different facts and only one is about the certificate.

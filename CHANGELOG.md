@@ -8,9 +8,40 @@ here for exactly that reason.
 
 ## 1.6.0 — 2026-08-12
 
-Pressing a button stops reloading the page.
+Pressing a button stops reloading the page, and a TLS certificate is judged rather than just read.
 
-Nothing to do on upgrade. No migration, no configuration, and the webhook payload is unchanged.
+**Before you upgrade:** there is a migration. It adds four nullable columns to `sites` and touches
+nothing else, so it runs in well under a second on any fleet. The webhook payload is unchanged.
+
+### A certificate is now judged, not just read
+
+- **Three faults a browser refuses are now reported, none of which were visible before.** The check
+  recorded when a certificate expires, who issued it and what name it carries, and said nothing about
+  whether a browser would accept it — so a certificate issued for somebody else's domain, or served
+  without the intermediate joining it to a root, showed on the fleet screen as *"expires in 88 days"*
+  right up until a visitor saw an interstitial.
+
+  A certificate for the wrong domain and a self-signed one are **high**; an incomplete chain is
+  **medium**, and that ranking is deliberate rather than tidy. Desktop browsers fetch a missing
+  intermediate themselves and show no warning, so the site looks healthy to whoever is testing it and
+  fails on Android, on `curl`, and for anything calling it as an API. It is the shape of fault that
+  survives for months because the person investigating cannot reproduce it.
+
+- **The site's Security tab has a TLS certificate panel.** Until now the certificate appeared in the
+  interface only when something was wrong with it, as a finding — so "checked this morning and fine"
+  and "never checked" looked identical, which is to say they both looked like nothing.
+
+- **A healthy site still costs one connection.** The check verifies first, and a verifying handshake
+  that succeeds has already answered trust, the domain and self-signature. The second, non-verifying
+  connection is opened only when the first is refused, to describe what was wrong — so the extra work
+  is spent on the sites that have something to explain.
+
+- **Nothing is guessed.** Each judgement has three states, not two, and *not determined* is never
+  rendered as a pass. A site that has never been swept, a host that did not answer, and a Manager
+  installation on a container with no certificate authorities all record no judgement rather than a
+  failing one. Without that last case, the first sweep after deploying to a minimal container would
+  have opened a high-severity finding against every site in the fleet — each one describing this
+  server rather than the site it named.
 
 ### Asking for something no longer reloads the screen
 
