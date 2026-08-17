@@ -16,7 +16,7 @@ that will not pair rather than as sites reporting insecurely.
 
 ## Backups arrive in pieces, which changes what you have to configure
 
-From 1.3.0, a connector sends a backup artifact to Manager for Craft in bounded parts of a few
+A connector sends a backup artifact to Manager for Craft in bounded parts of a few
 megabytes each rather than as one enormous request, and then asks it to assemble them. The file is
 unchanged - same encryption, same signature, same thing `manager-restore` opens - and nothing about
 restoring is affected. Only the transport is cut up.

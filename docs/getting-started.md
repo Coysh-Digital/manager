@@ -43,9 +43,8 @@ MANAGER_VERSION=1.7.0   # which release this is; the interface says "unreleased 
 
 The container will refuse to start if `APP_KEY` is empty, if `APP_DEBUG` is on, if `DB_PASSWORD` is
 one of the obvious ones, or if `APP_ENV` is set to anything but `production`. That is deliberate -
-those are the ones that turn up in every post-mortem, and since 1.1.0 none of them is conditional on
-`APP_ENV`. They used to be, which meant copying a `.env.example` that shipped `APP_ENV=local` skipped
-every one of them; [install.md](install.md) has the detail.
+those are the ones that turn up in every post-mortem - and none of the four is conditional on
+`APP_ENV`, so there is no combination of settings that quietly skips them.
 
 Now generate the three secrets. Do this once, and keep the output somewhere that is **not** your
 database backup:
