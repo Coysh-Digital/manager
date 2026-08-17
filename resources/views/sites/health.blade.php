@@ -285,6 +285,15 @@
                                 $usedPercent === null ? '-' : $usedPercent.'%',
                                 $usedPercent !== null && $usedPercent >= 90,
                             ],
+                            // Beside the disk rather than in a panel of its own, because this is the
+                            // figure the disk numbers exist to be read against: a backup is a dump of
+                            // this, and whether it fits is the whole question.
+                            'Database' => [
+                                is_int($runtimeReport->value('database.size_bytes'))
+                                    ? number_format($runtimeReport->value('database.size_bytes') / 1048576, 0).' MB'
+                                    : '-',
+                                false,
+                            ],
                             'Measured' => [$runtimeReport->collected_at->diffForHumans(short: true), false],
                         ];
                     @endphp
@@ -452,6 +461,23 @@
                         $runtimeReport->value('php.opcache_enabled') === false && $site->environment === 'production',
                     ],
                     'Extensions' => [$runtimeReport->value('php.extensions') ?? '-', false],
+
+                    // The count above is how many are loaded; this is how many of Craft's own
+                    // requirements are not. An empty array is a site that checked and found none,
+                    // which is a different answer from a connector too old to have looked.
+                    'Required missing' => [
+                        match (true) {
+                            $runtimeReport->missingExtensions() === null => '-',
+                            $runtimeReport->missingExtensions() === [] => 'None',
+                            default => implode(', ', $runtimeReport->missingExtensions()),
+                        },
+                        $runtimeReport->missingExtensions() !== null && $runtimeReport->missingExtensions() !== [],
+                    ],
+                    'Image driver' => [
+                        $runtimeReport->value('php.image_driver') ?? '-',
+                        // Neither library means this site cannot generate a transform at all.
+                        $runtimeReport->value('php.image_driver') === 'none',
+                    ],
                 ];
             @endphp
 
@@ -467,6 +493,82 @@
             <p class="mt-2 text-[12px] text-text-3">
                 Numbers only. The connector never sends <code class="font-mono">phpinfo()</code>, an
                 ini path or any setting whose value would name the host.
+            </p>
+        @endif
+
+        {{--
+            What Craft can say about itself.
+
+            Only a connector sending system.v3 reports any of this, so the panel is absent rather
+            than drawn full of em-dashes on an older one - a column that is never filled teaches
+            people to stop reading the column.
+        --}}
+        @if ($runtimeReport?->describesCraft())
+            <h2 class="mb-2.5 mt-6 text-[13.5px] font-semibold">Craft</h2>
+
+            @php
+                $yesNo = static fn (?bool $value, string $yes, string $no): array => match ($value) {
+                    true => [$yes, false],
+                    false => [$no, true],
+                    default => ['-', false],
+                };
+
+                $deprecations = $runtimeReport->value('craft.deprecation_count');
+                $sessions = $runtimeReport->value('craft.session_rows');
+                $paths = $runtimeReport->paths();
+                $unwritable = $runtimeReport->unwritablePaths();
+
+                $craft = [
+                    'Deprecations' => [
+                        is_int($deprecations) ? number_format($deprecations) : '-',
+                        is_int($deprecations) && $deprecations >= 25,
+                    ],
+                    'Sessions table' => [
+                        is_int($sessions) ? number_format($sessions).' rows' : '-',
+                        false,
+                    ],
+                    'Security key' => $yesNo(
+                        is_bool($runtimeReport->value('craft.security_key_set'))
+                            ? $runtimeReport->value('craft.security_key_set')
+                            : null,
+                        'Set',
+                        'Not set',
+                    ),
+
+                    // Shown and never flagged. Craft's default is /admin and most sites leave it
+                    // there, so a badge here would be amber across most of a fleet to describe a
+                    // choice almost everybody has made - and a list that fires on everything stops
+                    // being read. Worth knowing, not worth interrupting anybody for.
+                    'Control panel' => [
+                        match ($runtimeReport->value('craft.cp_trigger_default')) {
+                            true => 'Default address',
+                            false => 'Moved',
+                            default => '-',
+                        },
+                        false,
+                    ],
+                    'Writable' => [
+                        $paths === []
+                            ? '-'
+                            : ($unwritable === [] ? 'All' : implode(', ', $unwritable).' not writable'),
+                        $unwritable !== [],
+                    ],
+                ];
+            @endphp
+
+            <dl class="grid grid-cols-1 gap-x-10 gap-y-2.5 rounded-[10px] border border-border bg-surface px-4 py-3.5 text-[12.5px] sm:grid-cols-2 xl:grid-cols-3">
+                @foreach ($craft as $label => [$value, $notable])
+                    <div class="flex items-baseline justify-between gap-3">
+                        <dt class="shrink-0 text-text-2">{{ $label }}</dt>
+                        <dd class="truncate font-mono {{ $notable ? 'font-medium text-amber' : '' }}">{{ $value }}</dd>
+                    </div>
+                @endforeach
+            </dl>
+
+            <p class="mt-2 text-[12px] text-text-3">
+                Counts and booleans. Never a deprecation message - each one names a template and a
+                line of your code - never the security key, and never the control panel's address if
+                it has been moved, because writing that down here would undo the point of moving it.
             </p>
         @endif
     </div>
