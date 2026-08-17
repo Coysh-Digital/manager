@@ -43,6 +43,31 @@ nothing else, so it runs in well under a second on any fleet. The webhook payloa
   have opened a high-severity finding against every site in the fleet — each one describing this
   server rather than the site it named.
 
+### Two PHP limits that were being collected and never read
+
+- **A site whose queue runs over HTTP is now told when its execution limit is short enough to kill a
+  backup.** Craft runs its queue inside a web request unless somebody has arranged otherwise, which
+  means taking a dump, encrypting it and uploading it all happen under `max_execution_time` — so on
+  the PHP default of thirty seconds a backup of anything but a small database fails at a different
+  point each night, having already done the expensive part, with nothing in the log that reads as a
+  timeout.
+
+  What makes this a finding rather than a preference is that the site says which it is. The runtime
+  report is built by the connector's scheduler, which runs in the queue, so the SAPI in the report is
+  the SAPI the queue ran under. A site reporting `cli` has its queue on cron and hears nothing; one
+  reporting `fpm-fcgi` is telling us its backups happen inside a web request. **Medium**, and only
+  below sixty seconds — ninety and a hundred and twenty are everywhere, and a rule firing on those
+  would be amber across half a fleet on day one, which is how a findings list stops being read.
+
+- **`max_input_vars` appears on the Health screen.** The connector has collected it since the first
+  runtime report and every schema version has carried it; nothing ever rendered it. It is worth
+  seeing because Craft silently truncates a large form on save when it is too low, which presents as
+  content mysteriously failing to save rather than as anything resembling a PHP limit.
+
+- **An execution limit of zero now reads as "Unlimited" rather than "0s".** Read as a number, zero is
+  the shortest limit there is, so the screen was showing the sites with no limit at all as the worst
+  configured ones in the fleet.
+
 ### Asking for something no longer reloads the screen
 
 - **"Back up now", "Refresh", "Refresh all", "Check again" and "Cancel" answer where you pressed

@@ -202,6 +202,21 @@ own size ceiling.
 Asset volumes are walked with a time budget. A volume that runs out of budget is reported as
 **unmeasured**, not as empty - those are different facts and only one of them is alarming.
 
+The PHP limits are mostly there to be looked at rather than warned about, with one exception.
+Craft runs its queue inside a web request unless somebody has arranged otherwise, so taking a
+backup, running an update and applying project config all happen under `max_execution_time`. On the
+PHP default of thirty seconds a large database fails at a different point each night, having already
+been dumped and encrypted, with nothing in the log that reads as a timeout.
+
+Manager for Craft can tell which sites this applies to rather than guessing. The runtime report is
+built by the connector's scheduler, which runs in the queue - so the SAPI in the report is the SAPI
+the queue ran under. A site reporting `cli` has its queue on cron and is never flagged; one
+reporting `fpm-fcgi` is telling you its backups happen inside a web request.
+
+The remedy worth taking is `php craft queue/listen` from cron, which removes the limit from the
+question entirely. Raising `max_execution_time` works too, and has to be raised again the next time
+the database grows.
+
 ## Sign-ins
 
 With `logins:read`, sites report counts of failed control-panel sign-ins: how many attempts, how

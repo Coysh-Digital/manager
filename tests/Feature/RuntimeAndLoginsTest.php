@@ -126,7 +126,30 @@ it('shows storage, limits and response time on Health, and says what the timing 
         ->assertSee('first byte:')
         ->assertSee('212 ms')
         ->assertSee('images')
-        ->assertSee('Memory limit');
+        ->assertSee('Memory limit')
+        // Collected since the first runtime report and carried by every schema version since, and
+        // never rendered until now. Craft truncates a large form on save when this is too low, which
+        // presents as content quietly failing to save rather than as anything resembling a limit.
+        ->assertSee('Max input vars')
+        ->assertSee('1,000');
+});
+
+it('says unlimited rather than nothing when a limit is off', function (): void {
+    // Zero read as a number is the shortest execution limit there is, so a screen printing "0s"
+    // would show the sites with no limit as the worst configured ones in the fleet.
+    $payload = RuntimeReportFactory::samplePayload();
+    $payload['php']['max_execution_time'] = 0;
+
+    RuntimeReport::factory()->for($this->site)->create(['payload' => $payload]);
+
+    $this->actingAs($this->user)
+        ->get(route('sites.health', $this->site))
+        ->assertOk()
+        ->assertSee('Unlimited')
+        // Scoped to the cell rather than the page. "0s" on its own appears in the response-time
+        // figures too, so a bare assertDontSee here would fail for a reason that has nothing to do
+        // with what this is checking.
+        ->assertDontSee('>0s</dd>', escape: false);
 });
 
 it('carries the reset caveat wherever the sign-in counts appear', function (): void {
