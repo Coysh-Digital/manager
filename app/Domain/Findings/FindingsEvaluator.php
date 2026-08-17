@@ -9,6 +9,7 @@ use App\Domain\Findings\Rules\AbandonedPlugin;
 use App\Domain\Findings\Rules\AccountsLockedOut;
 use App\Domain\Findings\Rules\AdminChangesInProduction;
 use App\Domain\Findings\Rules\CertificateExpiring;
+use App\Domain\Findings\Rules\CertificateUntrusted;
 use App\Domain\Findings\Rules\CraftSecurityRelease;
 use App\Domain\Findings\Rules\DevModeInProduction;
 use App\Domain\Findings\Rules\DiskAlmostFull;
@@ -74,9 +75,13 @@ final class FindingsEvaluator
             new DiskAlmostFull,
             new SiteNotReporting,
 
-            // Needs no capability and comes from the platform's own observation, like the rule above.
+            // Need no capability and come from the platform's own observation, like the rule above.
             // Unlike every other rule here that observation is one the platform went and made itself,
             // because the connector cannot see the certificate a visitor validates.
+            //
+            // Untrusted sits above expiring on purpose: a certificate for the wrong domain is failing
+            // visitors now, where one expiring in three weeks is failing nobody yet.
+            new CertificateUntrusted,
             new CertificateExpiring,
             new RepeatedFailedLogins,
             new DevModeInProduction,

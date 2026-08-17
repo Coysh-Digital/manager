@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Domain\Security\CertificateInspector;
+use App\Domain\Security\CertificateReading;
 use App\Models\Site;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
@@ -51,6 +52,16 @@ final class CheckCertificatesCommand extends Command
                 // Cleared on success, so a site that recovers stops carrying the reason it used to
                 // fail. A stale error beside a fresh expiry is the kind of thing somebody acts on.
                 'certificate_error' => $reading->error,
+
+                // Written straight through, nulls included. A reading that could not judge trust —
+                // an unreachable host, or a server with no certificate authorities - must clear a
+                // previous judgement rather than leave it standing, because a "not trusted" badge
+                // from three weeks ago sitting beside today's failed check is a claim about the
+                // certificate that nothing has actually checked.
+                'certificate_hostname_matches' => $reading->hostnameMatches,
+                'certificate_trusted' => $reading->trusted,
+                'certificate_self_signed' => $reading->selfSigned,
+                'certificate_chain_length' => $reading->chainLength,
             ])->save();
 
             $checked++;
@@ -58,6 +69,15 @@ final class CheckCertificatesCommand extends Command
             if (! $reading->succeeded()) {
                 $problems++;
                 $this->line("  {$site->expected_domain}: {$reading->error}");
+
+                continue;
+            }
+
+            // Reported before expiry, because it outranks it. A certificate for the wrong name is
+            // failing visitors today, where one expiring in three weeks is failing nobody yet.
+            if ($reading->hasTrustProblem()) {
+                $problems++;
+                $this->line("  {$site->expected_domain}: ".$this->trustProblem($reading));
 
                 continue;
             }
@@ -76,5 +96,21 @@ final class CheckCertificatesCommand extends Command
         // an expiring certificate is a failure belongs to the findings rules and to whoever reads
         // them, not to the exit code of a sweep.
         return self::SUCCESS;
+    }
+
+    /**
+     * The most serious thing wrong with a certificate, in one line.
+     *
+     * One rather than a list, because this is a sweep's console output and the point of it is that
+     * somebody scanning fifty lines can see which sites need attention. The site's own screen shows
+     * all three.
+     */
+    private function trustProblem(CertificateReading $reading): string
+    {
+        return match (true) {
+            $reading->hostnameMatches === false => 'the certificate is for a different domain',
+            $reading->selfSigned === true => 'self-signed',
+            default => 'the chain is not trusted, which usually means a missing intermediate',
+        };
     }
 }

@@ -98,6 +98,92 @@
             @endif
         </div>
 
+        {{--
+            The certificate a visitor validates.
+
+            Shown whether or not anything is wrong with it, which is the point. Findings say what is
+            broken; this says what was looked at, and the two answers a screen most needs to keep
+            apart are "checked, and fine" and "never checked". A site that has never been swept has
+            no certificate row anywhere else in the interface to distinguish it from a healthy one.
+
+            The connector cannot answer any of this. TLS terminates at the edge, so PHP on the origin
+            sees whatever a proxy put in $_SERVER - which on a CDN-fronted site is not the
+            certificate anybody validates. This is the platform's own observation, made from outside.
+        --}}
+        <h2 class="mb-2.5 mt-6 text-[13.5px] font-semibold">TLS certificate</h2>
+
+        <div class="mb-6 overflow-hidden rounded-[10px] border border-border bg-surface">
+            @if ($site->certificate_checked_at === null)
+                <p class="px-4 py-6 text-center text-[13px] text-text-2">
+                    Not checked yet. The sweep runs once a day, and a site added since the last one
+                    has nothing recorded rather than nothing wrong.
+                </p>
+            @elseif ($site->certificate_error !== null)
+                <p class="px-4 py-6 text-center text-[13px] text-text-2">
+                    {{ $site->certificate_error }}
+                    <span class="mt-1 block text-[12px] text-text-3">
+                        That is a statement about reaching {{ $site->expected_domain }}, not about its
+                        certificate - so nothing here is judged rather than judged and passed.
+                    </span>
+                </p>
+            @else
+                @php
+                    $days = $site->certificate_expires_at === null
+                        ? null
+                        : (int) now()->startOfDay()->diffInDays($site->certificate_expires_at->startOfDay(), false);
+
+                    // Null is a third state throughout, and reads as "not judged" rather than as a
+                    // pass. A tick against something nobody checked is the one thing this panel must
+                    // not show.
+                    $judgement = static fn (?bool $value, string $yes, string $no): array => match ($value) {
+                        true => [$yes, false],
+                        false => [$no, true],
+                        default => ['Not determined', false],
+                    };
+
+                    $rows = [
+                        'Expires' => $site->certificate_expires_at === null
+                            ? ['Not determined', false]
+                            : [
+                                $site->certificate_expires_at->toFormattedDateString()
+                                    .($days === null ? '' : ' ('.($days < 0 ? 'expired' : $days.' days').')'),
+                                $days !== null && $days <= 30,
+                            ],
+                        'Issuer' => [$site->certificate_issuer ?? 'Not determined', false],
+                        'Covers this domain' => $judgement($site->certificate_hostname_matches, 'Yes', 'No'),
+                        'Chain trusted' => $judgement($site->certificate_trusted, 'Yes', 'No'),
+                        'Self-signed' => $judgement(
+                            $site->certificate_self_signed === null ? null : ! $site->certificate_self_signed,
+                            'No',
+                            'Yes',
+                        ),
+                        'Certificates sent' => [
+                            $site->certificate_chain_length === null
+                                ? 'Not determined'
+                                : (string) $site->certificate_chain_length,
+                            false,
+                        ],
+                    ];
+                @endphp
+
+                <dl class="grid grid-cols-1 gap-x-10 gap-y-2.5 px-4 py-3.5 text-[12.5px] sm:grid-cols-2 xl:grid-cols-3">
+                    @foreach ($rows as $label => [$value, $notable])
+                        <div class="flex items-baseline justify-between gap-3">
+                            <dt class="text-text-2">{{ $label }}</dt>
+                            <dd class="font-mono {{ $notable ? 'font-medium text-danger' : '' }}">{{ $value }}</dd>
+                        </div>
+                    @endforeach
+                </dl>
+
+                <p class="bg-surface-2 px-3.5 py-2.5 text-[12px] leading-relaxed text-text-3">
+                    Read by completing a TLS handshake with {{ $site->expected_domain }} from this
+                    server, <span class="font-medium">not</span> by asking the site. A certificate is
+                    terminated at the edge, so the site itself cannot see the one its visitors
+                    validate. Last checked <x-timestamp :at="$site->certificate_checked_at" />.
+                </p>
+            @endif
+        </div>
+
         <h2 class="mb-2.5 text-[13.5px] font-semibold">
             Findings
             @if ($findings->isNotEmpty())
