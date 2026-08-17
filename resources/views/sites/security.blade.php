@@ -184,6 +184,137 @@
             @endif
         </div>
 
+        {{--
+            What the site serves to somebody who is not it.
+
+            The vantage point is the whole value, and the panel says so rather than leaving it
+            implicit. A plugin checking a site's own headers is reading them at the wrong end of the
+            chain: nginx, a CDN or a WAF adds and removes headers on the way out, and the origin sees
+            none of that. Checking from here can be right where checking from inside cannot be.
+        --}}
+        <h2 class="mb-2.5 mt-6 text-[13.5px] font-semibold">Served to the public</h2>
+
+        <div class="mb-6 overflow-hidden rounded-[10px] border border-border bg-surface">
+            @if ($probe === null)
+                <p class="px-4 py-6 text-center text-[13px] text-text-2">
+                    Not checked yet. The sweep runs once a day, and a site added since the last one
+                    has nothing recorded rather than nothing wrong.
+                </p>
+            @elseif (! $probe->succeeded())
+                <p class="px-4 py-6 text-center text-[13px] text-text-2">
+                    {{ $probe->error }}
+                    <span class="mt-1 block text-[12px] text-text-3">
+                        Nothing is judged from a site that did not answer. A site nobody can reach has
+                        no headers to be missing.
+                    </span>
+                </p>
+            @else
+                @php
+                    // Everything this panel needs, resolved in one place. Present or absent, and
+                    // nothing in between: what a *good* value looks like is the findings rules'
+                    // business, and this panel's job is to show what was actually served - so a
+                    // header that is set renders its own value rather than a tick.
+                    $reportOnly = $probe->header('content-security-policy-report-only');
+
+                    $rows = [];
+
+                    foreach ([
+                        'HSTS' => 'strict-transport-security',
+                        'Content-Security-Policy' => 'content-security-policy',
+                        'X-Frame-Options' => 'x-frame-options',
+                        'X-Content-Type-Options' => 'x-content-type-options',
+                        'Referrer-Policy' => 'referrer-policy',
+                        'Permissions-Policy' => 'permissions-policy',
+                    ] as $label => $name) {
+                        $value = $probe->header($name);
+
+                        // Report-only is a third state. A policy nobody enforces is not the same as
+                        // no policy, and it is not the same as one that is on.
+                        if ($value === null && $name === 'content-security-policy' && $reportOnly !== null) {
+                            $rows[$label] = ['report-only', $reportOnly, false];
+
+                            continue;
+                        }
+
+                        $rows[$label] = [$value ?? 'Not set', $value, $value === null];
+                    }
+
+                    $rows['Plain HTTP'] = match ($probe->redirects_to_https) {
+                        null => ['Nothing on port 80', null, false],
+                        true => ['Redirected to HTTPS', null, false],
+                        false => ['Served in the clear', null, true],
+                    };
+
+                    $disclosed = array_filter([$probe->header('server'), $probe->header('x-powered-by')]);
+                    $rows['Software disclosed'] = $disclosed === []
+                        ? ['Nothing', null, false]
+                        : [implode(', ', $disclosed), null, false];
+
+                    $duplicated = $probe->duplicatedHeaders();
+                    $exposed = $probe->exposedPaths();
+                @endphp
+
+                <dl class="grid grid-cols-1 gap-x-10 gap-y-2.5 border-b border-border px-4 py-3.5 text-[12.5px] sm:grid-cols-2">
+                    @foreach ($rows as $label => [$value, $full, $notable])
+                        <div class="flex items-baseline justify-between gap-3">
+                            <dt class="shrink-0 text-text-2">{{ $label }}</dt>
+                            <dd class="truncate font-mono {{ $notable ? 'text-amber' : '' }}"
+                                @if ($full) title="{{ $full }}" @endif>{{ $value }}</dd>
+                        </div>
+                    @endforeach
+                </dl>
+
+                @if ($duplicated !== [])
+                    <p class="border-b border-border px-4 py-3 text-[12.5px] text-text-2">
+                        <span class="font-medium text-amber">Sent twice:</span>
+                        <span class="font-mono">{{ implode(', ', $duplicated) }}</span>
+                        - two values for the same header is not a stricter site, it is an undefined
+                        one, and browsers disagree about which wins. The usual cause is the
+                        application and the web server each setting it without knowing about the
+                        other, which is invisible from inside the site because both halves are
+                        working.
+                    </p>
+                @endif
+
+                @if ($probe->answers_everything)
+                    <p class="border-b border-border px-4 py-3 text-[12.5px] text-text-2">
+                        This site answers <span class="font-mono">200</span> for paths that do not
+                        exist, so nothing can be concluded about which files are reachable. A request
+                        for a made-up path was answered too - that is a fact about the routing rather
+                        than about any file, and no exposure finding is raised from it.
+                    </p>
+                @elseif ($exposed !== [])
+                    <div class="border-b border-border px-4 py-3">
+                        <p class="mb-1.5 text-[12.5px] font-medium text-danger">Reachable over the web</p>
+                        <ul class="space-y-1 text-[12.5px]">
+                            @foreach ($exposed as $file)
+                                @php
+                                    // A size, because "0 bytes" and "8 megabytes" at the same path
+                                    // are different situations - the first is usually a placeholder
+                                    // somebody left, the second is the file.
+                                    $bytes = $file['bytes'] ?? null;
+                                    $note = $file['status'].($bytes === null ? '' : ', '.number_format((int) $bytes).' bytes');
+                                @endphp
+                                <li class="font-mono">
+                                    {{ $file['path'] }}
+                                    <span class="text-text-3">- {{ $note }}</span>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+
+                <p class="bg-surface-2 px-3.5 py-2.5 text-[12px] leading-relaxed text-text-3">
+                    Requested from this server, <span class="font-medium">not</span> from
+                    {{ $site->expected_domain }} itself - so this is what a visitor receives after any
+                    CDN, proxy or firewall in front of it, which is not what the site can see of
+                    itself. Headers only: no page content is read or stored, and the file checks are
+                    <span class="font-mono">HEAD</span> requests that transfer nothing.
+                    Last checked <x-timestamp :at="$probe->probed_at" />.
+                </p>
+            @endif
+        </div>
+
         <h2 class="mb-2.5 text-[13.5px] font-semibold">
             Findings
             @if ($findings->isNotEmpty())

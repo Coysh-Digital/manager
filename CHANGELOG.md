@@ -10,8 +10,13 @@ here for exactly that reason.
 
 Pressing a button stops reloading the page, and a TLS certificate is judged rather than just read.
 
-**Before you upgrade:** there is a migration. It adds four nullable columns to `sites` and touches
-nothing else, so it runs in well under a second on any fleet. The webhook payload is unchanged.
+**Before you upgrade:** there are two migrations — four nullable columns on `sites`, and one new
+table. Both run in well under a second on any fleet. The webhook payload is unchanged.
+
+**Manager now makes one more set of outbound requests.** A daily check asks each site for its home
+page and a fixed list of file paths, from your Manager server. If your sites sit behind a firewall
+that rate-limits or alerts on repeated requests, this is the thing that will trigger it. The requests
+identify themselves as `Manager/1.0 (+security-check)` in the user agent.
 
 ### A certificate is now judged, not just read
 
@@ -42,6 +47,120 @@ nothing else, so it runs in well under a second on any fleet. The webhook payloa
   failing one. Without that last case, the first sweep after deploying to a minimal container would
   have opened a high-severity finding against every site in the fleet — each one describing this
   server rather than the site it named.
+
+### Manager now looks at what a site serves to the public
+
+- **Once a day it makes an ordinary request to each site and records what came back.** The security
+  headers, whether plain HTTP is redirected, which software the response announces, and whether a
+  short fixed list of files — `.env`, `.git/config`, the lockfile, three common database dump names —
+  answers over the web.
+
+  **Checked from outside, which is the whole point.** A response header is added or removed by
+  whatever serves the response, and PHP on the origin sees none of that: a site whose CDN strips a
+  header the application sets looks correct from inside and is not. This is the one class of check
+  a plugin running on the site itself cannot get right, and it can be wrong in both directions.
+
+- **A header sent twice is reported.** Two values for the same header is not a stricter site, it is
+  an undefined one — browsers disagree about which wins. The usual cause is the application and the
+  web server each setting it without knowing about the other, which is invisible from inside the site
+  because both halves are doing their job.
+
+- **A site that answers `200` for everything is told nothing.** The sweep also asks for a path that
+  certainly does not exist, and if that answers too, the file results are marked inconclusive and no
+  exposure finding is raised. Without that control the sites with the loosest routing — a catch-all
+  route, a single-page front end — would be the ones accused of publishing their credentials.
+
+- **The file checks are `HEAD`, with no fallback to `GET`.** Discarding a response body still
+  transfers it, and a database dump in a webroot is exactly what this looks for, so a fallback would
+  pull gigabytes off a customer's server to report that the file should not be there.
+
+- **The site's Security tab has a *Served to the public* panel**, showing what came back whether or
+  not anything is wrong with it.
+
+### Four findings from what a site serves, and the ones deliberately left out
+
+Every rule here fires on what a visitor receives rather than on what the site believes, and none of
+them takes a capability — the probe reads a public web page, and a grant would be asking a site's
+permission to look at what it already serves to everybody.
+
+- **Missing security headers, as one finding rather than three.** HSTS, `X-Content-Type-Options` and
+  framing control. A site missing these is almost never missing exactly one of them — the cause is a
+  server that was never configured for it — so three rows would describe one afternoon's work three
+  times. **Medium** when all three are absent, **low** otherwise.
+
+  A CSP with `frame-ancestors` counts in place of `X-Frame-Options`, because it supersedes it and
+  browsers prefer it. Without that, this rule would have flagged the best-configured sites in a fleet
+  and told them to go backwards.
+
+- **A Content-Security-Policy that enforces nothing.** Fires on report-only, and **not** on absent —
+  which is the opposite of the obvious version and the point of the rule. A site with no CSP has
+  usually decided that on purpose. A site with a report-only policy is one where somebody wrote a
+  policy, deployed it, meant to come back and enforce it, and a sprint ended: from that day it has
+  looked protected to anybody reading its headers while browsers ignored every violation it
+  describes. **Low**, because nothing got worse — what changed is that somebody now believes
+  otherwise.
+
+- **Plain HTTP served without a redirect.** **High** in production. This sits beside the existing
+  *HTTPS is not enforced* rather than replacing it, and the pair is the clearest illustration of why
+  the check exists: one is what Craft's `baseUrl` says, the other is what happens when somebody types
+  the domain without a scheme. A site can fail either without failing the other, and only one of them
+  is about what happens to people.
+
+- **A disclosed software version.** `Server: nginx` is something an attacker could have guessed;
+  `Server: nginx/1.24.0` is a specific build to look up in an advisory database. **The version is the
+  finding, not the header** — flagging the header would fire on nearly every site on the web and be
+  muted within a week, and the sites that then stopped being read are the ones publishing a patch
+  level. **Low**, and it earns its row because the fix is one configuration line that lasts forever.
+
+**`Referrer-Policy` and `Permissions-Policy` are shown and never flagged.** Every current browser
+defaults `Referrer-Policy` sensibly, and almost nobody sets `Permissions-Policy` or needs to. Both
+would fire across most of a fleet to say very little, which is how a findings list stops being read.
+
+- **A file that should not be public, answering over the web, is now the most serious finding
+  Manager raises.** `.env`, `.git/config` and three common database dump names are **critical**;
+  `composer.json` and `composer.lock` are **high**. The distinction is whether the file *is* the harm
+  or helps somebody find it — `.env` is the database password, the mail credentials and every API key
+  the site holds, in one request, with no exploit to write, whereas a lockfile is the exact version of
+  every dependency and therefore a shopping list of published vulnerabilities.
+
+  The finding says to rotate the credentials rather than only to move the file, which is the part
+  that gets skipped.
+
+  **It cannot fire on a site whose answers do not support it.** The gate lives on the report model
+  rather than in the rule, so the raw list is unreadable from a rule at all: a site that answered the
+  control path is inconclusive, and this stays silent. Getting that wrong would send the loudest
+  finding in the product — naming a customer's site and telling somebody their credentials are
+  public — to sites whose only fault is a catch-all route.
+
+The path list is a constant in the application — not configuration, and nothing a site sends can add
+to it. `OutboundUrlGuard` gained a second entry point for the plain-HTTP redirect check, because that
+question cannot be asked over HTTPS; it shares every address check with the existing one, and the
+HTTPS-only rule on notification destinations is untouched.
+
+### Two PHP limits that were being collected and never read
+
+- **A site whose queue runs over HTTP is now told when its execution limit is short enough to kill a
+  backup.** Craft runs its queue inside a web request unless somebody has arranged otherwise, which
+  means taking a dump, encrypting it and uploading it all happen under `max_execution_time` — so on
+  the PHP default of thirty seconds a backup of anything but a small database fails at a different
+  point each night, having already done the expensive part, with nothing in the log that reads as a
+  timeout.
+
+  What makes this a finding rather than a preference is that the site says which it is. The runtime
+  report is built by the connector's scheduler, which runs in the queue, so the SAPI in the report is
+  the SAPI the queue ran under. A site reporting `cli` has its queue on cron and hears nothing; one
+  reporting `fpm-fcgi` is telling us its backups happen inside a web request. **Medium**, and only
+  below sixty seconds — ninety and a hundred and twenty are everywhere, and a rule firing on those
+  would be amber across half a fleet on day one, which is how a findings list stops being read.
+
+- **`max_input_vars` appears on the Health screen.** The connector has collected it since the first
+  runtime report and every schema version has carried it; nothing ever rendered it. It is worth
+  seeing because Craft silently truncates a large form on save when it is too low, which presents as
+  content mysteriously failing to save rather than as anything resembling a PHP limit.
+
+- **An execution limit of zero now reads as "Unlimited" rather than "0s".** Read as a number, zero is
+  the shortest limit there is, so the screen was showing the sites with no limit at all as the worst
+  configured ones in the fleet.
 
 ### Asking for something no longer reloads the screen
 

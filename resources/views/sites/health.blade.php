@@ -420,11 +420,32 @@
                     'Max execution' => [
                         $runtimeReport->value('php.max_execution_time') === null
                             ? '-'
-                            : $runtimeReport->value('php.max_execution_time').'s',
-                        false,
+                            : ($runtimeReport->value('php.max_execution_time') === 0
+                                ? 'Unlimited'
+                                : $runtimeReport->value('php.max_execution_time').'s'),
+
+                        // Flagged on exactly the terms the finding fires on, and no others: a limit
+                        // that bites because this site's queue reported in from a web request.
+                        // Amber against a site whose queue runs from cron would be colouring a
+                        // number that has no effect on anything it does.
+                        is_int($runtimeReport->value('php.max_execution_time'))
+                            && $runtimeReport->value('php.max_execution_time') > 0
+                            && $runtimeReport->value('php.max_execution_time') < 60
+                            && ! str_starts_with(strtolower((string) $runtimeReport->value('php.sapi')), 'cli'),
                     ],
                     'Max upload' => [$mb($runtimeReport->value('php.upload_max_filesize_bytes')), false],
                     'Max post' => [$mb($runtimeReport->value('php.post_max_size_bytes')), false],
+
+                    // Collected since the first runtime report, carried by every schema version
+                    // since, and simply never rendered. Worth showing rather than dropping: Craft
+                    // truncates a large form on save when this is too low, which presents as content
+                    // quietly failing to save rather than as anything resembling a PHP limit.
+                    'Max input vars' => [
+                        $runtimeReport->value('php.max_input_vars') === null
+                            ? '-'
+                            : number_format((int) $runtimeReport->value('php.max_input_vars')),
+                        false,
+                    ],
                     'Opcache' => [
                         $runtimeReport->value('php.opcache_enabled') ? 'On' : 'Off',
                         // Off in production is a real performance finding, not a preference.

@@ -171,6 +171,92 @@ it('does not report an unreadable opcache as a disabled one', function (): void 
 });
 
 /*
+ | Execution time
+ |-------------------------------------------------------------------------------------------------
+ |
+ | The SAPI is what makes this a finding rather than a preference. The runtime report is built by the
+ | connector's scheduler, which runs in the queue - so the SAPI in the report is the SAPI the queue
+ | ran under, and a site reporting a web SAPI is telling us its backups happen inside a web request.
+ */
+
+it('reports a short execution limit on a site whose queue runs over HTTP', function (): void {
+    $payload = RuntimeReportFactory::samplePayload();
+    $payload['php']['max_execution_time'] = 30;
+    $payload['php']['sapi'] = 'fpm-fcgi';
+
+    RuntimeReport::factory()->for($this->site)->create(['payload' => $payload]);
+
+    ($this->evaluate)();
+
+    $finding = ($this->finding)('short_max_execution_time');
+
+    expect($finding?->severity)->toBe(Severity::MEDIUM)
+        // The remedy has to be in it. Somebody reading "raise max_execution_time" and nothing else
+        // will raise it to 60 and be back here; running the queue from cron is the actual fix.
+        ->and($finding?->detail)->toContain('queue/listen');
+});
+
+it('says nothing to a site whose queue runs from the command line', function (): void {
+    // Where max_execution_time is conventionally zero and has no bearing on anything the site does.
+    // This is the configuration the rule is asking people to move to, so firing on it would be
+    // telling somebody off for having already fixed it.
+    $payload = RuntimeReportFactory::samplePayload();
+    $payload['php']['max_execution_time'] = 30;
+    $payload['php']['sapi'] = 'cli';
+
+    RuntimeReport::factory()->for($this->site)->create(['payload' => $payload]);
+
+    ($this->evaluate)();
+
+    expect(($this->finding)('short_max_execution_time'))->toBeNull();
+});
+
+it('leaves the common values alone', function (int $seconds): void {
+    // Ninety and a hundred and twenty are everywhere. A rule firing on them would be amber across a
+    // large share of a fleet on day one, which is how a findings list stops being read - and the
+    // entries that then go unread are the ones that mattered.
+    $payload = RuntimeReportFactory::samplePayload();
+    $payload['php']['max_execution_time'] = $seconds;
+
+    RuntimeReport::factory()->for($this->site)->create(['payload' => $payload]);
+
+    ($this->evaluate)();
+
+    expect(($this->finding)('short_max_execution_time'))->toBeNull();
+})->with([
+    'the threshold itself' => 60,
+    'a common value' => 90,
+    'the value Craft asks for' => 120,
+]);
+
+it('treats no limit as no limit rather than as the shortest one possible', function (): void {
+    // Zero is unlimited, and read as a number it is the worst value there is. This is the mistake
+    // that would make the rule fire hardest on the sites with nothing wrong.
+    $payload = RuntimeReportFactory::samplePayload();
+    $payload['php']['max_execution_time'] = 0;
+
+    RuntimeReport::factory()->for($this->site)->create(['payload' => $payload]);
+
+    ($this->evaluate)();
+
+    expect(($this->finding)('short_max_execution_time'))->toBeNull();
+});
+
+it('does not guess when the connector did not say which SAPI it ran under', function (): void {
+    $payload = RuntimeReportFactory::samplePayload();
+    $payload['php']['max_execution_time'] = 30;
+    unset($payload['php']['sapi']);
+
+    RuntimeReport::factory()->for($this->site)->create(['payload' => $payload]);
+
+    ($this->evaluate)();
+
+    // Without the SAPI there is no way to tell a site that got this right from one that did not, and
+    // the wrong guess lands on the sites running their queue properly.
+    expect(($this->finding)('short_max_execution_time'))->toBeNull();
+});
+
+/*
  | Sign-ins
  |-------------------------------------------------------------------------------------------------
  */

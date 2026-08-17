@@ -60,6 +60,11 @@ final class SiteSecurityController
             'timeline' => $this->posture->timeline($site),
             'exposure' => $this->posture->exposure($site),
 
+            // What the site serves to somebody outside it. Null until the daily sweep has reached
+            // this site, and the screen says which rather than rendering an empty panel that reads
+            // as an all-clear.
+            'probe' => $site->probeReports()->latest('probed_at')->first(),
+
             // A short tail of what has been fixed. Not a history - five rows, so that a screen
             // showing nothing outstanding still shows evidence that something ever ran.
             'resolved' => $site->findings()
