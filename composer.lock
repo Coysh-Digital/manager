@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "7dcde4cfa6dfd0aa4d56b250101cd98e",
+    "content-hash": "e0973924ec3b522ad76b35c6bbef3698",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -342,16 +342,16 @@
         },
         {
             "name": "coysh-digital/manager-protocol",
-            "version": "1.8.0",
+            "version": "1.9.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/Coysh-Digital/manager-protocol.git",
-                "reference": "91ea74e87783f0b891d73a707eda87e1591a96e9"
+                "reference": "6322d18d6b8f457ba13e4e176618fd62d952c904"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/Coysh-Digital/manager-protocol/zipball/91ea74e87783f0b891d73a707eda87e1591a96e9",
-                "reference": "91ea74e87783f0b891d73a707eda87e1591a96e9",
+                "url": "https://api.github.com/repos/Coysh-Digital/manager-protocol/zipball/6322d18d6b8f457ba13e4e176618fd62d952c904",
+                "reference": "6322d18d6b8f457ba13e4e176618fd62d952c904",
                 "shasum": ""
             },
             "require": {
@@ -391,7 +391,7 @@
                 "issues": "https://github.com/Coysh-Digital/manager-protocol/issues",
                 "source": "https://github.com/Coysh-Digital/manager-protocol"
             },
-            "time": "2026-08-07T21:13:41+00:00"
+            "time": "2026-08-17T12:44:49+00:00"
         },
         {
             "name": "dasprid/enum",

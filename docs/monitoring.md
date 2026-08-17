@@ -44,21 +44,22 @@ direction and sit behind a password confirmation because they destroy encryption
 Findings are conclusions, not raw data. Manager for Craft applies a set of rules to what a site
 reported and tells you what it thinks is wrong.
 
-Currently twenty-five rules, and every one of them declares a category. The category decides which
+Currently twenty-nine rules, and every one of them declares a category. The category decides which
 screen it appears on, so nothing is ever on both and nothing is on neither:
 
 **Security** - dev mode on in production, HTTPS not enforced, plain HTTP served without a redirect,
 admin changes allowed in production, updates allowed in production, security releases available for
 Craft or a plugin, repeated failed sign-ins, accounts locked out, TLS certificates expiring, TLS
 certificates a browser would refuse, missing security headers, a Content-Security-Policy that is not
-enforced, a disclosed software version, and files reachable over the web that should not be. These
-are on the **Security** screen.
+enforced, a disclosed software version, files reachable over the web that should not be, and a site
+with no security key set. These are on the **Security** screen.
 
 **Maintenance** - abandoned plugins, PHP approaching end of life, pending migrations, invalid or
-trial licences.
+trial licences, deprecated code with a breaking Craft release waiting.
 
 **Operational** - disk nearly full, failed queue jobs, opcache disabled in production, slow
-responses, a short execution limit on a site whose queue runs over HTTP, sites not reporting.
+responses, a short execution limit on a site whose queue runs over HTTP, directories Craft cannot
+write to, missing required PHP extensions, sites not reporting.
 
 Maintenance and operational findings are on the **Findings** screen, grouped by rule - so one
 misconfigured deploy template is a single heading with twelve sites under it rather than twelve
@@ -251,7 +252,20 @@ Manager for Craft says so on the screen rather than labelling it something flatt
 
 ## Runtime and storage
 
-With `runtime:read`, sites report disk usage, PHP limits and opcache state.
+With `runtime:read`, sites report disk usage, PHP limits, opcache state and - from connector 1.15
+onwards - what Craft can say about itself: how many deprecation warnings it has recorded, how large
+the database is, whether its writable directories are writable, whether a security key is set,
+whether the control panel is still at the default address, which required PHP extensions are absent,
+and which imaging library is available.
+
+The database size is the one to watch on a growing site. A backup is a dump of it, so it is the
+figure that decides whether one finishes - and until connector 1.15 the report described every asset
+volume and the disk underneath them while saying nothing about it.
+
+Counts and booleans throughout. Never a deprecation message, which names a template and a line of
+your code; never the security key; never a per-table breakdown of the database; and never the
+control panel's address if it has been moved, because writing that down in a dashboard would undo
+the point of moving it.
 
 Disk is the one that catches people. A backup job on a site with 200 MB free is how a monitoring
 system causes an outage, which is why "disk almost full" is a finding and why the connector has its

@@ -36,7 +36,7 @@ final class RuntimeIngestService
      *
      * @var list<string>
      */
-    public const SCHEMAS = ['system.v2', 'system.v1'];
+    public const SCHEMAS = ['system.v3', 'system.v2', 'system.v1'];
 
     public function __construct(private readonly CorrelationId $correlationId) {}
 

@@ -196,4 +196,62 @@ class RuntimeReport extends Model
 
         return false;
     }
+
+    /**
+     * Whether this report can describe the Craft install rather than only the disk under it.
+     *
+     * The same shape as {@see reportsVolumeLocation()} and for the same reason: a connector older
+     * than `system.v3` sends none of this, and a screen has to tell "the plugin is too old to say"
+     * apart from "it said no". Rendering a row of em-dashes teaches people to ignore the row.
+     */
+    public function describesCraft(): bool
+    {
+        return $this->value('craft') !== null
+            || $this->value('database') !== null
+            || $this->value('paths') !== null;
+    }
+
+    /**
+     * Craft's writable directories, by their own names, worst first.
+     *
+     * An empty array means either that nothing was reported or that everything is writable, which is
+     * why {@see unwritablePaths()} exists separately rather than callers filtering this.
+     *
+     * @return array<string, bool>
+     */
+    public function paths(): array
+    {
+        $paths = $this->value('paths');
+
+        if (! is_array($paths)) {
+            return [];
+        }
+
+        return array_filter($paths, static fn (mixed $value): bool => is_bool($value));
+    }
+
+    /**
+     * The directories Craft cannot write to.
+     *
+     * @return list<string>
+     */
+    public function unwritablePaths(): array
+    {
+        return array_keys(array_filter($this->paths(), static fn (bool $writable): bool => ! $writable));
+    }
+
+    /**
+     * Which of Craft's required extensions this site is missing.
+     *
+     * An empty array and a null are different answers - the first is a site that checked, the second
+     * a connector that could not - so this returns null rather than collapsing them.
+     *
+     * @return list<string>|null
+     */
+    public function missingExtensions(): ?array
+    {
+        $missing = $this->value('php.missing_extensions');
+
+        return is_array($missing) ? array_values(array_filter($missing, 'is_string')) : null;
+    }
 }
