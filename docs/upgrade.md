@@ -17,7 +17,7 @@ under **Before you upgrade**.
 Replace `v1.7.0` below with the version you are moving to.
 
 ```bash
-cd /opt/manager
+cd /path/to/manager
 git fetch --tags
 
 git checkout v1.7.0

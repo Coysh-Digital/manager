@@ -4,6 +4,11 @@ Manager for Craft binds to `127.0.0.1:8080` and speaks plain HTTP. That is delib
 something in front of it terminating TLS. This page covers that something, and the one setting that
 is easy to get dangerously wrong.
 
+Every example below names `8080`, which is the default. An installation that sets `MANAGER_HTTP_PORT`
+because something else already held that port should substitute its own number wherever these
+configurations name the upstream - the port inside the container is fixed, so it is only the host
+side that moves.
+
 TLS is not optional. Signed connector requests are tamper-evident, not confidential - over plain
 HTTP an enrolment code is readable by anything on the path, and so is every report after it. The
 connector refuses a platform address that is not HTTPS, so a misconfiguration here presents as sites

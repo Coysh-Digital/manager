@@ -25,10 +25,13 @@ Get the source and start the stack. Every command in this section runs from `dep
 where the compose file lives - there is none at the top of the repository.
 
 ```bash
-git clone --branch v1.7.0 https://github.com/Coysh-Digital/manager.git /opt/manager
-cd /opt/manager/deploy/docker
+git clone --branch v1.7.0 https://github.com/Coysh-Digital/manager.git manager
+cd manager/deploy/docker
 cp ../../.env.example .env
 ```
+
+Any directory you can write to will do - nothing in the build refers to the path. [Installing](/install)
+has the detail.
 
 Open `.env` and set at minimum:
 

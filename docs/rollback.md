@@ -6,7 +6,7 @@ If a release misbehaves but the schema has not changed. Replace the tag with the
 before the upgrade - `git tag --sort=-v:refname | head` lists them:
 
 ```bash
-cd /opt/manager
+cd /path/to/manager
 git checkout v1.0.0
 cd deploy/docker
 

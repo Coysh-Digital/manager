@@ -21,9 +21,17 @@ make everything it encrypts readable.
 **"APP_DEBUG is on in production"** - turn it off. Debug mode renders stack traces containing
 configuration values to whoever triggered the error.
 
-**Migrations fail on start-up.** Check Postgres is actually up and reachable. Manager for Craft
-needs Postgres 15+, not MySQL - the audit log depends on triggers and revoked table privileges that
-MySQL has no equivalent for.
+**`Bind for 127.0.0.1:8080 failed: port is already allocated`** - something else on the host holds
+8080. Set `MANAGER_HTTP_PORT` in `deploy/docker/.env` and bring the stack up again. Only the app
+container fails this way, so Postgres and Redis will already be running and `docker compose ps` looks
+half-right. If a reverse proxy is already pointed here, its upstream has to name the new port; the
+port inside the container is unchanged.
+
+**Migrations fail on start-up.** Check Postgres is actually up and reachable, and that `DB_HOST`
+names the database service - `postgres` in the shipped compose file. A host that does not resolve
+fails here rather than at start-up, because the entrypoint's checks are about configuration being
+dangerous, not about it being reachable. Manager for Craft needs Postgres 15+, not MySQL - the audit
+log depends on triggers and revoked table privileges that MySQL has no equivalent for.
 
 ## Everything returns 503
 
