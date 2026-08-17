@@ -116,6 +116,22 @@ permission to look at what it already serves to everybody.
 defaults `Referrer-Policy` sensibly, and almost nobody sets `Permissions-Policy` or needs to. Both
 would fire across most of a fleet to say very little, which is how a findings list stops being read.
 
+- **A file that should not be public, answering over the web, is now the most serious finding
+  Manager raises.** `.env`, `.git/config` and three common database dump names are **critical**;
+  `composer.json` and `composer.lock` are **high**. The distinction is whether the file *is* the harm
+  or helps somebody find it — `.env` is the database password, the mail credentials and every API key
+  the site holds, in one request, with no exploit to write, whereas a lockfile is the exact version of
+  every dependency and therefore a shopping list of published vulnerabilities.
+
+  The finding says to rotate the credentials rather than only to move the file, which is the part
+  that gets skipped.
+
+  **It cannot fire on a site whose answers do not support it.** The gate lives on the report model
+  rather than in the rule, so the raw list is unreadable from a rule at all: a site that answered the
+  control path is inconclusive, and this stays silent. Getting that wrong would send the loudest
+  finding in the product — naming a customer's site and telling somebody their credentials are
+  public — to sites whose only fault is a catch-all route.
+
 The path list is a constant in the application — not configuration, and nothing a site sends can add
 to it. `OutboundUrlGuard` gained a second entry point for the plain-HTTP redirect check, because that
 question cannot be asked over HTTPS; it shares every address check with the existing one, and the
