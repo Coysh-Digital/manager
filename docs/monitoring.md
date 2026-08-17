@@ -44,14 +44,15 @@ direction and sit behind a password confirmation because they destroy encryption
 Findings are conclusions, not raw data. Manager for Craft applies a set of rules to what a site
 reported and tells you what it thinks is wrong.
 
-Currently twenty-four rules, and every one of them declares a category. The category decides which
+Currently twenty-five rules, and every one of them declares a category. The category decides which
 screen it appears on, so nothing is ever on both and nothing is on neither:
 
 **Security** - dev mode on in production, HTTPS not enforced, plain HTTP served without a redirect,
 admin changes allowed in production, updates allowed in production, security releases available for
 Craft or a plugin, repeated failed sign-ins, accounts locked out, TLS certificates expiring, TLS
 certificates a browser would refuse, missing security headers, a Content-Security-Policy that is not
-enforced, and a disclosed software version. These are on the **Security** screen.
+enforced, a disclosed software version, and files reachable over the web that should not be. These
+are on the **Security** screen.
 
 **Maintenance** - abandoned plugins, PHP approaching end of life, pending migrations, invalid or
 trial licences.

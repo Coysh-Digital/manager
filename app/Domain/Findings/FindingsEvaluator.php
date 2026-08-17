@@ -24,6 +24,7 @@ use App\Domain\Findings\Rules\PhpEndOfLife;
 use App\Domain\Findings\Rules\PluginSecurityRelease;
 use App\Domain\Findings\Rules\RepeatedFailedLogins;
 use App\Domain\Findings\Rules\SecurityHeadersMissing;
+use App\Domain\Findings\Rules\SensitiveFileExposed;
 use App\Domain\Findings\Rules\ShortMaxExecutionTime;
 use App\Domain\Findings\Rules\SiteNotReporting;
 use App\Domain\Findings\Rules\SlowResponseTimes;
@@ -86,6 +87,10 @@ final class FindingsEvaluator
             //
             // Untrusted sits above expiring on purpose: a certificate for the wrong domain is failing
             // visitors now, where one expiring in three weeks is failing nobody yet.
+            // The most serious thing this platform can say, so it sits at the top of the
+            // observed-from-outside group: a readable .env is not a weakness that might be exploited
+            // later, it is every credential the site holds, already published.
+            new SensitiveFileExposed,
             new CertificateUntrusted,
             new CertificateExpiring,
             new RepeatedFailedLogins,

@@ -324,3 +324,73 @@ it('does not resolve everything on one missed sweep', function (): void {
 
     expect(($this->finding)('security_headers_missing')?->state)->toBe(Finding::STATE_RESOLVED);
 });
+
+/*
+ | Files that should not be reachable
+ |-------------------------------------------------------------------------------------------------
+ |
+ | The most serious finding this platform can raise, and therefore the one where being wrong is most
+ | expensive: it names a customer's site and tells somebody their credentials are public. Everything
+ | below is about the gate that stops it saying so when the evidence does not support it.
+ */
+
+it('reports a readable environment file as critical', function (): void {
+    ProbeReport::factory()->for($this->site)->exposing('/.env')->create();
+
+    ($this->evaluate)();
+
+    $finding = ($this->finding)('sensitive_file_exposed');
+
+    expect($finding?->severity)->toBe(Severity::CRITICAL)
+        ->and($finding?->evidence['paths'])->toBe(['/.env'])
+        // Moving the file is not the remedy. The credentials have been published and have to be
+        // treated that way, which is the part somebody skips.
+        ->and($finding?->detail)->toContain('rotate them');
+});
+
+it('will not say a file is exposed on a site that answers 200 for anything', function (): void {
+    /*
+     * The single most damaging way this rule could be wrong. A catch-all route or a permissive proxy
+     * fallback answers 200 for every path, and the loudest finding in the product, naming a
+     * customer's site and their credentials, would land on sites whose only fault is routing.
+     *
+     * The gate is on the model rather than in this rule, so it cannot be forgotten by the next rule
+     * that wants to read the same list.
+     */
+    ProbeReport::factory()->for($this->site)->answersEverything()->exposing('/.env')->create();
+
+    ($this->evaluate)();
+
+    expect(($this->finding)('sensitive_file_exposed'))->toBeNull();
+});
+
+it('ranks a lockfile below credentials', function (): void {
+    // Not itself a leak - it is the exact version of every dependency, which is a shopping list of
+    // published vulnerabilities rather than a way in on its own.
+    ProbeReport::factory()->for($this->site)->exposing('/composer.lock')->create();
+
+    ($this->evaluate)();
+
+    expect(($this->finding)('sensitive_file_exposed')?->severity)->toBe(Severity::HIGH);
+});
+
+it('says nothing about a site with nothing reachable', function (): void {
+    ProbeReport::factory()->for($this->site)->create();
+
+    ($this->evaluate)();
+
+    expect(($this->finding)('sensitive_file_exposed'))->toBeNull();
+});
+
+it('keeps a size in the evidence and no part of the contents', function (): void {
+    // A size tells a real file apart from a zero-byte placeholder somebody left behind. Anything
+    // more would be storing what the check exists to say should not be readable.
+    ProbeReport::factory()->for($this->site)->exposing('/.env')->create();
+
+    ($this->evaluate)();
+
+    $evidence = ($this->finding)('sensitive_file_exposed')?->evidence;
+
+    expect(array_keys($evidence))->toBe(['paths', 'sizes'])
+        ->and($evidence['sizes'])->toBe(['/.env' => 812]);
+});
