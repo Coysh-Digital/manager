@@ -62,6 +62,26 @@ Schedule::command('manager:certificates:check')
     ->withoutOverlapping();
 
 /*
+ | What a site serves to somebody who is not it.
+ |
+ | The second check that reaches out rather than waiting to be told, and for the same reason as the
+ | first: a response header is decided by whatever serves the response - nginx, a CDN, a WAF - and
+ | PHP on the origin sees none of that. A site whose edge strips a header the application sets looks
+ | correct from inside and is not.
+ |
+ | Daily for the reason above it. A header appears or disappears on a deploy, and a file left in a
+ | webroot stays there; checking more often would multiply the requests made to somebody else's
+ | server to learn the same thing.
+ |
+ | Half an hour after the certificates, deliberately. Both sweep the same hosts, and a fleet of two
+ | hundred opening two sets of connections to all of them in the same minute is a spike in somebody
+ | else's monitoring that this platform has no reason to cause.
+ */
+Schedule::command('manager:web:check')
+    ->dailyAt('05:30')
+    ->withoutOverlapping();
+
+/*
  | Findings, on a clock rather than on a report.
  |
  | The rule that matters here is `site_not_reporting`, and the reason it needs a schedule is the
