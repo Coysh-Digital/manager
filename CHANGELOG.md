@@ -69,6 +69,37 @@ the fleet on demand, run `php artisan manager:web:check`.
 - **The scheduled-tasks panel no longer names a connector version.** "Connector 1.5.0 and later" was
   a fact about our release history that a reader has no way to act on.
 
+### The documented install now works as written
+
+Following `docs/install.md` exactly could not produce a running installation, and had not been able
+to for some time. Nothing here changes a running installation; it is the first ten minutes that was
+broken.
+
+- **`.env.example` shipped the wrong database host.** It said `DB_HOST=db`, which is the service name
+  in the local development environment, not the one in the compose file it gets copied into - that is
+  `postgres`, and `db` does not resolve on the compose network. The result passed every check the
+  container makes, because those checks are about a configuration being dangerous rather than
+  reachable, and then failed at the first migration. `DB_DATABASE` and `DB_USERNAME` had drifted the
+  same way and are now `manager`, as the environment reference always said. `DB_PASSWORD` now ships
+  empty rather than as `db`, so compose stops and names the variable instead of starting Postgres on
+  a password published in this repository. **An existing installation is unaffected** - this is the
+  file new installs copy, and nothing reads it afterwards.
+- **`MANAGER_HTTP_PORT` is in `.env.example`.** The setting is not new: the host port has been
+  configurable all along, and 8080 being taken is a common enough first experience that the compose
+  file has a comment about it. It was only ever written down in the environment reference, so an
+  operator hitting `Bind for 127.0.0.1:8080 failed: port is already allocated` had to find it in a
+  document they had no reason to be reading. It is now in the file they are already editing, and in
+  [install.md](docs/install.md), [troubleshooting.md](docs/troubleshooting.md) and
+  [reverse-proxy.md](docs/reverse-proxy.md).
+- **The install no longer tells you to clone into `/opt/manager`.** That path needs root on a fresh
+  server and on macOS, and no page mentioned `sudo`. It was never load-bearing - the compose build
+  context is relative and nothing refers to the path - so the documentation now clones into a
+  directory of your choosing and says so. `upgrade.md` and `rollback.md` follow.
+- **The quick start in `README.md` could not have worked.** It brought the stack up before generating
+  `APP_KEY`, which the container refuses to start without; it omitted the backup keypair entirely;
+  and it generated keys with `exec` and no `--show`, against a container whose filesystem is
+  read-only. It is now the same sequence `install.md` gives.
+
 ### Fixed
 
 - **The second Refresh button on a site's Overview reloads the page** where the one in the header a

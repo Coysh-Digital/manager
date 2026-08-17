@@ -46,11 +46,17 @@ Two CPUs and 2 GB of memory is comfortable for a few dozen sites.
 ## Install
 
 ```bash
-git clone https://github.com/Coysh-Digital/manager.git /opt/manager
-cd /opt/manager/deploy/docker
+git clone https://github.com/Coysh-Digital/manager.git manager
+cd manager/deploy/docker
 
 cp ../../.env.example .env
 ```
+
+Clone it wherever you like. Nothing in the build refers to the path - the compose file's build
+context is relative - so the only requirement is a directory you can write to as the user running
+Docker. This page used to say `/opt/manager`, which is a reasonable convention on a server and needs
+root on a fresh one; the rest of the documentation writes `/path/to/manager` and means whatever you
+chose here.
 
 Edit `.env`. At minimum set `APP_KEY`, `APP_URL` and `DB_PASSWORD` - the container refuses to start
 without them, and refuses to start at all on a well-known default password, with `APP_DEBUG` on, or
@@ -96,6 +102,12 @@ losing the backup key makes every stored backup permanently unreadable, with no 
 docker compose up -d
 docker compose exec app php artisan manager:doctor
 ```
+
+The stack binds `127.0.0.1:8080`, and nothing else - TLS is the reverse proxy's job, so see
+[reverse-proxy.md](reverse-proxy.md) before pointing a browser at it. If something on the host
+already holds 8080, `docker compose up` stops with `Bind for 127.0.0.1:8080 failed: port is already
+allocated`; set `MANAGER_HTTP_PORT` in this same `.env` and run it again. The port inside the
+container does not move, so the proxy examples still apply - only their upstream number changes.
 
 ## If nobody can log in
 

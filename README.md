@@ -59,8 +59,14 @@ outline:
 ```bash
 cd deploy/docker
 cp ../../.env.example .env     # then edit it; the container refuses to start on defaults
+
+# Generate the three secrets and copy every line of the output into .env yourself. The container's
+# root filesystem is read-only, so --show is the only form that can reach you.
+docker compose run --rm --no-deps app php artisan key:generate --show
+docker compose run --rm --no-deps app php artisan manager:keys:generate --show
+docker compose run --rm --no-deps app php artisan manager:backups:keygen --show
+
 docker compose up -d
-docker compose exec app php artisan manager:keys:generate
 docker compose exec app php artisan manager:doctor
 ```
 
@@ -111,6 +117,7 @@ read.
 |---|---|
 | `manager:doctor` | Check configuration and security. Run after installing or upgrading. |
 | `manager:keys:generate` | Mint the platform signing keypair. Do this once, before pairing anything. |
+| `manager:backups:keygen` | Mint the platform backup keypair. Without it a connector refuses to back up rather than uploading in the clear. |
 | `manager:audit:verify` | Verify the append-only audit chains. Run after any restore. |
 | `manager:user:password` | Set a password from the server, for when nobody can log in. |
 | `manager:mail-test` | Send a test email, to prove delivery rather than configuration. |
