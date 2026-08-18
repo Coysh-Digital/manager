@@ -3,15 +3,16 @@
 ## Application only
 
 If a release misbehaves but the schema has not changed. Replace the tag with the version you were on
-before the upgrade - `git tag --sort=-v:refname | head` lists them:
+before the upgrade - `git tag --sort=-v:refname | head` lists them. The example is the release before
+the current one, which is the rollback almost everybody is actually doing:
 
 ```bash
 cd /path/to/manager
-git checkout v1.0.0
+git checkout v1.7.1
 cd deploy/docker
 
 # Put MANAGER_VERSION back too, or the interface keeps reporting the version you rolled away from.
-sed -i 's/^MANAGER_VERSION=.*/MANAGER_VERSION=1.0.0/' .env
+sed -i 's/^MANAGER_VERSION=.*/MANAGER_VERSION=1.7.1/' .env
 
 docker compose up -d --build
 docker compose exec app php artisan manager:doctor

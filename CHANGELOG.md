@@ -6,6 +6,27 @@ Entries are written for somebody about to upgrade a running installation. Anythi
 action is under **Before you upgrade** - that section is the one to read, and `docs/upgrade.md` points
 here for exactly that reason.
 
+## 1.7.2 — 2026-08-18
+
+Documentation only. No code changed, no migrations, nothing to do on an existing installation.
+
+### The rollback page named a version from seven releases ago
+
+`docs/rollback.md` told you to `git checkout v1.0.0` and set `MANAGER_VERSION=1.0.0`, while
+`getting-started.md` and `upgrade.md` had both moved to 1.7.1. The page is read during an incident,
+by somebody who has just had an upgrade go wrong, and the worked example was a rollback across the
+entire history of the project rather than the one they were almost certainly doing.
+
+Pasted as written it does not silently corrupt anything - the schema section immediately below is
+emphatic about restoring the database first - but it strands an operator on a release seven minors
+behind, and it invites the reading that 1.0.0 is somehow the safe fallback. The example is now the
+release before the current one, and the page says that is the rule, because an example with no
+stated rule is an example that drifts.
+
+`tests/Invariants/DocumentedVersionTest.php` now holds the four documents to the changelog. This
+repository states its version in prose and in nothing a compiler reads, and it was the only one of
+the four with no check at all - which is precisely why it was the one that drifted.
+
 ## 1.7.1 — 2026-08-17
 
 Documentation only. No code changed, no migrations, and nothing to do on an existing installation —
