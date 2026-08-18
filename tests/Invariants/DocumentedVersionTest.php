@@ -43,7 +43,7 @@ use Illuminate\Support\Facades\File;
  */
 function documentedVersions(string $document): array
 {
-    $contents = \Illuminate\Support\Facades\File::get(base_path($document));
+    $contents = File::get(base_path($document));
 
     preg_match_all('~(?:\bv|MANAGER_VERSION=)(\d+\.\d+\.\d+)\b~', $contents, $matches);
 
