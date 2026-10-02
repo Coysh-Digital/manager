@@ -456,9 +456,16 @@
                         false,
                     ],
                     'Opcache' => [
-                        $runtimeReport->value('php.opcache_enabled') ? 'On' : 'Off',
+                        // A report taken from the command line measured the CLI's opcache, which is
+                        // off by default and says nothing about the pool serving the pages.
+                        str_starts_with(strtolower((string) $runtimeReport->value('php.sapi')), 'cli')
+                            ? 'Not measured (CLI)'
+                            : ($runtimeReport->value('php.opcache_enabled') ? 'On' : 'Off'),
                         // Off in production is a real performance finding, not a preference.
-                        $runtimeReport->value('php.opcache_enabled') === false && $site->environment === 'production',
+                        is_string($runtimeReport->value('php.sapi'))
+                            && ! str_starts_with(strtolower($runtimeReport->value('php.sapi')), 'cli')
+                            && $runtimeReport->value('php.opcache_enabled') === false
+                            && $site->environment === 'production',
                     ],
                     'Extensions' => [$runtimeReport->value('php.extensions') ?? '-', false],
 

@@ -6,6 +6,32 @@ Entries are written for somebody about to upgrade a running installation. Anythi
 action is under **Before you upgrade** - that section is the one to read, and `docs/upgrade.md` points
 here for exactly that reason.
 
+## 1.7.3 — 2026-10-02
+
+Two findings that were wrong on correctly configured sites. Nothing to do on an existing
+installation, no migrations, and **no connector update is needed** - both fixes are in how the
+platform reads what connectors already send. Open findings of these two kinds resolve on the next
+evaluation after you upgrade.
+
+### "PHP opcache is off in production" fired on sites with opcache on
+
+A runtime report is taken by whichever process sends it, and on most hosts that is the queue worker or
+cron - the command line, which reads its own `php.ini`, where `opcache.enable_cli` is off by default.
+The report therefore described the CLI's opcache and the rule read it as the web server's. Forge
+exposed it first because it runs the queue under the CLI, but any host that does is affected.
+
+The rule now says nothing when the report came from the command line, or did not say which SAPI it came
+from. The Health tab shows "Not measured (CLI)" rather than an amber "Off". A site whose report arrives
+from FPM or Apache is judged exactly as before.
+
+### "Updates can be installed from the control panel" fired when admin changes were off
+
+Craft ignores `allowUpdates` when `allowAdminChanges` is false, and the connector reports the raw
+`allowUpdates` value. A site that locks down admin changes - the recommended production setup - and
+never mentions `allowUpdates` was reported as allowing updates. The rule now needs both, and the
+Security tab shows "No (admin changes off)" for the overridden case. A connector that does not send
+`allow_admin_changes` keeps the previous behaviour.
+
 ## 1.7.2 — 2026-08-18
 
 Documentation only. No code changed, no migrations, nothing to do on an existing installation.
