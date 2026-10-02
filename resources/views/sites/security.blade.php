@@ -564,12 +564,18 @@
                 @foreach ($flags as $key => [$label, $riskyWhenOn])
                     @php
                         $value = $latestReport->value('config_flags.'.$key);
-                        $notable = $riskyWhenOn !== null && $value !== null && $value === $riskyWhenOn;
+
+                        // allowAdminChanges off overrides allowUpdates, and the connector reports the raw
+                        // allowUpdates. Show what Craft will actually do.
+                        $overridden = $key === 'allow_updates'
+                            && $value === true
+                            && $latestReport->value('config_flags.allow_admin_changes') === false;
+                        $notable = ! $overridden && $riskyWhenOn !== null && $value !== null && $value === $riskyWhenOn;
                     @endphp
                     <div class="flex items-baseline justify-between gap-3">
                         <dt class="text-text-2">{{ $label }}</dt>
                         <dd class="{{ $notable ? 'font-medium text-amber' : '' }}">
-                            {{ $value === null ? '-' : ($value ? 'Yes' : 'No') }}
+                            {{ $overridden ? 'No (admin changes off)' : ($value === null ? '-' : ($value ? 'Yes' : 'No')) }}
                         </dd>
                     </div>
                 @endforeach

@@ -159,6 +159,36 @@ it('mentions opcache only in production, and only quietly', function (): void {
     expect(($this->finding)('opcache_disabled_in_production')?->state)->toBe(Finding::STATE_RESOLVED);
 });
 
+it('does not report opcache from a command-line report, which measured the wrong one', function (): void {
+    // The queue worker and cron read the CLI's php.ini, where opcache.enable_cli is off by default.
+    // That says nothing about the FPM pool serving the pages.
+    $payload = RuntimeReportFactory::samplePayload();
+    $payload['php']['sapi'] = 'cli';
+    $payload['php']['opcache_enabled'] = false;
+
+    RuntimeReport::factory()->for($this->site)->create(['payload' => $payload]);
+
+    ($this->evaluate)();
+
+    expect(($this->finding)('opcache_disabled_in_production'))->toBeNull();
+});
+
+it('resolves an opcache finding once a report arrives from the command line', function (): void {
+    $payload = RuntimeReportFactory::samplePayload();
+    $payload['php']['opcache_enabled'] = false;
+
+    RuntimeReport::factory()->for($this->site)->create(['payload' => $payload]);
+    ($this->evaluate)();
+
+    expect(($this->finding)('opcache_disabled_in_production')?->state)->toBe(Finding::STATE_OPEN);
+
+    $payload['php']['sapi'] = 'cli';
+    RuntimeReport::factory()->for($this->site)->create(['payload' => $payload]);
+    ($this->evaluate)();
+
+    expect(($this->finding)('opcache_disabled_in_production')?->state)->toBe(Finding::STATE_RESOLVED);
+});
+
 it('does not report an unreadable opcache as a disabled one', function (): void {
     $payload = RuntimeReportFactory::samplePayload();
     unset($payload['php']['opcache_enabled']);

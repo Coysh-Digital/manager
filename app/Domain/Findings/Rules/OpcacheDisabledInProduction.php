@@ -20,6 +20,11 @@ use App\Domain\Findings\Snapshot;
  *
  * Production only. A development container without opcache is a development container behaving
  * exactly as intended, and a rule that fired on it would be noise on every local site in the fleet.
+ *
+ * And only when the report came from a web SAPI. A runtime report is taken by whichever process sends
+ * it, which on most hosts is the queue worker or cron - the CLI, which reads its own php.ini where
+ * `opcache.enable_cli` is off by default. That reading says nothing about the FPM pool serving the
+ * pages, so reporting it as "off in production" is a false finding on every site that did it right.
  */
 final class OpcacheDisabledInProduction implements Rule
 {
@@ -41,6 +46,14 @@ final class OpcacheDisabledInProduction implements Rule
     public function evaluate(Snapshot $snapshot): ?RuleMatch
     {
         if (! $snapshot->isProduction() || ! $snapshot->hasRecentRuntime()) {
+            return null;
+        }
+
+        // Without the SAPI there is no telling whose opcache was measured, and from the command line
+        // it is the wrong one. Same reasoning, and same prefix, as ShortMaxExecutionTime.
+        $sapi = $snapshot->runtimeValue('php.sapi');
+
+        if (! is_string($sapi) || str_starts_with(strtolower($sapi), 'cli')) {
             return null;
         }
 

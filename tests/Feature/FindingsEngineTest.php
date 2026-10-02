@@ -235,6 +235,24 @@ it('does not flag a site that has never connected as having stopped reporting', 
         ->toBe(0);
 });
 
+it('does not say updates are allowed when admin changes are off', function (): void {
+    // Craft ignores allowUpdates whenever allowAdminChanges is false, and the connector reports the
+    // raw allowUpdates - so this combination is a site that has done the right thing.
+    reportInventory($this->site, ['config_flags' => ['allow_updates' => true, 'allow_admin_changes' => false]]);
+
+    $this->evaluator->evaluate($this->site);
+
+    expect(Finding::query()->where('rule', 'updates_allowed_in_production')->count())->toBe(0);
+});
+
+it('says updates are allowed when both settings permit them', function (): void {
+    reportInventory($this->site, ['config_flags' => ['allow_updates' => true, 'allow_admin_changes' => true]]);
+
+    $this->evaluator->evaluate($this->site);
+
+    expect(Finding::query()->where('rule', 'updates_allowed_in_production')->count())->toBe(1);
+});
+
 it('mirrors the worst outstanding severity onto the site', function (): void {
     UpdateReport::factory()->for($this->site)->create();
     reportInventory($this->site, ['config_flags' => ['dev_mode' => true, 'allow_updates' => true]]);

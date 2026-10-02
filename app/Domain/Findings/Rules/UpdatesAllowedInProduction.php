@@ -38,13 +38,20 @@ final class UpdatesAllowedInProduction implements Rule
             return null;
         }
 
+        // allowAdminChanges takes precedence: with it off Craft refuses updates whatever allowUpdates
+        // says, and the connector reports the raw allowUpdates value. Only an explicit false clears
+        // the site - a connector that did not send the flag keeps the behaviour it always had.
+        if ($snapshot->flag('allow_admin_changes') === false) {
+            return null;
+        }
+
         return new RuleMatch(
             severity: Severity::LOW,
             title: 'Updates can be installed from the control panel',
-            detail: 'allowUpdates is on, so Craft and plugin updates can be applied in production '
+            detail: 'allowUpdates and allowAdminChanges are both on, so Craft and plugin updates can be applied in production '
                 .'without going through a deployment. That leaves production ahead of the repository '
                 .'and makes the next deploy a surprise.',
-            evidence: ['allow_updates' => true],
+            evidence: ['allow_updates' => true, 'allow_admin_changes' => $snapshot->flag('allow_admin_changes')],
         );
     }
 }
