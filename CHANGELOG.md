@@ -6,6 +6,26 @@ Entries are written for somebody about to upgrade a running installation. Anythi
 action is under **Before you upgrade** - that section is the one to read, and `docs/upgrade.md` points
 here for exactly that reason.
 
+## 1.7.4 — 2026-10-02
+
+Dependencies only. No application code changed, no migrations. Run `composer install` after checking
+out the tag, as for any release.
+
+### Security advisories in three dependencies
+
+`composer audit` and the container image scan both went red on `main` after advisories were published
+against packages locked here, so a fresh build of 1.7.3 ships them:
+
+- `league/commonmark` 2.9.0 → 2.10.3: denial of service through crafted code fences, reference links and
+  emphasis delimiters (high), and in the SmartPunct and Attributes extensions.
+- `league/flysystem` 3.35.2 → 3.36.0 (with its S3 adapter and local adapter): a malformed UTF-8 path
+  bypasses the control-character check (low).
+- `laravel/framework` 13.23.0 → 13.34.0: XSS in the debug page (low), which is only rendered with
+  `APP_DEBUG=true`.
+
+The framework update brought its dependencies with it, including Guzzle 7 → 8. The full test suite
+passes unchanged. If you have code of your own calling Guzzle directly, read its upgrade notes first.
+
 ## 1.7.3 — 2026-10-02
 
 Two findings that were wrong on correctly configured sites. Nothing to do on an existing
