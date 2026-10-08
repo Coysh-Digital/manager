@@ -6,6 +6,54 @@ Entries are written for somebody about to upgrade a running installation. Anythi
 action is under **Before you upgrade** - that section is the one to read, and `docs/upgrade.md` points
 here for exactly that reason.
 
+## 1.8.0 — unreleased
+
+Two limits on how much Manager can say, and one fix for saying the same thing twice.
+
+**Before you upgrade:** a destination is now sent at most **20 notifications a day** unless you
+say otherwise, where before it was sent every one. If a mailbox legitimately receives more than that,
+raise it in Settings → Notifications, or set `MANAGER_NOTIFICATION_DAILY_LIMIT=0` to remove the limit
+for the whole installation. Anything over the limit is not lost silently: it is listed under the
+destination as "not sent". Two migrations, both adding a nullable column.
+
+### A finding that keeps reopening emailed every time
+
+A finding resolves when the latest report no longer shows the problem, and reopens when a later one
+does. That is right, and for a setting that two reports disagree about - dev mode as a web request
+sees it against as a queue worker sees it, say - it meant one email per disagreement, around the clock.
+One site sent two an hour for as long as anybody looked.
+
+A finding now remembers when it last sent a notification, and a reopening inside 24 hours of that is
+recorded in the audit log and shown as open, but not announced again. The window is measured from the
+last notification rather than from when the finding reopened, which resets every time and would never
+have let the window pass. Set `MANAGER_NOTIFICATION_REOPEN_QUIET_HOURS` to change it, or `0` to
+announce every reopening as before.
+
+It does not make the underlying disagreement go away, and nothing here pretends to: a finding that
+flips is telling you the site reports two different things, and that is worth finding.
+
+### The same problem could be announced twice at once
+
+Two reports for one site arriving together each read the findings before either had written, so both
+saw the problem as resolved, both reopened it, and both sent the email. The read is now locked for
+the length of the evaluation.
+
+### A daily limit on each destination
+
+Each destination has its own limit, shown beside it on the Notifications page and changeable there.
+Leave it blank for the installation default, set a number for that destination, or `0` for none - a
+zero is a decision, and the default does not apply to it. `MANAGER_NOTIFICATION_DAILY_LIMIT` sets the
+default and is `20` out of the box.
+
+Counted over a rolling 24 hours, and counting only what was sent: a failed attempt delivered nothing
+and does not use any of the allowance. Being over the limit is not a failure, so it never counts
+towards the ten consecutive failures that stop a destination, and it is not retried. **Send a test**
+is exempt, since somebody testing a destination wants to know whether it is reachable and not whether
+it has been busy.
+
+There was previously no way to change a destination after adding it. The limit is the first setting
+that can be; the rest still means removing it and adding it again.
+
 ## 1.7.4 — 2026-10-02
 
 Dependencies only. No application code changed, no migrations. Run `composer install` after checking

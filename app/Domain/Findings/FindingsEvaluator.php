@@ -150,7 +150,10 @@ final class FindingsEvaluator
         $tally = ['opened' => 0, 'updated' => 0, 'resolved' => 0, 'skipped' => 0];
 
         DB::transaction(function () use ($site, $snapshot, &$tally): void {
-            $existing = $site->findings()->get()->keyBy('rule');
+            // Locked for the length of the transaction. Two reports for one site arriving together
+            // both evaluate, and without this both read "resolved", both reopen the finding and both
+            // announce it - one problem, two identical emails.
+            $existing = $site->findings()->lockForUpdate()->get()->keyBy('rule');
             $matchedRules = [];
 
             foreach ($this->rules() as $rule) {
@@ -220,7 +223,7 @@ final class FindingsEvaluator
         // Either brand new, or previously resolved and now back. A recurrence is a fresh occurrence:
         // the acknowledgement is cleared, because "we know about this" was said about a problem that
         // then went away.
-        Finding::query()->updateOrCreate(
+        $finding = Finding::query()->updateOrCreate(
             ['site_id' => $site->id, 'rule' => $rule->key()],
             [
                 'severity' => $match->severity,
@@ -255,7 +258,16 @@ final class FindingsEvaluator
         // Notified only for the severities worth interrupting somebody about. A channel that fires on
         // everything gets filtered into a folder nobody opens, at which point it looks like coverage
         // while providing none.
-        if (in_array($match->severity, [Severity::CRITICAL, Severity::HIGH], true)) {
+        //
+        // And only if it has not already said so recently. `notified_at` is deliberately not in the
+        // reset above, so it survives a reopen: a finding that resolves and reopens inside the quiet
+        // window is recorded as reopened and not announced again. Without that a setting that flips
+        // with every report - devMode seen differently by a web request and a queue worker, say - sent
+        // one email per flip, forever.
+        if (in_array($match->severity, [Severity::CRITICAL, Severity::HIGH], true)
+            && ! $this->announcedRecently($existing, $now)) {
+            $finding->forceFill(['notified_at' => $now])->save();
+
             $this->notifier->dispatch(new NotificationEvent(
                 type: $rule->key() === 'site_not_reporting'
                     ? NotificationEvent::SITE_SILENT
@@ -285,6 +297,25 @@ final class FindingsEvaluator
         }
 
         return true;
+    }
+
+    /**
+     * Whether this finding sent a notification inside the quiet window.
+     *
+     * Measured from the last notification rather than from when the finding was first seen. A finding
+     * that reopens every hour resets its first-seen date every hour, so measuring from that would
+     * never let the window elapse - and the one notification worth sending, the next day's, would
+     * never be sent.
+     */
+    private function announcedRecently(?Finding $existing, Carbon $now): bool
+    {
+        $quietHours = (int) config('manager.notifications.reopen_quiet_hours');
+
+        if ($existing?->notified_at === null || $quietHours <= 0) {
+            return false;
+        }
+
+        return $existing->notified_at->greaterThan($now->copy()->subHours($quietHours));
     }
 
     private function resolve(Site $site, Finding $finding): void

@@ -350,6 +350,15 @@ on security findings and file the rest without needing a second subscription.
 Destinations are checked before anything is sent. A webhook pointing at a private or metadata
 address is refused, for the same reason certificate checks are guarded.
 
+**There are two limits on how much a destination is sent.** Each destination has a daily limit, 20
+unless you set another, counted over a rolling 24 hours. Past it, notifications are not sent and each
+one is logged against the destination as "not sent", so a mailbox that has gone quiet is explained on
+the page that lists its deliveries rather than left to wonder about. Set it per destination in
+Settings, or `0` for no limit; a test is never held back by it. Separately, a finding that resolves
+and reopens within 24 hours of its last notification is recorded as reopened and not announced again,
+so a setting that flips between two reports does not send an email per flip. Both are in the
+[environment reference](/env#notifications).
+
 A destination that keeps failing gets stopped after ten consecutive failures. The failures stay on
 the record; a dead endpoint is just not worth a worker.
 

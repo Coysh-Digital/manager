@@ -529,6 +529,8 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
             ->name('notifications.store');
         Route::post('settings/notifications/{destination}/test', [NotificationDestinationController::class, 'test'])
             ->name('notifications.test');
+        Route::patch('settings/notifications/{destination}', [NotificationDestinationController::class, 'update'])
+            ->name('notifications.update');
         Route::delete('settings/notifications/{destination}', [NotificationDestinationController::class, 'destroy'])
             ->name('notifications.destroy');
 
