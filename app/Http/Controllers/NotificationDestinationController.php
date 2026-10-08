@@ -85,6 +85,7 @@ final class NotificationDestinationController
              | scoped to nothing would subscribe to five events and receive none of them, which is
              | a silent failure wearing the costume of a setting.
              */
+            'daily_limit' => ['nullable', 'integer', 'min:0', 'max:1000'],
             'scope' => ['nullable', 'in:all,some'],
             'sites' => ['array', 'required_if:scope,some'],
             'sites.*' => ['string', 'max:64'],
@@ -138,6 +139,10 @@ final class NotificationDestinationController
             'label' => $validated['label'],
             'target' => $validated['target'],
             'events' => array_values($validated['events']),
+
+            // Null when left blank, which means "the installation default" - not zero, which means
+            // no limit.
+            'daily_limit' => $validated['daily_limit'] ?? null,
 
             // Generated rather than asked for. A secret somebody chooses is a secret somebody reuses,
             // and the receiver only needs to be able to read it once.
@@ -201,6 +206,37 @@ final class NotificationDestinationController
         // it. Naming the reload is the honest instruction: the result appears against the
         // destination itself, which is the only place deliveries are listed.
         return back()->with('status', 'Test queued. It sends in the background - reload this page and the result appears under the destination.');
+    }
+
+    /**
+     * Change how many notifications a destination may be sent in a day.
+     *
+     * The one setting that can be changed after a destination exists. There was no edit path, so a
+     * mailbox already being flooded could only be fixed by removing it and re-adding it - losing its
+     * delivery log and, for a webhook, its signing secret.
+     */
+    public function update(Request $request, NotificationDestination $destination): RedirectResponse
+    {
+        $this->authorise($destination);
+
+        $validated = $request->validate([
+            'daily_limit' => ['nullable', 'integer', 'min:0', 'max:1000'],
+        ]);
+
+        $before = $destination->daily_limit;
+        $destination->forceFill(['daily_limit' => $validated['daily_limit'] ?? null])->save();
+
+        $this->audit->record(
+            action: 'notification_destination.updated',
+            organisation: app(Organisation::class),
+            actor: $request->user(),
+            targetType: 'notification_destination',
+            targetId: $destination->external_id,
+            before: ['daily_limit' => $before],
+            after: ['daily_limit' => $destination->daily_limit],
+        );
+
+        return back()->with('status', "Updated {$destination->label}.");
     }
 
     public function destroy(Request $request, NotificationDestination $destination): RedirectResponse

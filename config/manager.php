@@ -432,6 +432,44 @@ return [
 
     /*
     |---------------------------------------------------------------------------------------------
+    | Notifications
+    |---------------------------------------------------------------------------------------------
+    |
+    | Two limits on how much one installation can say, both on by default. An alert channel that
+    | sends everything gets filtered into a folder nobody opens, at which point it looks like
+    | coverage while providing none.
+    |
+    | Both read through `is_numeric()` rather than leaning on env()'s default argument or a `?:`
+    | chain: .env.example ships these blank, a blank key is present rather than absent, and a `?:`
+    | chain would turn a deliberate 0 - "no limit" - back into the default.
+    |
+    */
+
+    'notifications' => [
+        /*
+         | How many notifications one destination is sent in a rolling 24 hours. A destination can
+         | override it; 0 here or there means no limit.
+         |
+         | What is over the limit is still recorded in the destination's delivery log, as
+         | suppressed, so a mailbox that went quiet is explained rather than mysterious.
+        */
+        'daily_limit' => is_numeric(env('MANAGER_NOTIFICATION_DAILY_LIMIT'))
+            ? max(0, (int) env('MANAGER_NOTIFICATION_DAILY_LIMIT'))
+            : 20,
+
+        /*
+         | How long after a finding last sent a notification before it may send another. A finding
+         | that resolves and reopens inside this window is recorded as reopened and not announced
+         | again, which is what stops a setting that flips with every report from sending one email
+         | per flip. 0 announces every reopening.
+        */
+        'reopen_quiet_hours' => is_numeric(env('MANAGER_NOTIFICATION_REOPEN_QUIET_HOURS'))
+            ? max(0, (int) env('MANAGER_NOTIFICATION_REOPEN_QUIET_HOURS'))
+            : 24,
+    ],
+
+    /*
+    |---------------------------------------------------------------------------------------------
     | Diagnostics
     |---------------------------------------------------------------------------------------------
     |
