@@ -6,7 +6,7 @@ Entries are written for somebody about to upgrade a running installation. Anythi
 action is under **Before you upgrade** - that section is the one to read, and `docs/upgrade.md` points
 here for exactly that reason.
 
-## 1.8.0 — unreleased
+## 1.8.0 — 2026-10-16
 
 Two limits on how much Manager can say, and one fix for saying the same thing twice.
 
@@ -19,9 +19,8 @@ destination as "not sent". Two migrations, both adding a nullable column.
 ### A finding that keeps reopening emailed every time
 
 A finding resolves when the latest report no longer shows the problem, and reopens when a later one
-does. That is right, and for a setting that two reports disagree about - dev mode as a web request
-sees it against as a queue worker sees it, say - it meant one email per disagreement, around the clock.
-One site sent two an hour for as long as anybody looked.
+does. That is right, and for a setting that two reports disagree about it meant one email per
+disagreement, around the clock. One site sent two an hour for as long as anybody looked.
 
 A finding now remembers when it last sent a notification, and a reopening inside 24 hours of that is
 recorded in the audit log and shown as open, but not announced again. The window is measured from the

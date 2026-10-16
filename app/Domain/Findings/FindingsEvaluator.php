@@ -262,8 +262,8 @@ final class FindingsEvaluator
         // And only if it has not already said so recently. `notified_at` is deliberately not in the
         // reset above, so it survives a reopen: a finding that resolves and reopens inside the quiet
         // window is recorded as reopened and not announced again. Without that a setting that flips
-        // with every report - devMode seen differently by a web request and a queue worker, say - sent
-        // one email per flip, forever.
+        // with every report - two reports disagreeing about devMode, say - sent one email per flip,
+        // forever.
         if (in_array($match->severity, [Severity::CRITICAL, Severity::HIGH], true)
             && ! $this->announcedRecently($existing, $now)) {
             $finding->forceFill(['notified_at' => $now])->save();
