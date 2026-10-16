@@ -58,7 +58,10 @@
                     $siteUnchecked = $unchecked[$site->id] ?? [];
                 @endphp
 
-                <div class="overflow-hidden rounded-[10px] border border-border bg-surface shadow-[var(--shadow)]">
+                {{-- overflow-x-clip, not overflow-hidden: the Acknowledge popover hangs below the
+                     last row, and overflow-hidden would cut it off and take Confirm with it.
+                     Clipping sideways only keeps a long name from widening the page. --}}
+                <div class="overflow-x-clip rounded-[10px] border border-border bg-surface shadow-[var(--shadow)]">
                     <div class="flex flex-wrap items-baseline gap-x-2.5 gap-y-1.5 border-b border-border px-4 py-3">
                         <a href="{{ route('sites.security', $site) }}"
                            class="text-[14px] font-medium text-text no-underline hover:text-primary">
@@ -171,7 +174,7 @@
                          the top, because the answer differs per site and the reader is deciding about
                          one site at a time. --}}
                     @if ($siteUnchecked !== [])
-                        <p class="border-t border-border bg-surface-2 px-4 py-2.5 text-[12px] text-text-2">
+                        <p class="rounded-b-[9px] border-t border-border bg-surface-2 px-4 py-2.5 text-[12px] text-text-2">
                             {{ count($siteUnchecked) }} security {{ Str::plural('check', count($siteUnchecked)) }}
                             could not run on this site - the capability is not granted, so these are
                             unknown rather than clean:

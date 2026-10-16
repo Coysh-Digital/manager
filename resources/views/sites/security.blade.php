@@ -334,7 +334,9 @@
         @else
             <div class="flex flex-col gap-2.5">
                 @foreach ($findings as $finding)
-                    <div class="overflow-hidden rounded-[10px] border border-border bg-surface">
+                    {{-- overflow-x-clip, not overflow-hidden: the Acknowledge popover opens below
+                         the footer row and would be cut off, Confirm with it. --}}
+                    <div class="overflow-x-clip rounded-[10px] border border-border bg-surface">
                         <div class="flex flex-wrap items-baseline gap-x-2.5 gap-y-1.5 border-b border-border px-4 py-3">
                             <x-status-badge :tone="$finding->tone()" :label="Str::title($finding->severity)" />
                             <h3 class="text-[14px] font-medium">{{ $finding->title }}</h3>
@@ -350,7 +352,7 @@
                         <p class="max-w-[80ch] px-4 py-3 text-[13px] text-text-2">{{ $finding->detail }}</p>
 
                         @if ($finding->isAcknowledged() && $finding->acknowledgement_reason)
-                            <p class="border-t border-border bg-surface-2 px-4 py-2.5 text-[12.5px] text-text-2">
+                            <p class="border-t border-border bg-surface-2 px-4 py-2.5 text-[12.5px] text-text-2 last:rounded-b-[9px]">
                                 <span class="font-medium">{{ $finding->acknowledged_label }}</span>
                                 acknowledged this {{ $finding->acknowledged_at?->diffForHumans() }}:
                                 {{ $finding->acknowledgement_reason }}
