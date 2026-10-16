@@ -31,6 +31,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon $last_seen_at
  * @property Carbon|null $resolved_at
  * @property Carbon|null $acknowledged_at
+ * @property Carbon|null $notified_at
  * @property string|null $acknowledged_label
  * @property string|null $acknowledgement_reason
  */
@@ -60,6 +61,7 @@ class Finding extends Model
             'last_seen_at' => 'datetime',
             'resolved_at' => 'datetime',
             'acknowledged_at' => 'datetime',
+            'notified_at' => 'datetime',
         ];
     }
 

@@ -78,6 +78,29 @@ final class DeliverNotification implements ShouldQueue
             return;
         }
 
+        // The daily limit, checked last so it only ever withholds something that would otherwise have
+        // gone. Recorded rather than dropped: a mailbox that went quiet should be explained on the
+        // page that lists its deliveries, not discovered by somebody wondering where the alerts went.
+        //
+        // Not a failure. Nothing is thrown, so the queue does not retry it, and the failure counters
+        // are left alone, so a destination is never disabled for being busy. A test delivery is
+        // exempt for the reason it skips the subscription check above.
+        $limit = $destination->effectiveDailyLimit();
+
+        if (! $isTest && $limit !== null && $destination->sentInLastDay() >= $limit) {
+            NotificationDelivery::query()->create([
+                'notification_destination_id' => $destination->id,
+                'event' => $this->event->type,
+                'subject' => $this->event->subject,
+                'outcome' => NotificationDelivery::OUTCOME_SUPPRESSED,
+                'failure_reason' => "Daily limit of {$limit} reached",
+                'correlation_id' => $correlationId->get(),
+                'created_at' => Carbon::now(),
+            ]);
+
+            return;
+        }
+
         $result = $destination->isWebhook()
             ? $webhooks->send($destination, $this->event)
             : $emails->send($destination, $this->event);

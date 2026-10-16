@@ -8,11 +8,11 @@ the current one, which is the rollback almost everybody is actually doing:
 
 ```bash
 cd /path/to/manager
-git checkout v1.7.3
+git checkout v1.7.4
 cd deploy/docker
 
 # Put MANAGER_VERSION back too, or the interface keeps reporting the version you rolled away from.
-sed -i 's/^MANAGER_VERSION=.*/MANAGER_VERSION=1.7.3/' .env
+sed -i 's/^MANAGER_VERSION=.*/MANAGER_VERSION=1.7.4/' .env
 
 docker compose up -d --build
 docker compose exec app php artisan manager:doctor

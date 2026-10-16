@@ -32,6 +32,12 @@ class NotificationDelivery extends Model
 
     public const OUTCOME_FAILED = 'failed';
 
+    /**
+     * Withheld on purpose, not attempted and not failed: the destination was at its daily limit.
+     * Kept apart from a failure because it must not count against the destination or read as a fault.
+     */
+    public const OUTCOME_SUPPRESSED = 'suppressed';
+
     protected $guarded = [];
 
     /**
@@ -53,5 +59,10 @@ class NotificationDelivery extends Model
     public function succeeded(): bool
     {
         return $this->outcome === self::OUTCOME_SENT;
+    }
+
+    public function wasSuppressed(): bool
+    {
+        return $this->outcome === self::OUTCOME_SUPPRESSED;
     }
 }

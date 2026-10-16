@@ -194,6 +194,13 @@ Either way, "sent without error" means the relay accepted the message, not that 
 message *into an inbox* is a DNS problem as much as a relay one - Settings → Mail carries a
 deliverability checklist covering SPF, DKIM, DMARC, reverse DNS and From-address alignment.
 
+## Notifications
+
+| Variable | Default | Notes |
+|---|---|---|
+| `MANAGER_NOTIFICATION_DAILY_LIMIT` | `20` | Most notifications one destination is sent in a rolling 24 hours. Anything over is not sent and is logged against the destination as suppressed. Each destination can set its own in Settings. `0` means no limit. Blank means the default, not zero. |
+| `MANAGER_NOTIFICATION_REOPEN_QUIET_HOURS` | `24` | Hours a finding stays quiet after it last sent a notification. A finding that resolves and reopens inside that window is recorded as reopened and not announced again. `0` announces every reopening. Blank means the default, not zero. |
+
 ## Site backups
 
 Off until a keypair exists. See [backup.md](backup.md) for what a backup contains and why this is

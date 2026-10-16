@@ -27,6 +27,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $signing_secret
  * @property bool $enabled
  * @property int $consecutive_failures
+ * @property int|null $daily_limit
  * @property Carbon|null $last_delivery_at
  */
 class NotificationDestination extends Model
@@ -151,6 +152,33 @@ class NotificationDestination extends Model
     public function isDeliverable(): bool
     {
         return $this->enabled && $this->consecutive_failures < self::FAILURE_LIMIT;
+    }
+
+    /**
+     * The most this destination may be sent in a rolling day, or null for no limit.
+     *
+     * The destination's own setting wins, including a zero that means "no limit": an owner who
+     * uncapped a mailbox on purpose is not handed the installation default back.
+     */
+    public function effectiveDailyLimit(): ?int
+    {
+        $limit = $this->daily_limit ?? (int) config('manager.notifications.daily_limit');
+
+        return $limit > 0 ? $limit : null;
+    }
+
+    /**
+     * How many notifications reached this destination in the last 24 hours.
+     *
+     * Only what was sent: a failed attempt delivered nothing, and a suppressed one is the thing being
+     * counted against.
+     */
+    public function sentInLastDay(): int
+    {
+        return $this->deliveries()
+            ->where('outcome', NotificationDelivery::OUTCOME_SENT)
+            ->where('created_at', '>=', Carbon::now()->subDay())
+            ->count();
     }
 
     public function hasFailedTooOften(): bool

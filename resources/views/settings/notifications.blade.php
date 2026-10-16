@@ -59,10 +59,35 @@
                                         {{ $destination->sites->pluck('name')->join(', ') }}
                                     @endif
                                 </span>
+
+                                {{-- The limit is stated on every destination for the same reason the
+                                     scope is: "no limit" is a decision, and the one worth seeing. --}}
+                                <span class="text-[11.5px] text-text-3">
+                                    @if ($destination->effectiveDailyLimit() === null)
+                                        No daily limit
+                                    @else
+                                        Up to {{ $destination->effectiveDailyLimit() }} a day{{ $destination->daily_limit === null ? ' (installation default)' : '' }}
+                                    @endif
+                                </span>
                             </div>
 
                             @if ($membership->isOwner())
-                                <div class="flex flex-none gap-2">
+                                <div class="flex flex-none flex-wrap items-center gap-2">
+                                    <form method="POST" action="{{ route('notifications.update', $destination) }}"
+                                          class="flex items-center gap-1.5">
+                                        @csrf
+                                        @method('PATCH')
+                                        <label class="flex items-center gap-1.5 text-[12px] text-text-2">
+                                            <span>Daily limit</span>
+                                            <input type="number" name="daily_limit" min="0" max="1000"
+                                                   value="{{ $destination->daily_limit }}"
+                                                   placeholder="{{ config('manager.notifications.daily_limit') }}"
+                                                   class="h-8 w-[72px] rounded-[7px] border border-border-2 bg-surface-2 px-2 text-[12.5px] placeholder:text-text-3">
+                                        </label>
+                                        <button type="submit" class="h-8 rounded-[7px] border border-border-2 bg-surface px-3 text-[12.5px] text-text hover:bg-row-hover">
+                                            Save
+                                        </button>
+                                    </form>
                                     <form method="POST" action="{{ route('notifications.test', $destination) }}">
                                         @csrf
                                         <button type="submit" class="h-8 rounded-[7px] border border-border-2 bg-surface px-3 text-[12.5px] text-text hover:bg-row-hover">
@@ -84,10 +109,18 @@
                         @if ($destination->deliveries->isNotEmpty())
                             <div class="flex flex-col gap-1 rounded-lg bg-surface-2 px-3 py-2">
                                 @foreach ($destination->deliveries as $delivery)
-                                    <span class="font-mono text-[11px] {{ $delivery->succeeded() ? 'text-text-3' : 'text-danger' }}">
+                                    {{-- Suppressed is the destination being at its daily limit, not a
+                                         fault, so it is not drawn as one. --}}
+                                    <span class="font-mono text-[11px] {{ $delivery->succeeded() || $delivery->wasSuppressed() ? 'text-text-3' : 'text-danger' }}">
                                         {{ $delivery->created_at->diffForHumans(short: true) }} ·
                                         {{ $delivery->event }} ·
-                                        {{ $delivery->succeeded() ? 'sent' : ($delivery->failure_reason ?? 'failed') }}
+                                        @if ($delivery->succeeded())
+                                            sent
+                                        @elseif ($delivery->wasSuppressed())
+                                            not sent - {{ $delivery->failure_reason }}
+                                        @else
+                                            {{ $delivery->failure_reason ?? 'failed' }}
+                                        @endif
                                     </span>
                                 @endforeach
                             </div>
@@ -124,6 +157,14 @@
                                 <span class="text-[12.5px] font-medium">Address or HTTPS URL</span>
                                 <input type="text" name="target" required maxlength="512" placeholder="ops@example.org"
                                        class="h-[34px] w-[260px] max-w-full rounded-[7px] border border-border-2 bg-surface-2 px-2.5 font-mono text-[12.5px] placeholder:text-text-3">
+                            </label>
+
+                            <label class="flex flex-col gap-1.5">
+                                <span class="text-[12.5px] font-medium">Daily limit</span>
+                                <input type="number" name="daily_limit" min="0" max="1000"
+                                       placeholder="{{ config('manager.notifications.daily_limit') }}"
+                                       class="h-[34px] w-[90px] rounded-[7px] border border-border-2 bg-surface-2 px-2.5 text-[12.5px] placeholder:text-text-3">
+                                <span class="text-[11px] text-text-3">Blank uses the default. 0 is no limit.</span>
                             </label>
                         </div>
 

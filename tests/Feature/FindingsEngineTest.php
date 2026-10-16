@@ -5,14 +5,18 @@ declare(strict_types=1);
 use App\Domain\Findings\FindingsEvaluator;
 use App\Domain\Findings\Severity;
 use App\Domain\Inventory\InventoryIngestService;
+use App\Domain\Notifications\NotificationEvent;
+use App\Jobs\DeliverNotification;
 use App\Models\AuditEvent;
 use App\Models\CapabilityGrant;
 use App\Models\Connector;
 use App\Models\Finding;
 use App\Models\InventoryReport;
+use App\Models\NotificationDestination;
 use App\Models\Site;
 use App\Models\UpdateReport;
 use Database\Factories\InventoryReportFactory;
+use Illuminate\Support\Facades\Queue;
 
 /**
  * The findings engine.
@@ -332,4 +336,71 @@ it('assigns every rule a severity the scale defines', function (): void {
 
     // And a scale where everything drifts to "high" tells nobody anything, so check the spread.
     expect(Finding::query()->distinct()->pluck('severity'))->toHaveCount(4);
+});
+
+/**
+ * Flip dev mode on, evaluate, off, evaluate, on, evaluate - the shape of a setting that two entry
+ * points to the same site disagree about.
+ */
+function flapDevMode(object $test): void
+{
+    foreach ([true, false, true] as $on) {
+        reportInventory($test->site, ['config_flags' => ['dev_mode' => $on]]);
+        $test->evaluator->evaluate($test->site);
+    }
+}
+
+describe('notifying about a finding that reopens', function (): void {
+    beforeEach(function (): void {
+        Queue::fake();
+
+        NotificationDestination::factory()->create([
+            'organisation_id' => $this->site->organisation_id,
+            'events' => [NotificationEvent::FINDING_OPENED],
+        ]);
+    });
+
+    it('announces a finding the first time it opens and records that it did', function (): void {
+        reportInventory($this->site, ['config_flags' => ['dev_mode' => true]]);
+        $this->evaluator->evaluate($this->site);
+
+        Queue::assertPushed(DeliverNotification::class, 1);
+
+        expect(Finding::query()->firstOrFail()->notified_at)->not->toBeNull();
+    });
+
+    it('does not announce a reopening inside the quiet window, but still records it', function (): void {
+        flapDevMode($this);
+
+        // Opened, resolved, reopened. Three evaluations, one email: this is the hourly flood.
+        Queue::assertPushed(DeliverNotification::class, 1);
+
+        // The audit trail is the record of what happened, and is not thinned out to match.
+        expect(AuditEvent::query()->where('action', 'finding.opened')->count())->toBe(2)
+            ->and(Finding::query()->firstOrFail()->state)->toBe(Finding::STATE_OPEN);
+    });
+
+    it('announces a reopening once the quiet window has passed', function (): void {
+        reportInventory($this->site, ['config_flags' => ['dev_mode' => true]]);
+        $this->evaluator->evaluate($this->site);
+
+        reportInventory($this->site, ['config_flags' => ['dev_mode' => false]]);
+        $this->evaluator->evaluate($this->site);
+
+        // Measured from the last notification, not from the reopening, which resets every time.
+        Finding::query()->firstOrFail()->forceFill(['notified_at' => now()->subHours(25)])->save();
+
+        reportInventory($this->site, ['config_flags' => ['dev_mode' => true]]);
+        $this->evaluator->evaluate($this->site);
+
+        Queue::assertPushed(DeliverNotification::class, 2);
+    });
+
+    it('announces every reopening when the quiet window is zero', function (): void {
+        config(['manager.notifications.reopen_quiet_hours' => 0]);
+
+        flapDevMode($this);
+
+        Queue::assertPushed(DeliverNotification::class, 2);
+    });
 });
