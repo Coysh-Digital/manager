@@ -6,6 +6,24 @@ Entries are written for somebody about to upgrade a running installation. Anythi
 action is under **Before you upgrade** - that section is the one to read, and `docs/upgrade.md` points
 here for exactly that reason.
 
+## 1.8.1 — 2026-10-16
+
+A fix to one button. No migrations, no configuration, nothing to do on upgrade beyond the usual
+`composer install` after checking out the tag. The stylesheet is rebuilt, so a browser may need a
+hard refresh to pick it up.
+
+### Acknowledge could not be confirmed (#105)
+
+Clicking **Acknowledge** on a finding opens a field for the reason and a **Confirm** button. On the
+Security screen, a site's Security tab and Findings, the card around the list cut that popover off
+where it hung below the card, so the button was out of reach and a finding could not be acknowledged
+from those rows. Which rows were affected depended on where they sat: the last row in a card lost
+its button, and on a site's Security tab every finding did.
+
+The card now clips sideways only, so the popover shows in full, and a long domain or rule name still
+cannot widen the page. The two footers that sit against a card's bottom edge keep their rounded
+corners. A test now fails if the popover is put back inside anything that clips vertically.
+
 ## 1.8.0 — 2026-10-16
 
 Two limits on how much Manager can say, and one fix for saying the same thing twice.

@@ -90,7 +90,10 @@
                     $sharedDetail = $group->pluck('detail')->unique()->count() === 1 ? $lead->detail : null;
                 @endphp
 
-                <div class="overflow-hidden rounded-[10px] border border-border bg-surface shadow-[var(--shadow)]">
+                {{-- overflow-x-clip, not overflow-hidden: the Acknowledge popover hangs below the
+                     last row, and overflow-hidden would cut it off and take Confirm with it.
+                     Clipping sideways only keeps a long name from widening the page. --}}
+                <div class="overflow-x-clip rounded-[10px] border border-border bg-surface shadow-[var(--shadow)]">
                     <div class="flex flex-wrap items-baseline gap-x-2.5 gap-y-1.5 border-b border-border px-4 py-3">
                         <x-status-badge :tone="$lead->tone()" :label="Str::title($lead->severity)" />
                         <h2 class="text-[14px] font-medium">{{ $lead->title }}</h2>
