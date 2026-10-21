@@ -23,7 +23,7 @@ use Throwable;
  * anything, because the event was raised by the code path a silent site never reaches.
  *
  * Everything else that depends on the passage of time rather than on a report was in the same
- * position: a certificate crossing its thirty-day threshold, and every finding that should
+ * position: a certificate crossing its warning threshold, and every finding that should
  * self-resolve once the condition clears.
  *
  * Hourly, over every active site. A fleet is tens or hundreds of sites and each evaluation is a

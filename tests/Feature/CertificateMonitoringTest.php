@@ -162,6 +162,94 @@ it('escalates as expiry approaches', function (int $days, string $severity): voi
     'tomorrow' => [1, Severity::HIGH],
 ]);
 
+/*
+|--------------------------------------------------------------------------------------------------
+| The warning window
+|--------------------------------------------------------------------------------------------------
+*/
+
+it('warns thirty days out when nobody has chosen a window', function (): void {
+    $inside = ($this->site)(['certificate_expires_at' => now()->addDays(30)]);
+    $outside = ($this->site)(['certificate_expires_at' => now()->addDays(31)]);
+
+    expect((new CertificateExpiring)->evaluate(new Snapshot($inside, null, null, [])))->not->toBeNull()
+        ->and((new CertificateExpiring)->evaluate(new Snapshot($outside, null, null, [])))->toBeNull();
+});
+
+it('uses the organisation\'s own window', function (): void {
+    // Twenty days out is a Let's Encrypt certificate that is simply not due for renewal yet, which is
+    // exactly what a fourteen-day window exists to leave alone.
+    $this->organisation->forceFill(['certificate_warn_days' => 14])->save();
+
+    $notDue = ($this->site)(['certificate_expires_at' => now()->addDays(20)]);
+    $missed = ($this->site)(['certificate_expires_at' => now()->addDays(14)]);
+
+    expect((new CertificateExpiring)->evaluate(new Snapshot($notDue->fresh(), null, null, [])))->toBeNull()
+        ->and((new CertificateExpiring)->evaluate(new Snapshot($missed->fresh(), null, null, [])))->not->toBeNull();
+});
+
+it('lets a longer window warn earlier than the default', function (): void {
+    $this->organisation->forceFill(['certificate_warn_days' => 60])->save();
+
+    $site = ($this->site)(['certificate_expires_at' => now()->addDays(45)]);
+
+    expect((new CertificateExpiring)->evaluate(new Snapshot($site->fresh(), null, null, [])))
+        ->not->toBeNull();
+});
+
+it('follows the installation default for an organisation that set none', function (): void {
+    config(['manager.findings.certificate_warn_days' => 10]);
+
+    $site = ($this->site)(['certificate_expires_at' => now()->addDays(15)]);
+
+    expect((new CertificateExpiring)->evaluate(new Snapshot($site, null, null, [])))->toBeNull();
+
+    config(['manager.findings.certificate_warn_days' => 20]);
+
+    expect((new CertificateExpiring)->evaluate(new Snapshot($site->fresh(), null, null, [])))->not->toBeNull();
+});
+
+it('rates urgency at seven days, or the whole window if that is shorter', function (int $window, int $days, string $severity): void {
+    $this->organisation->forceFill(['certificate_warn_days' => $window])->save();
+
+    $site = ($this->site)(['certificate_expires_at' => now()->addDays($days)]);
+
+    $match = (new CertificateExpiring)->evaluate(new Snapshot($site->fresh(), null, null, []));
+
+    expect($match->severity)->toBe($severity);
+})->with([
+    'wide window, past a week' => [30, 8, Severity::MEDIUM],
+    'wide window, exactly a week' => [30, 7, Severity::HIGH],
+    'window of a week, at its edge' => [7, 7, Severity::HIGH],
+    'window shorter than a week, at its edge' => [3, 3, Severity::HIGH],
+    'window shorter than a week, inside it' => [3, 1, Severity::HIGH],
+    'window of two weeks, at its edge' => [14, 14, Severity::MEDIUM],
+]);
+
+it('holds the default to the range the settings form allows', function (mixed $env, int $expected): void {
+    $original = getenv('MANAGER_CERTIFICATE_WARN_DAYS');
+
+    putenv($env === null ? 'MANAGER_CERTIFICATE_WARN_DAYS' : "MANAGER_CERTIFICATE_WARN_DAYS={$env}");
+
+    try {
+        $config = require config_path('manager.php');
+    } finally {
+        $original === false
+            ? putenv('MANAGER_CERTIFICATE_WARN_DAYS')
+            : putenv("MANAGER_CERTIFICATE_WARN_DAYS={$original}");
+    }
+
+    expect($config['findings']['certificate_warn_days'])->toBe($expected);
+})->with([
+    'absent' => [null, 30],
+    // .env.example ships this line blank, and a blank key is present rather than absent.
+    'blank' => ['', 30],
+    'not a number' => ['soon', 30],
+    'a chosen value' => ['14', 14],
+    'above the ceiling' => ['365', 90],
+    'zero would warn on the day of the outage' => ['0', 1],
+]);
+
 it('reports an expired certificate as the outage it already is', function (): void {
     $site = ($this->site)(['certificate_expires_at' => now()->subDays(3)]);
 
@@ -397,4 +485,30 @@ it('says a certificate was not checked rather than showing it as passing', funct
         ->get(route('sites.security', $site))
         ->assertOk()
         ->assertSee('Not checked yet');
+});
+
+it('marks the Security tab\'s expiry on the organisation\'s own window', function (): void {
+    $site = ($this->site)([
+        'certificate_checked_at' => now(),
+        'certificate_expires_at' => now()->addDays(20),
+        'certificate_hostname_matches' => true,
+        'certificate_trusted' => true,
+        'certificate_self_signed' => false,
+        'certificate_chain_length' => 3,
+    ]);
+
+    // Nothing else on this panel is passing-but-flagged, so the one marked row is the expiry.
+    $this->organisation->forceFill(['certificate_warn_days' => 14])->save();
+
+    $this->actingAs($this->owner)
+        ->get(route('sites.security', $site))
+        ->assertOk()
+        ->assertDontSee('font-medium text-danger', false);
+
+    $this->organisation->forceFill(['certificate_warn_days' => 30])->save();
+
+    $this->actingAs($this->owner)
+        ->get(route('sites.security', $site))
+        ->assertOk()
+        ->assertSee('font-medium text-danger', false);
 });

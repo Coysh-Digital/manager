@@ -6,6 +6,42 @@ Entries are written for somebody about to upgrade a running installation. Anythi
 action is under **Before you upgrade** - that section is the one to read, and `docs/upgrade.md` points
 here for exactly that reason.
 
+## 1.9.0 — 2026-10-21
+
+You can now say how many days before a TLS certificate expires it becomes a finding, and an
+acknowledged certificate warning no longer silently covers the next certificate. One migration,
+adding a nullable column to `organisations`; nothing to do on upgrade, and every organisation keeps
+the 30-day window it had until it chooses otherwise.
+
+### Set the certificate warning window (Settings)
+
+Until now a certificate was flagged 30 days before it expired, always. A Let's Encrypt certificate
+lasts 90 days and renews itself around 30 days before the end, so under that window it was flagged on
+every renewal cycle until the renewal landed, and the finding taught people to acknowledge it
+without reading.
+
+**Settings → General → Warn about expiring certificates** takes a whole number of days from 1 to 90
+(owners only, and it asks for your password again like the other settings on that screen). A window of
+14 days flags a Let's Encrypt certificate only when a renewal has genuinely been missed. Leave it
+empty to follow the installation's default, 30, which `MANAGER_CERTIFICATE_WARN_DAYS` changes for the
+whole installation; a blank value there means 30 rather than zero. Saving writes an
+`organisation.certificate_warn_days.updated` audit event. The hourly sweep applies a new window to
+every site, so findings catch up within the hour.
+
+The finding is rated high inside seven days, or inside the whole window if that is shorter, so a
+window of 5 days does not rate a certificate as urgent before it is even a warning. The Security
+tab's Expires row and the `manager:certificates:check` output use the same window.
+
+### An acknowledgement belongs to one certificate
+
+Acknowledging a certificate warning is a statement about that certificate. A certificate that renews
+every few days is always inside the window, so its finding never resolved, and the acknowledgement
+quietly covered every certificate that came after it. When the expiry date moves while the finding
+stays open, the acknowledgement is now withdrawn, the finding goes back to open, and the audit log
+records `finding.reopened` with the reason it had been acknowledged for. Nobody is notified a second
+time: the finding never closed, so a destination has already been told about it. Acknowledging again
+is one click. No other finding is affected.
+
 ## 1.8.1 — 2026-10-16
 
 A fix to one button. No migrations, no configuration, nothing to do on upgrade beyond the usual

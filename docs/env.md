@@ -201,6 +201,12 @@ deliverability checklist covering SPF, DKIM, DMARC, reverse DNS and From-address
 | `MANAGER_NOTIFICATION_DAILY_LIMIT` | `20` | Most notifications one destination is sent in a rolling 24 hours. Anything over is not sent and is logged against the destination as suppressed. Each destination can set its own in Settings. `0` means no limit. Blank means the default, not zero. |
 | `MANAGER_NOTIFICATION_REOPEN_QUIET_HOURS` | `24` | Hours a finding stays quiet after it last sent a notification. A finding that resolves and reopens inside that window is recorded as reopened and not announced again. `0` announces every reopening. Blank means the default, not zero. |
 
+## Findings
+
+| Variable | Default | Notes |
+|---|---|---|
+| `MANAGER_CERTIFICATE_WARN_DAYS` | `30` | Days before a TLS certificate expires that it becomes a finding, for an organisation that has not set its own in Settings. Whole days from 1 to 90; anything outside is held to that range. The urgent tier is the lesser of 7 days and this value. Blank means the default. |
+
 ## Site backups
 
 Off until a keypair exists. See [backup.md](backup.md) for what a backup contains and why this is

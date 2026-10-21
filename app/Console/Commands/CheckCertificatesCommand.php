@@ -40,6 +40,10 @@ final class CheckCertificatesCommand extends Command
         $checked = 0;
         $problems = 0;
 
+        // Looked up once per organisation. cursor() does not eager load, and a sweep over a fleet
+        // should not issue a query per site to be told the same number again.
+        $windows = [];
+
         foreach ($query->cursor() as $site) {
             $reading = $inspector->inspect($site->expected_domain);
 
@@ -84,7 +88,9 @@ final class CheckCertificatesCommand extends Command
 
             $days = $reading->daysRemaining();
 
-            if ($days !== null && $days <= 30) {
+            $window = $windows[$site->organisation_id] ??= $site->organisation->certificateWarnDays();
+
+            if ($days !== null && $days <= $window) {
                 $problems++;
                 $this->line("  {$site->expected_domain}: expires in {$days} days");
             }
