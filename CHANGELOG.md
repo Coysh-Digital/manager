@@ -6,6 +6,24 @@ Entries are written for somebody about to upgrade a running installation. Anythi
 action is under **Before you upgrade** - that section is the one to read, and `docs/upgrade.md` points
 here for exactly that reason.
 
+## 1.9.1 — 2026-10-21
+
+Documentation only. No code, no migrations, no configuration, nothing to do on upgrade.
+
+### The connector page still described six cron lines
+
+Connector 1.16.0 added `php craft manager-connector/run`, one cron entry every five minutes that sends
+the heartbeat and collects work every time and runs each of the other reports when it is due. The
+connector's own documentation was updated with it, but that is not the documentation this site
+publishes: `/docs` is built from this repository, and its connector page still told people to schedule
+six separate commands and to "schedule all six".
+
+The **Scheduling** section of the connector page now leads with the single line and the `webTrigger`
+setting that goes with it, and keeps the six per-task lines as the alternative, with the warning that
+one site should use one approach or the other, since the per-task commands do not share `run`'s claims
+and the two together would send some reports twice. The console commands table gains `run`, and the
+`system` and `logins` commands it was missing.
+
 ## 1.9.0 — 2026-10-21
 
 You can now say how many days before a TLS certificate expires it becomes a finding, an acknowledged
