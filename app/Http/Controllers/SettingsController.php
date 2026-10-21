@@ -122,6 +122,54 @@ final class SettingsController
     }
 
     /**
+     * How many days before a certificate expires it becomes a finding.
+     *
+     * Blank means "follow the installation's default", and is stored as null rather than as whatever
+     * the default is today, so an organisation that never chose a number keeps following it.
+     *
+     * Nothing is re-evaluated here. The hourly sweep applies the new window to every site, and doing
+     * it inside this request would make saving a setting cost as much as the size of the fleet.
+     */
+    public function updateFindings(Request $request, Organisation $organisation): RedirectResponse
+    {
+        $this->authoriseOwner();
+
+        $validated = $request->validate([
+            'certificate_warn_days' => [
+                'nullable', 'integer',
+                'min:'.Organisation::CERTIFICATE_WARN_DAYS_MIN,
+                'max:'.Organisation::CERTIFICATE_WARN_DAYS_MAX,
+            ],
+        ]);
+
+        $was = $organisation->certificate_warn_days;
+        $now = isset($validated['certificate_warn_days']) ? (int) $validated['certificate_warn_days'] : null;
+
+        if ($was === $now) {
+            return back();
+        }
+
+        $organisation->forceFill(['certificate_warn_days' => $now])->save();
+
+        $this->audit->record(
+            action: 'organisation.certificate_warn_days.updated',
+            organisation: $organisation,
+            actor: $request->user(),
+            targetType: 'organisation',
+            targetId: $organisation->external_id,
+            before: ['certificate_warn_days' => $was],
+            after: ['certificate_warn_days' => $now],
+        );
+
+        return back()->with(
+            'status',
+            $now === null
+                ? 'Certificates will be flagged '.Organisation::defaultCertificateWarnDays().' days before they expire, the installation default. Findings catch up within the hour.'
+                : "Certificates will be flagged {$now} ".($now === 1 ? 'day' : 'days').' before they expire. Findings catch up within the hour.',
+        );
+    }
+
+    /**
      * Revoke every connector in the organisation.
      *
      * The blunt instrument, for when a platform credential is suspected of having leaked. Every site

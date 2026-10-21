@@ -147,7 +147,7 @@
                             : [
                                 $site->certificate_expires_at->toFormattedDateString()
                                     .($days === null ? '' : ' ('.($days < 0 ? 'expired' : $days.' days').')'),
-                                $days !== null && $days <= 30,
+                                $days !== null && $days <= $site->organisation->certificateWarnDays(),
                             ],
                         'Issuer' => [$site->certificate_issuer ?? 'Not determined', false],
                         'Covers this domain' => $judgement($site->certificate_hostname_matches, 'Yes', 'No'),

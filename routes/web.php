@@ -475,6 +475,7 @@ Route::middleware(['auth', 'organisation', 'second-factor'])->group(function ():
         });
 
         Route::post('settings/mfa', [SettingsController::class, 'updateMfa'])->name('settings.mfa');
+        Route::post('settings/findings', [SettingsController::class, 'updateFindings'])->name('settings.findings');
         Route::post('settings/connectors/rotate', [SettingsController::class, 'rotateAllConnectors'])
             ->name('settings.connectors.rotate');
 

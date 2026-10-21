@@ -207,7 +207,19 @@ what the arrangement above exists to avoid.
 ## TLS certificates
 
 Manager for Craft checks the certificate each site presents and warns you before it expires - thirty
-days out, then more urgently inside a week, then loudly once it has gone.
+days out by default, then more urgently inside a week, then loudly once it has gone.
+
+The warning window is yours to set, under **Settings → General → Warn about expiring certificates**
+(owners only; 1 to 90 days). A Let's Encrypt certificate lasts 90 days and renews itself around 30
+days before the end, so the default window flags it on every renewal cycle until the renewal lands.
+A window of 14 days flags it only when a renewal has actually been missed. The finding is rated high
+inside 7 days, or inside the whole window if that is shorter. Leave the field empty to follow the
+installation's default, which an operator can change with `MANAGER_CERTIFICATE_WARN_DAYS`.
+
+Acknowledging this finding covers the certificate you acknowledged. If the certificate is replaced
+while the finding is still open - which a short-lived certificate does every cycle - the
+acknowledgement is withdrawn, the finding goes back to open, and the audit log records
+`finding.reopened`. Nobody is notified a second time for it.
 
 It also checks whether a browser would accept the certificate at all, which is a separate question
 from how long it has left. Three faults are reported, and each has a different fix:

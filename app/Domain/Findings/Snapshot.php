@@ -6,6 +6,7 @@ namespace App\Domain\Findings;
 
 use App\Models\InventoryReport;
 use App\Models\LoginReport;
+use App\Models\Organisation;
 use App\Models\ProbeReport;
 use App\Models\RuntimeReport;
 use App\Models\Site;
@@ -41,6 +42,14 @@ final class Snapshot
     public function isProduction(): bool
     {
         return $this->site->environment === 'production';
+    }
+
+    /**
+     * Days before expiry that a certificate becomes a finding, for this site's organisation.
+     */
+    public function certificateWarnDays(): int
+    {
+        return $this->site->organisation?->certificateWarnDays() ?? Organisation::defaultCertificateWarnDays();
     }
 
     public function hasCapability(string $capability): bool

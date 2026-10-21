@@ -142,6 +142,62 @@
                 @endif
             </div>
 
+            {{--
+                The window for a certificate expiring. Blank follows the installation's default,
+                which is why the field is empty rather than showing a number nobody chose.
+
+                A Let's Encrypt certificate lasts ninety days and renews itself around thirty days
+                before the end, so under the default window it is flagged on every cycle until the
+                renewal lands. That is what the help text below is for.
+            --}}
+            <div class="flex flex-col gap-3 border-b border-border px-4 py-3.5">
+                <div class="flex flex-col gap-1">
+                    <span class="text-[13px] font-medium">Warn about expiring certificates</span>
+                    <span class="max-w-[70ch] text-[12.5px] text-text-2">
+                        How many days before a site's TLS certificate expires it becomes a finding.
+                        A Let's Encrypt certificate lasts 90 days and renews itself around 30 days
+                        before the end, so a window of 30 flags it on every renewal cycle; 14 flags
+                        it only when a renewal has genuinely been missed. Within 7 days, or the whole
+                        window if that is shorter, the finding is rated high.
+                    </span>
+                </div>
+
+                @if ($membership->isOwner())
+                    <form method="POST" action="{{ route('settings.findings') }}" class="flex flex-wrap items-end gap-2">
+                        @csrf
+                        <label class="flex flex-col gap-1.5">
+                            <span class="text-[12.5px]">Days before expiry (1 to {{ App\Models\Organisation::CERTIFICATE_WARN_DAYS_MAX }})</span>
+                            <input type="number" name="certificate_warn_days" inputmode="numeric"
+                                   min="{{ App\Models\Organisation::CERTIFICATE_WARN_DAYS_MIN }}"
+                                   max="{{ App\Models\Organisation::CERTIFICATE_WARN_DAYS_MAX }}" step="1"
+                                   value="{{ old('certificate_warn_days', $organisation->certificate_warn_days) }}"
+                                   placeholder="{{ App\Models\Organisation::defaultCertificateWarnDays() }}"
+                                   class="h-[34px] w-[140px] rounded-[7px] border border-border-2 bg-surface-2 px-2.5 text-[12.5px] tabular">
+                        </label>
+                        <button type="submit"
+                                class="h-[34px] whitespace-nowrap rounded-[7px] border border-border-2 bg-surface px-3.5 text-[12.5px] font-medium text-text hover:bg-row-hover">
+                            Save
+                        </button>
+                    </form>
+
+                    <span class="text-[12px] text-text-3">
+                        Leave it empty to use the installation default,
+                        {{ App\Models\Organisation::defaultCertificateWarnDays() }} days.
+                    </span>
+
+                    @error('certificate_warn_days')
+                        <span class="text-[12.5px] text-danger">{{ $message }}</span>
+                    @enderror
+                @else
+                    <span class="text-[12.5px] tabular">
+                        {{ $organisation->certificateWarnDays() }} days
+                        @if ($organisation->certificate_warn_days === null)
+                            <span class="text-text-3">(installation default)</span>
+                        @endif
+                    </span>
+                @endif
+            </div>
+
             <div class="grid grid-cols-2 gap-px bg-border sm:grid-cols-3">
                 <div class="flex flex-col gap-1 bg-surface-2 px-4 py-3">
                     <span class="font-sans text-[11.5px] uppercase tracking-[0.05em] text-text-3">Sites</span>

@@ -209,6 +209,10 @@ final class FindingsEvaluator
             // Still true. The severity, title and detail are refreshed because a rule may now have
             // more to say - a second plugin needing a security update, say - but the acknowledgement
             // and the first-seen date are left alone.
+            $reopens = $existing->isAcknowledged()
+                && $rule instanceof ResetsAcknowledgement
+                && $rule->subjectChanged($existing->evidence ?? [], $match->evidence);
+
             $existing->forceFill([
                 'severity' => $match->severity,
                 'title' => $match->title,
@@ -216,6 +220,10 @@ final class FindingsEvaluator
                 'evidence' => $match->evidence,
                 'last_seen_at' => $now,
             ])->save();
+
+            if ($reopens) {
+                $this->reopenForNewSubject($site, $rule, $existing);
+            }
 
             return false;
         }
@@ -297,6 +305,43 @@ final class FindingsEvaluator
         }
 
         return true;
+    }
+
+    /**
+     * Withdraw an acknowledgement because the finding is now about something else.
+     *
+     * Not announced. The finding never closed, so to a destination this is the same problem it has
+     * already been told about, and a short-lived certificate would otherwise send one message per
+     * renewal for as long as it kept renewing. The change shows in the audit log and, because the
+     * finding is open again, on every screen that lists the ones nobody has looked at.
+     */
+    private function reopenForNewSubject(Site $site, Rule $rule, Finding $finding): void
+    {
+        $reason = $finding->acknowledgement_reason;
+
+        $finding->forceFill([
+            'state' => Finding::STATE_OPEN,
+            'acknowledged_at' => null,
+            'acknowledged_by' => null,
+            'acknowledged_label' => null,
+            'acknowledgement_reason' => null,
+        ])->save();
+
+        $this->audit->record(
+            action: 'finding.reopened',
+            site: $site,
+            actorType: AuditEvent::ACTOR_SYSTEM,
+            actorLabel: 'Findings',
+            targetType: 'finding',
+            targetId: $rule->key(),
+            before: ['state' => Finding::STATE_ACKNOWLEDGED, 'reason' => $reason],
+            after: [
+                'state' => Finding::STATE_OPEN,
+                'title' => $finding->title,
+                'reason' => 'The certificate was renewed, so the earlier acknowledgement no longer applies.',
+                'cause' => 'subject_changed',
+            ],
+        );
     }
 
     /**

@@ -22,6 +22,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property bool $mfa_required
  * @property int $backup_keep_count
  * @property string $backup_format_floor
+ * @property int|null $certificate_warn_days
  */
 class Organisation extends Model
 {
@@ -29,6 +30,10 @@ class Organisation extends Model
 
     /** @use HasFactory<OrganisationFactory> */
     use HasFactory;
+
+    public const CERTIFICATE_WARN_DAYS_MIN = 1;
+
+    public const CERTIFICATE_WARN_DAYS_MAX = 90;
 
     /**
      * Mirrors of the column defaults, so a freshly created instance reads the same as a reloaded one.
@@ -58,7 +63,33 @@ class Organisation extends Model
     {
         return [
             'mfa_required' => 'boolean',
+            'certificate_warn_days' => 'integer',
         ];
+    }
+
+    /**
+     * The installation's window for a certificate expiring, for an organisation that set none.
+     *
+     * Clamped again here although the config clamps it, because a test or a hosting layer can set the
+     * key directly and a window of zero would hold every warning back until the day of the outage.
+     */
+    public static function defaultCertificateWarnDays(): int
+    {
+        return min(
+            self::CERTIFICATE_WARN_DAYS_MAX,
+            max(self::CERTIFICATE_WARN_DAYS_MIN, (int) config('manager.findings.certificate_warn_days', 30)),
+        );
+    }
+
+    /**
+     * How many days before a certificate expires it becomes a finding.
+     *
+     * One answer for everything that asks - the rule, the daily sweep's console output and the
+     * Security tab - so the three cannot disagree about whether a certificate is close.
+     */
+    public function certificateWarnDays(): int
+    {
+        return $this->certificate_warn_days ?? self::defaultCertificateWarnDays();
     }
 
     /**
