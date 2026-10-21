@@ -37,7 +37,7 @@
             <x-status-badge tone="warn" label="No change" />
         @endif
 
-        <span class="ml-auto font-mono text-[11.5px] text-text-3" data-backup-elapsed>
+        <span class="ml-auto text-[11.5px] text-text-3" data-backup-elapsed>
             {{ $backup->since()->diffForHumans(short: true) }} at this phase
             @if ($backup->requestedBy)
                 · requested by {{ $backup->requestedBy }}

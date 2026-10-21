@@ -92,7 +92,7 @@
             @foreach ($signposts as $signpost)
                 <a href="{{ $signpost['href'] }}"
                    class="flex flex-col gap-1 bg-surface px-4 py-3 no-underline hover:bg-row-hover">
-                    <span class="font-mono text-[10px] uppercase tracking-[0.07em] text-text-3">{{ $signpost['label'] }}</span>
+                    <span class="font-sans text-[11.5px] uppercase tracking-[0.05em] text-text-3">{{ $signpost['label'] }}</span>
                     <span class="text-[13.5px] {{ $signpost['notable'] ? 'font-medium text-amber' : 'text-text' }}">
                         {{ $signpost['value'] }}
                     </span>
@@ -114,10 +114,10 @@
             <div class="mb-6 flex flex-col gap-2">
                 @foreach ($pinned as $note)
                     <div class="flex items-start gap-3 rounded-[9px] border border-amber-line bg-amber-bg px-4 py-3">
-                        <span aria-hidden="true" class="mt-px flex h-5 w-5 flex-none items-center justify-center rounded-[5px] border border-amber-line font-mono text-[11px] text-amber">!</span>
+                        <span aria-hidden="true" class="mt-px flex h-5 w-5 flex-none items-center justify-center rounded-[5px] border border-amber-line font-mono text-[12px] text-amber">!</span>
                         <div class="flex min-w-0 flex-1 flex-col gap-1">
                             <p class="whitespace-pre-line text-[13px] leading-relaxed text-text">{{ $note->body }}</p>
-                            <span class="font-mono text-[11px] text-text-3">
+                            <span class="text-[12px] text-text-3">
                                 {{ $note->authorName() }} · {{ $note->created_at->diffForHumans() }}
                             </span>
                         </div>
@@ -238,7 +238,7 @@
                 <div class="flex items-start gap-3 border-b border-border px-4 py-3 last:border-b-0">
                     <div class="flex min-w-0 flex-1 flex-col gap-1">
                         <p class="whitespace-pre-line text-[13px] leading-relaxed">{{ $note->body }}</p>
-                        <span class="font-mono text-[11px] text-text-3">
+                        <span class="text-[12px] text-text-3">
                             {{ $note->authorName() }} · {{ $note->created_at->diffForHumans() }}
                             @if ($note->pinned) · pinned @endif
                         </span>
@@ -308,7 +308,7 @@
         <div class="overflow-hidden rounded-[10px] border border-border bg-surface">
             @forelse ($recentActivity as $event)
                 <div class="grid grid-cols-[130px_1fr_160px] items-center gap-4 border-b border-border px-4 py-2.5 text-[12.5px] last:border-b-0">
-                    <span class="font-mono text-[11.5px] text-text-3">{{ $event->created_at->diffForHumans(short: true) }}</span>
+                    <span class="text-[11.5px] text-text-3">{{ $event->created_at->diffForHumans(short: true) }}</span>
                     <span class="{{ $event->succeeded() ? '' : 'text-danger' }}">
                         {{ Str::of($event->action)->replace('.', ' ')->ucfirst() }}
                         @unless ($event->succeeded())

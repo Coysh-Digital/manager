@@ -149,7 +149,7 @@
 
                     <div class="flex flex-col gap-3 sm:flex-row">
                         <label class="flex flex-1 flex-col gap-1">
-                            <span class="font-mono text-[10.5px] uppercase tracking-[0.07em] text-text-3">Public key</span>
+                            <span class="font-sans text-[11.5px] uppercase tracking-[0.05em] text-text-3">Public key</span>
                             <textarea name="public_key" required rows="3" spellcheck="false"
                                       placeholder="-----BEGIN MANAGER RECOVERY KEY----- …"
                                       class="rounded-[7px] border border-border bg-surface px-2.5 py-2 font-mono text-[12px]">{{ old('public_key') }}</textarea>
@@ -157,7 +157,7 @@
                         </label>
 
                         <label class="flex w-full flex-col gap-1 sm:w-[180px]">
-                            <span class="font-mono text-[10.5px] uppercase tracking-[0.07em] text-text-3">Label</span>
+                            <span class="font-sans text-[11.5px] uppercase tracking-[0.05em] text-text-3">Label</span>
                             <input type="text" name="label" maxlength="120" placeholder="Ops laptop"
                                    value="{{ old('label') }}"
                                    class="h-[34px] rounded-[7px] border border-border bg-surface px-2.5 text-[13px]">

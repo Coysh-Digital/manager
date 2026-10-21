@@ -17,11 +17,11 @@
        @if ($title) title="{{ $title }}" @endif
        @class([
            'inline-flex items-center gap-1 whitespace-nowrap no-underline text-text-3 hover:text-primary',
-           'font-mono text-[11px]' => $mono,
+           'font-mono text-[12px]' => $mono,
            'text-[12px]' => ! $mono,
        ])>
         {{ $label }}
-        <span aria-hidden="true" class="text-[10px] leading-none">↗</span>
+        <span aria-hidden="true" class="text-[11.5px] leading-none">↗</span>
         <span class="sr-only">(opens in a new tab)</span>
     </a>
 @endif

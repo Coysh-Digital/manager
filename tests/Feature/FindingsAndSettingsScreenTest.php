@@ -269,6 +269,128 @@ it('lets an owner require two-factor authentication', function (): void {
         ->and(AuditEvent::query()->where('action', 'organisation.mfa.required')->exists())->toBeTrue();
 });
 
+it('lets an owner set the certificate warning window and records it', function (): void {
+    $this->actingAs($this->owner)
+        ->withSession($this->recentAuth)
+        ->post(route('settings.findings'), ['certificate_warn_days' => '14'])
+        ->assertRedirect()
+        ->assertSessionHasNoErrors();
+
+    $event = AuditEvent::query()->where('action', 'organisation.certificate_warn_days.updated')->sole();
+
+    expect($this->organisation->fresh()->certificate_warn_days)->toBe(14)
+        ->and($this->organisation->fresh()->certificateWarnDays())->toBe(14)
+        ->and($event->before)->toBe(['certificate_warn_days' => null])
+        ->and($event->after)->toBe(['certificate_warn_days' => 14])
+        ->and(session('status'))->toContain('14 days');
+});
+
+it('treats an empty window as the installation default', function (): void {
+    $this->organisation->forceFill(['certificate_warn_days' => 14])->save();
+
+    $this->actingAs($this->owner)
+        ->withSession($this->recentAuth)
+        ->post(route('settings.findings'), ['certificate_warn_days' => ''])
+        ->assertRedirect()
+        ->assertSessionHasNoErrors();
+
+    $event = AuditEvent::query()->where('action', 'organisation.certificate_warn_days.updated')->sole();
+
+    // Stored as null rather than as today's default, so the organisation keeps following it.
+    expect($this->organisation->fresh()->certificate_warn_days)->toBeNull()
+        ->and($this->organisation->fresh()->certificateWarnDays())->toBe(30)
+        ->and($event->before)->toBe(['certificate_warn_days' => 14])
+        ->and($event->after)->toBe(['certificate_warn_days' => null]);
+});
+
+it('refuses a window outside one to ninety whole days', function (mixed $value): void {
+    $this->actingAs($this->owner)
+        ->withSession($this->recentAuth)
+        ->from(route('settings.show'))
+        ->post(route('settings.findings'), ['certificate_warn_days' => $value])
+        ->assertSessionHasErrors('certificate_warn_days');
+
+    expect($this->organisation->fresh()->certificate_warn_days)->toBeNull()
+        ->and(AuditEvent::query()->where('action', 'organisation.certificate_warn_days.updated')->exists())->toBeFalse();
+})->with([
+    'zero' => ['0'],
+    'negative' => ['-5'],
+    'past the ceiling' => ['91'],
+    'a fraction' => ['14.5'],
+    'words' => ['soon'],
+]);
+
+it('accepts the ends of the range', function (string $value): void {
+    $this->actingAs($this->owner)
+        ->withSession($this->recentAuth)
+        ->post(route('settings.findings'), ['certificate_warn_days' => $value])
+        ->assertSessionHasNoErrors();
+
+    expect($this->organisation->fresh()->certificate_warn_days)->toBe((int) $value);
+})->with(['1', '90']);
+
+it('writes no audit event when the window is saved unchanged', function (): void {
+    $this->organisation->forceFill(['certificate_warn_days' => 14])->save();
+
+    $this->actingAs($this->owner)
+        ->withSession($this->recentAuth)
+        ->post(route('settings.findings'), ['certificate_warn_days' => '14'])
+        ->assertRedirect();
+
+    expect(AuditEvent::query()->where('action', 'organisation.certificate_warn_days.updated')->exists())->toBeFalse();
+});
+
+it('asks for the password again before changing the window', function (): void {
+    $this->actingAs($this->owner)
+        ->post(route('settings.findings'), ['certificate_warn_days' => '14'])
+        ->assertRedirect(route('password.confirm'));
+
+    expect($this->organisation->fresh()->certificate_warn_days)->toBeNull();
+});
+
+it('will not let a non-owner change the certificate warning window', function (): void {
+    $admin = User::factory()->create();
+    Membership::factory()->for($admin)->for($this->organisation)->admin()->create();
+
+    $this->actingAs($admin)
+        ->withSession($this->recentAuth)
+        ->post(route('settings.findings'), ['certificate_warn_days' => '14'])
+        ->assertForbidden();
+
+    expect($this->organisation->fresh()->certificate_warn_days)->toBeNull();
+});
+
+it('shows the window on the settings screen, with the form to an owner only', function (): void {
+    $this->organisation->forceFill(['certificate_warn_days' => 21])->save();
+
+    $this->actingAs($this->owner)
+        ->get(route('settings.show'))
+        ->assertOk()
+        ->assertSee('Warn about expiring certificates')
+        ->assertSee('name="certificate_warn_days"', false)
+        ->assertSee('value="21"', false);
+
+    $admin = User::factory()->create();
+    Membership::factory()->for($admin)->for($this->organisation)->admin()->create();
+
+    $this->actingAs($admin)
+        ->get(route('settings.show'))
+        ->assertOk()
+        ->assertSee('Warn about expiring certificates')
+        ->assertSee('21 days')
+        ->assertDontSee('name="certificate_warn_days"', false);
+});
+
+it('leaves another organisation\'s window alone', function (): void {
+    $other = Organisation::factory()->create(['certificate_warn_days' => 45]);
+
+    $this->actingAs($this->owner)
+        ->withSession($this->recentAuth)
+        ->post(route('settings.findings'), ['certificate_warn_days' => '7']);
+
+    expect($other->fresh()->certificate_warn_days)->toBe(45);
+});
+
 it('says how many members still need to enrol', function (): void {
     $laggard = User::factory()->create();
     Membership::factory()->for($laggard)->for($this->organisation)->create();

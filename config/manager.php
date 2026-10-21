@@ -470,6 +470,25 @@ return [
 
     /*
     |---------------------------------------------------------------------------------------------
+    | Findings
+    |---------------------------------------------------------------------------------------------
+    |
+    | How many days before a TLS certificate expires it becomes a finding, for an organisation that
+    | has not set its own in Settings. Held to 1-90 in both places: a window wider than the
+    | lifetime of a short-lived certificate flags it from the day it is issued.
+    |
+    | Read through `is_numeric()` for the same reason the limits above are: .env.example ships this
+    | blank, and a blank key is present rather than absent, so env()'s own default never applies.
+    |
+    */
+    'findings' => [
+        'certificate_warn_days' => is_numeric(env('MANAGER_CERTIFICATE_WARN_DAYS'))
+            ? min(90, max(1, (int) env('MANAGER_CERTIFICATE_WARN_DAYS')))
+            : 30,
+    ],
+
+    /*
+    |---------------------------------------------------------------------------------------------
     | Diagnostics
     |---------------------------------------------------------------------------------------------
     |

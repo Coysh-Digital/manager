@@ -24,12 +24,12 @@
                      implementation rather than from anything written down. --}}
                 <span class="flex flex-wrap items-center gap-x-2.5 gap-y-1">
                     @if ($version !== null)
-                        <span class="font-mono text-[11px] text-text-2">{{ $version }}</span>
+                        <span class="font-mono text-[12px] text-text-2">{{ $version }}</span>
                     @else
                         {{-- Unset is the normal state for a clone or a tarball: `git archive` leaves
                              no .git behind, so an installation genuinely cannot know. Saying so beats
                              printing a number somebody would quote back at us. --}}
-                        <span class="font-mono text-[11px] text-text-3" title="Set MANAGER_VERSION to record which release this is">unreleased build</span>
+                        <span class="text-[12px] text-text-3" title="Set MANAGER_VERSION to record which release this is">unreleased build</span>
                     @endif
 
                     <x-changelog-link :href="\App\Domain\Updates\ChangelogLink::manager()" label="Changelog" />
@@ -37,7 +37,7 @@
                     {{-- The same checks below, from a shell. Worth pointing at when the reader has
                          one; noise when the machine belongs to somebody else. --}}
                     @if (app(App\Contracts\ServerAccess::class)->reachable())
-                        <span class="font-mono text-[11px] text-text-3">php artisan manager:doctor</span>
+                        <span class="font-mono text-[12px] text-text-3">php artisan manager:doctor</span>
                     @endif
                 </span>
             </div>
@@ -58,7 +58,7 @@
                     <div class="flex items-start justify-between gap-4 bg-surface px-4 py-3">
                         <div class="flex min-w-0 flex-col gap-1">
                             <span class="text-[13px] font-medium">{{ $check->name }}</span>
-                            <span class="font-mono text-[11.5px] text-text-3">{{ $check->detail }}</span>
+                            <span class="text-[11.5px] text-text-3">{{ $check->detail }}</span>
                             @if ($check->remedy)
                                 <span class="mt-0.5 text-[12px] text-text-2">{{ $check->remedy }}</span>
                             @endif
@@ -142,13 +142,69 @@
                 @endif
             </div>
 
+            {{--
+                The window for a certificate expiring. Blank follows the installation's default,
+                which is why the field is empty rather than showing a number nobody chose.
+
+                A Let's Encrypt certificate lasts ninety days and renews itself around thirty days
+                before the end, so under the default window it is flagged on every cycle until the
+                renewal lands. That is what the help text below is for.
+            --}}
+            <div class="flex flex-col gap-3 border-b border-border px-4 py-3.5">
+                <div class="flex flex-col gap-1">
+                    <span class="text-[13px] font-medium">Warn about expiring certificates</span>
+                    <span class="max-w-[70ch] text-[12.5px] text-text-2">
+                        How many days before a site's TLS certificate expires it becomes a finding.
+                        A Let's Encrypt certificate lasts 90 days and renews itself around 30 days
+                        before the end, so a window of 30 flags it on every renewal cycle; 14 flags
+                        it only when a renewal has genuinely been missed. Within 7 days, or the whole
+                        window if that is shorter, the finding is rated high.
+                    </span>
+                </div>
+
+                @if ($membership->isOwner())
+                    <form method="POST" action="{{ route('settings.findings') }}" class="flex flex-wrap items-end gap-2">
+                        @csrf
+                        <label class="flex flex-col gap-1.5">
+                            <span class="text-[12.5px]">Days before expiry (1 to {{ App\Models\Organisation::CERTIFICATE_WARN_DAYS_MAX }})</span>
+                            <input type="number" name="certificate_warn_days" inputmode="numeric"
+                                   min="{{ App\Models\Organisation::CERTIFICATE_WARN_DAYS_MIN }}"
+                                   max="{{ App\Models\Organisation::CERTIFICATE_WARN_DAYS_MAX }}" step="1"
+                                   value="{{ old('certificate_warn_days', $organisation->certificate_warn_days) }}"
+                                   placeholder="{{ App\Models\Organisation::defaultCertificateWarnDays() }}"
+                                   class="h-[34px] w-[140px] rounded-[7px] border border-border-2 bg-surface-2 px-2.5 text-[12.5px] tabular">
+                        </label>
+                        <button type="submit"
+                                class="h-[34px] whitespace-nowrap rounded-[7px] border border-border-2 bg-surface px-3.5 text-[12.5px] font-medium text-text hover:bg-row-hover">
+                            Save
+                        </button>
+                    </form>
+
+                    <span class="text-[12px] text-text-3">
+                        Leave it empty to use the installation default,
+                        {{ App\Models\Organisation::defaultCertificateWarnDays() }} days.
+                    </span>
+
+                    @error('certificate_warn_days')
+                        <span class="text-[12.5px] text-danger">{{ $message }}</span>
+                    @enderror
+                @else
+                    <span class="text-[12.5px] tabular">
+                        {{ $organisation->certificateWarnDays() }} days
+                        @if ($organisation->certificate_warn_days === null)
+                            <span class="text-text-3">(installation default)</span>
+                        @endif
+                    </span>
+                @endif
+            </div>
+
             <div class="grid grid-cols-2 gap-px bg-border sm:grid-cols-3">
                 <div class="flex flex-col gap-1 bg-surface-2 px-4 py-3">
-                    <span class="font-mono text-[9.5px] uppercase tracking-[0.07em] text-text-3">Sites</span>
+                    <span class="font-sans text-[11.5px] uppercase tracking-[0.05em] text-text-3">Sites</span>
                     <span class="text-[13px] tabular">{{ $siteCount }}</span>
                 </div>
                 <div class="flex flex-col gap-1 bg-surface-2 px-4 py-3">
-                    <span class="font-mono text-[9.5px] uppercase tracking-[0.07em] text-text-3">Active connectors</span>
+                    <span class="font-sans text-[11.5px] uppercase tracking-[0.05em] text-text-3">Active connectors</span>
                     <span class="text-[13px] tabular">{{ $connectorCount }}</span>
                 </div>
             </div>
@@ -200,7 +256,7 @@
         @if ($membership->isOwner())
             <div class="overflow-hidden rounded-[10px] border border-danger-line bg-surface">
                 <div class="flex items-center gap-2.5 border-b border-danger-line bg-danger-bg px-4 py-3">
-                    <span class="flex h-[18px] w-[18px] items-center justify-center rounded-[5px] border border-danger-line font-mono text-[11px] text-danger">!</span>
+                    <span class="flex h-[18px] w-[18px] items-center justify-center rounded-[5px] border border-danger-line font-mono text-[12px] text-danger">!</span>
                     <span class="text-[13.5px] font-medium text-danger">Actions that cannot be undone</span>
                 </div>
 

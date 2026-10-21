@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Findings\Rules;
 
+use App\Domain\Findings\ResetsAcknowledgement;
 use App\Domain\Findings\Rule;
 use App\Domain\Findings\RuleCategory;
 use App\Domain\Findings\RuleMatch;
@@ -20,18 +21,27 @@ use Illuminate\Support\Carbon;
  * at the edge, so PHP on the origin sees whatever a proxy put in `$_SERVER`, which on a CDN-fronted
  * site is not the certificate a visitor validates.
  *
- * The thresholds are chosen around what an operator can do about it. Thirty days is roughly when
+ * The thresholds are chosen around what an operator can do about it. The warning window is when
  * somebody should notice that automated renewal has not happened; seven days is when it needs doing
  * today; expired is an outage that is already happening.
+ *
+ * The window is the organisation's to set, thirty days unless it says otherwise, because the right
+ * number depends on the issuer: a certificate that renews itself thirty days out is inside a
+ * thirty-day window for a day or two of every cycle, and a short window is what makes a missed
+ * renewal stand out from a renewal that is simply not due yet. The urgent tier is seven days or the
+ * whole window, whichever is smaller, so that a short window cannot rank a certificate as urgent
+ * before it is even a warning.
+ *
+ * An acknowledgement belongs to one certificate. If the expiry moves while the finding stays true,
+ * the certificate has been replaced and the acknowledgement was about the one before - see
+ * {@see ResetsAcknowledgement}.
  *
  * A site whose certificate could not be read at all is deliberately *not* a finding here. That is
  * usually DNS, a firewall, or a site that has moved, and reporting it as a certificate problem sends
  * somebody to look at the wrong thing. It shows on the site's own screen as what it is.
  */
-final class CertificateExpiring implements Rule
+final class CertificateExpiring implements ResetsAcknowledgement, Rule
 {
-    private const WARN_DAYS = 30;
-
     private const URGENT_DAYS = 7;
 
     public function key(): string
@@ -64,7 +74,9 @@ final class CertificateExpiring implements Rule
         // every healthy certificate reads as long expired and every expired one as fine.
         $days = (int) now()->startOfDay()->diffInDays($site->certificate_expires_at->startOfDay(), false);
 
-        if ($days > self::WARN_DAYS) {
+        $warnDays = $snapshot->certificateWarnDays();
+
+        if ($days > $warnDays) {
             return null;
         }
 
@@ -82,7 +94,7 @@ final class CertificateExpiring implements Rule
         }
 
         return new RuleMatch(
-            severity: $days <= self::URGENT_DAYS ? Severity::HIGH : Severity::MEDIUM,
+            severity: $days <= min(self::URGENT_DAYS, $warnDays) ? Severity::HIGH : Severity::MEDIUM,
             title: 'This site\'s TLS certificate expires soon',
             detail: sprintf(
                 'It expires in %d day%s, on %s. If renewal is automatic, it has not happened yet and '
@@ -93,6 +105,20 @@ final class CertificateExpiring implements Rule
             ),
             evidence: $this->evidence($site->certificate_expires_at, $site->certificate_issuer, $days),
         );
+    }
+
+    public function subjectChanged(array $previousEvidence, array $evidence): bool
+    {
+        $before = $previousEvidence['expires_at'] ?? null;
+        $after = $evidence['expires_at'] ?? null;
+
+        if (! is_string($before) || ! is_string($after)) {
+            return false;
+        }
+
+        // Compared as instants rather than as strings, so a reformatted timestamp for the same
+        // expiry is not mistaken for a replacement certificate.
+        return Carbon::parse($before)->ne(Carbon::parse($after));
     }
 
     /**

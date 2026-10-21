@@ -74,7 +74,7 @@ export function toast(message, tone = 'ok', action = null) {
     // The glyph is here for the reason the status badge carries one: state is never left to hue
     // alone. aria-hidden because the region already announces the tone through its own role.
     const glyph = document.createElement('span');
-    glyph.className = 'mt-px font-mono text-[11px] leading-none';
+    glyph.className = 'mt-px font-mono text-[12px] leading-none';
     glyph.setAttribute('aria-hidden', 'true');
     glyph.textContent = spec.glyph;
 

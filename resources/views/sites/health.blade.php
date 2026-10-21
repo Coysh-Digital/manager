@@ -45,7 +45,7 @@
             <div class="overflow-hidden rounded-[10px] border border-border bg-surface">
                 <div class="flex flex-wrap items-center gap-x-10 gap-y-4 border-b border-border px-4 py-3.5">
                     <div class="flex flex-col gap-1">
-                        <span class="font-mono text-[10px] uppercase tracking-[0.07em] text-text-3">Reporting</span>
+                        <span class="font-sans text-[11.5px] uppercase tracking-[0.05em] text-text-3">Reporting</span>
                         <div class="flex items-center gap-2.5">
                             <span class="text-[20px] font-semibold tabular tracking-[-0.01em]">{{ $uptime->availabilityLabel() }}</span>
                             @if ($uptime->isCurrentlySilent())
@@ -68,7 +68,7 @@
 
                     @foreach ($figures as $label => [$value, $explanation])
                         <div class="flex flex-col gap-1">
-                            <span class="font-mono text-[10px] uppercase tracking-[0.07em] text-text-3"
+                            <span class="font-sans text-[11.5px] uppercase tracking-[0.05em] text-text-3"
                                   @if ($explanation) title="{{ $explanation }}" @endif>{{ $label }}</span>
                             <span class="font-mono text-[13px] tabular">{{ $value }}</span>
                         </div>
@@ -232,7 +232,7 @@
                 <dl class="grid grid-cols-2 gap-x-10 gap-y-2.5 px-4 py-3.5 text-[12.5px] sm:grid-cols-4">
                     @foreach ($timings as $label => [$value, $notable])
                         <div class="flex flex-col gap-1">
-                            <dt class="font-mono text-[10px] uppercase tracking-[0.07em] text-text-3">{{ $label }}</dt>
+                            <dt class="font-sans text-[11.5px] uppercase tracking-[0.05em] text-text-3">{{ $label }}</dt>
                             <dd class="font-mono text-[14px] tabular {{ $notable ? 'text-amber' : '' }}">
                                 {{ $value === null ? '-' : number_format((float) $value, 0).' ms' }}
                             </dd>
@@ -300,7 +300,7 @@
 
                     @foreach ($diskFigures as $label => [$value, $notable])
                         <div class="flex flex-col gap-1">
-                            <span class="font-mono text-[10px] uppercase tracking-[0.07em] text-text-3">{{ $label }}</span>
+                            <span class="font-sans text-[11.5px] uppercase tracking-[0.05em] text-text-3">{{ $label }}</span>
                             <span class="font-mono text-[13px] tabular {{ $notable ? 'font-medium text-amber' : '' }}">{{ $value }}</span>
                         </div>
                     @endforeach
@@ -317,7 +317,7 @@
                                          connector sends system.v1, which cannot say, and a column of
                                          em-dashes teaches people to ignore a column. --}}
                                     @foreach ($showsLocation ? ['Volume', 'Where', 'Size', 'Files'] : ['Volume', 'Size', 'Files'] as $heading)
-                                        <th class="whitespace-nowrap border-b border-border px-3 py-2 text-left font-mono text-[10px] font-medium uppercase tracking-[0.07em] text-text-3 {{ $loop->first ? 'pl-3.5' : '' }}">
+                                        <th class="whitespace-nowrap border-b border-border px-3 py-2 text-left font-sans text-[11.5px] font-medium uppercase tracking-[0.05em] text-text-3 {{ $loop->first ? 'pl-3.5' : '' }}">
                                             {{ $heading }}
                                         </th>
                                     @endforeach

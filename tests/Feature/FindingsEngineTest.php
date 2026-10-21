@@ -179,7 +179,7 @@ it('does not report configuration findings outside production', function (): voi
     Connector::factory()->for($staging)->create();
     CapabilityGrant::factory()->for($staging)->capability('security:read')->create();
 
-    reportInventory($staging, ['config_flags' => ['dev_mode' => true, 'allow_admin_changes' => true]]);
+    reportInventory($staging, ['config_flags' => ['dev_mode' => true]]);
 
     $this->evaluator->evaluate($staging);
 
@@ -295,6 +295,12 @@ it('audits a finding opening and resolving', function (): void {
 
     expect($actions)->toContain('finding.opened')
         ->and($actions)->toContain('finding.resolved');
+
+    // The title rides along so the audit log can say which finding without a join that stops
+    // working once the finding is reopened under a different title.
+    $resolved = AuditEvent::query()->where('action', 'finding.resolved')->firstOrFail();
+
+    expect($resolved->after['title'])->toBe(Finding::query()->where('rule', 'dev_mode_in_production')->value('title'));
 });
 
 it('evaluates automatically when a report arrives', function (): void {
@@ -402,5 +408,108 @@ describe('notifying about a finding that reopens', function (): void {
         flapDevMode($this);
 
         Queue::assertPushed(DeliverNotification::class, 2);
+    });
+});
+
+describe('an acknowledged certificate warning', function (): void {
+    beforeEach(function (): void {
+        Queue::fake();
+
+        NotificationDestination::factory()->create([
+            'organisation_id' => $this->site->organisation_id,
+            'events' => [NotificationEvent::FINDING_OPENED],
+        ]);
+
+        $this->site->forceFill(['certificate_expires_at' => now()->addDays(5)->startOfSecond()])->save();
+        $this->evaluator->evaluate($this->site);
+
+        $this->acknowledge = function (): void {
+            Finding::query()->where('rule', 'certificate_expiring')->firstOrFail()->forceFill([
+                'state' => Finding::STATE_ACKNOWLEDGED,
+                'acknowledged_at' => now(),
+                'acknowledged_label' => 'Tim Coysh',
+                'acknowledgement_reason' => 'Renewal is scheduled for Friday',
+            ])->save();
+        };
+    });
+
+    it('keeps the acknowledgement while the same certificate is still expiring', function (): void {
+        ($this->acknowledge)();
+
+        $this->evaluator->evaluate($this->site->fresh());
+
+        $finding = Finding::query()->where('rule', 'certificate_expiring')->firstOrFail();
+
+        expect($finding->state)->toBe(Finding::STATE_ACKNOWLEDGED)
+            ->and($finding->acknowledgement_reason)->toBe('Renewal is scheduled for Friday')
+            ->and(AuditEvent::query()->where('action', 'finding.reopened')->exists())->toBeFalse();
+    });
+
+    it('withdraws the acknowledgement when the certificate is replaced by another that is also expiring', function (): void {
+        ($this->acknowledge)();
+
+        $before = Finding::query()->where('rule', 'certificate_expiring')->firstOrFail();
+
+        // A renewal that is itself inside the window: the finding never resolved, so without this the
+        // acknowledgement would go on covering a certificate nobody has looked at.
+        $this->site->forceFill(['certificate_expires_at' => now()->addDays(6)->startOfSecond()])->save();
+        $this->evaluator->evaluate($this->site->fresh());
+
+        $finding = Finding::query()->where('rule', 'certificate_expiring')->firstOrFail();
+
+        expect($finding->state)->toBe(Finding::STATE_OPEN)
+            ->and($finding->acknowledged_at)->toBeNull()
+            ->and($finding->acknowledged_label)->toBeNull()
+            ->and($finding->acknowledgement_reason)->toBeNull()
+            // Still the same occurrence, not a new one: how long this has been true is kept.
+            ->and($finding->id)->toBe($before->id)
+            ->and($finding->first_seen_at->timestamp)->toBe($before->first_seen_at->timestamp)
+            ->and($finding->evidence['expires_at'])->toBe($this->site->fresh()->certificate_expires_at->toIso8601String());
+
+        $event = AuditEvent::query()->where('action', 'finding.reopened')->sole();
+
+        expect($event->target_id)->toBe('certificate_expiring')
+            ->and($event->before['state'])->toBe(Finding::STATE_ACKNOWLEDGED)
+            // The words somebody wrote are kept in the trail even though the finding forgets them.
+            ->and($event->before['reason'])->toBe('Renewal is scheduled for Friday')
+            ->and($event->after['state'])->toBe(Finding::STATE_OPEN)
+            ->and($event->after['title'])->toBe($finding->title)
+            ->and($event->after['reason'])->toContain('no longer applies');
+    });
+
+    it('says nothing to a destination when it does', function (): void {
+        ($this->acknowledge)();
+
+        Queue::assertPushed(DeliverNotification::class, 1);
+
+        $this->site->forceFill(['certificate_expires_at' => now()->addDays(6)->startOfSecond()])->save();
+        $this->evaluator->evaluate($this->site->fresh());
+
+        // The one sent when it first opened, and nothing since.
+        Queue::assertPushed(DeliverNotification::class, 1);
+    });
+
+    it('does not do this for a finding nobody acknowledged', function (): void {
+        $this->site->forceFill(['certificate_expires_at' => now()->addDays(6)->startOfSecond()])->save();
+        $this->evaluator->evaluate($this->site->fresh());
+
+        expect(AuditEvent::query()->where('action', 'finding.reopened')->exists())->toBeFalse();
+    });
+
+    it('leaves the acknowledgement of a rule that does not ask for this alone', function (): void {
+        reportInventory($this->site, ['config_flags' => ['dev_mode' => true]]);
+        $this->evaluator->evaluate($this->site);
+
+        Finding::query()->where('rule', 'dev_mode_in_production')->firstOrFail()->forceFill([
+            'state' => Finding::STATE_ACKNOWLEDGED,
+            'acknowledged_at' => now(),
+            'acknowledgement_reason' => 'Deliberate here',
+        ])->save();
+
+        reportInventory($this->site, ['config_flags' => ['dev_mode' => true]]);
+        $this->evaluator->evaluate($this->site);
+
+        expect(Finding::query()->where('rule', 'dev_mode_in_production')->firstOrFail()->state)
+            ->toBe(Finding::STATE_ACKNOWLEDGED);
     });
 });

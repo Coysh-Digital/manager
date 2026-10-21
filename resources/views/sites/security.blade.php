@@ -26,7 +26,7 @@
             @else
                 <div class="flex flex-wrap items-start gap-x-10 gap-y-4 border-b border-border px-4 py-3.5">
                     <div class="flex flex-col gap-1">
-                        <span class="font-mono text-[10px] uppercase tracking-[0.07em] text-text-3">Key fingerprint</span>
+                        <span class="font-sans text-[11.5px] uppercase tracking-[0.05em] text-text-3">Key fingerprint</span>
                         {{-- The full public key is not a secret, but printing it invites pasting it
                              around as though it were meaningful. A fingerprint is for the one thing
                              anybody does with it: checking whether two of them match. --}}
@@ -34,19 +34,19 @@
                     </div>
 
                     <div class="flex flex-col gap-1">
-                        <span class="font-mono text-[10px] uppercase tracking-[0.07em] text-text-3">Key age</span>
+                        <span class="font-sans text-[11.5px] uppercase tracking-[0.05em] text-text-3">Key age</span>
                         <span class="font-mono text-[13px] tabular">
                             {{ $trust['keyAgeDays'] === null ? '-' : $trust['keyAgeDays'].' days' }}
                         </span>
                     </div>
 
                     <div class="flex flex-col gap-1">
-                        <span class="font-mono text-[10px] uppercase tracking-[0.07em] text-text-3">Paired</span>
+                        <span class="font-sans text-[11.5px] uppercase tracking-[0.05em] text-text-3">Paired</span>
                         <span class="text-[13px]">{{ $trust['connector']->paired_at?->diffForHumans() ?? '-' }}</span>
                     </div>
 
                     <div class="flex flex-col gap-1">
-                        <span class="font-mono text-[10px] uppercase tracking-[0.07em] text-text-3">Rotated</span>
+                        <span class="font-sans text-[11.5px] uppercase tracking-[0.05em] text-text-3">Rotated</span>
                         <span class="text-[13px]">{{ $trust['connector']->key_rotated_at?->diffForHumans() ?? 'never' }}</span>
                     </div>
 
@@ -63,7 +63,7 @@
                             <thead>
                                 <tr class="bg-surface-2">
                                     @foreach (['Source address', 'First seen', 'Last seen', 'Check-ins'] as $heading)
-                                        <th class="whitespace-nowrap border-b border-border px-3 py-2 text-left font-mono text-[10px] font-medium uppercase tracking-[0.07em] text-text-3 {{ $loop->first ? 'pl-3.5' : '' }}">
+                                        <th class="whitespace-nowrap border-b border-border px-3 py-2 text-left font-sans text-[11.5px] font-medium uppercase tracking-[0.05em] text-text-3 {{ $loop->first ? 'pl-3.5' : '' }}">
                                             {{ $heading }}
                                         </th>
                                     @endforeach
@@ -147,7 +147,7 @@
                             : [
                                 $site->certificate_expires_at->toFormattedDateString()
                                     .($days === null ? '' : ' ('.($days < 0 ? 'expired' : $days.' days').')'),
-                                $days !== null && $days <= 30,
+                                $days !== null && $days <= $site->organisation->certificateWarnDays(),
                             ],
                         'Issuer' => [$site->certificate_issuer ?? 'Not determined', false],
                         'Covers this domain' => $judgement($site->certificate_hostname_matches, 'Yes', 'No'),
@@ -345,8 +345,8 @@
                                 <x-status-badge tone="info" label="Acknowledged" />
                             @endif
 
-                            <span class="font-mono text-[11px] text-text-3">first seen {{ $finding->age() }} ago</span>
-                            <span class="ml-auto font-mono text-[11px] text-text-3">{{ $finding->rule }}</span>
+                            <span class="text-[12px] text-text-3">first seen {{ $finding->age() }} ago</span>
+                            <span class="ml-auto font-mono text-[12px] text-text-3">{{ $finding->rule }}</span>
                         </div>
 
                         <p class="max-w-[80ch] px-4 py-3 text-[13px] text-text-2">{{ $finding->detail }}</p>
@@ -637,19 +637,48 @@
         @endif
 
         @if ($resolved->isNotEmpty())
-            <h2 class="mb-2.5 mt-6 text-[13.5px] font-semibold">Recently resolved</h2>
+            <div class="mb-2.5 mt-6 flex flex-wrap items-baseline justify-between gap-4">
+                <h2 class="text-[13.5px] font-semibold">{{ $showHistory ? 'Resolved findings' : 'Recently resolved' }}</h2>
+
+                @if ($showHistory)
+                    <a href="{{ route('sites.security', $site) }}" class="text-[12.5px] text-primary hover:text-primary-hover">
+                        Show recent only
+                    </a>
+                @elseif ($resolvedTotal > $resolved->count())
+                    <a href="{{ route('sites.security', [$site, 'history' => 'all']) }}" class="text-[12.5px] text-primary hover:text-primary-hover">
+                        Show all {{ $resolvedTotal }}
+                    </a>
+                @endif
+            </div>
 
             <div class="overflow-hidden rounded-[10px] border border-border bg-surface">
                 @foreach ($resolved as $finding)
-                    <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-border px-4 py-2.5 text-[12.5px] last:border-b-0">
-                        <x-status-badge tone="ok" label="Resolved" />
-                        <span>{{ $finding->title }}</span>
-                        <span class="ml-auto font-mono text-[11px] text-text-3">
-                            {{ $finding->resolved_at?->diffForHumans(short: true) }}
-                        </span>
+                    <div class="border-b border-border px-4 py-2.5 text-[12.5px] last:border-b-0">
+                        <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                            <x-status-badge tone="ok" label="Resolved" />
+                            <span>{{ $finding->title }}</span>
+                            <x-status-badge :tone="$finding->tone()" :label="Str::title($finding->severity)" />
+                            <span class="ml-auto text-[12px] text-text-3">
+                                {{ $finding->resolved_at?->diffForHumans(short: true) }}
+                            </span>
+                        </div>
+
+                        {{-- Survives resolution on purpose: it is the answer to "who decided this could
+                             wait, and why" for a problem that has since gone away. --}}
+                        @if ($finding->acknowledged_at !== null && $finding->acknowledgement_reason)
+                            <p class="mt-1 max-w-[80ch] text-text-2">
+                                <span class="font-medium">{{ $finding->acknowledged_label }}</span>
+                                acknowledged this {{ $finding->acknowledged_at->diffForHumans() }}:
+                                {{ $finding->acknowledgement_reason }}
+                            </p>
+                        @endif
                     </div>
                 @endforeach
             </div>
+
+            @if ($showHistory && $resolved->hasPages())
+                <div class="mt-3">{{ $resolved->links() }}</div>
+            @endif
         @endif
     </div>
 @endsection

@@ -64,16 +64,16 @@
                         @endif
 
                         @if ($capability['readOnly'])
-                            <span class="rounded-[5px] border border-border px-1.5 py-0.5 font-mono text-[11px] text-text-2">Read-only</span>
+                            <span class="rounded-[5px] border border-border px-1.5 py-0.5 text-[12px] text-text-2">Read-only</span>
                         @else
-                            <span class="rounded-[5px] border border-danger-line bg-danger-bg px-1.5 py-0.5 font-mono text-[11px] text-danger">Modifies the site</span>
+                            <span class="rounded-[5px] border border-danger-line bg-danger-bg px-1.5 py-0.5 text-[12px] text-danger">Modifies the site</span>
                         @endif
 
                         @unless ($capability['grantable'])
                             {{-- Not offered as a switch. Either the connector cannot do it yet, or it
                                  modifies the site and needs its own confirmation flow - a toggle
                                  beside the read switches would understate what granting it means. --}}
-                            <span class="rounded-[5px] border border-info-line bg-info-bg px-1.5 py-0.5 font-mono text-[11px] text-info">
+                            <span class="rounded-[5px] border border-info-line bg-info-bg px-1.5 py-0.5 text-[12px] text-info">
                                 {{ $capability['readOnly'] ? 'Not yet available' : 'Needs separate confirmation' }}
                             </span>
                         @endunless
@@ -177,7 +177,7 @@
     <div class="mt-2.5 overflow-hidden rounded-[10px] border border-border bg-surface">
         @forelse ($history as $event)
             <div class="grid grid-cols-[130px_1fr_150px] items-center gap-4 border-b border-border px-4 py-2.5 text-[12.5px] last:border-b-0">
-                <span class="font-mono text-[11.5px] text-text-3">{{ $event->created_at->diffForHumans(short: true) }}</span>
+                <span class="text-[11.5px] text-text-3">{{ $event->created_at->diffForHumans(short: true) }}</span>
                 <span>
                     <code class="font-mono text-[12px]">{{ $event->capability }}</code>
                     {{ $event->previous_state ? Str::of($event->previous_state)->append(' → ') : '' }}{{ $event->new_state }}

@@ -107,7 +107,7 @@ final class FindingController
             targetType: 'finding',
             targetId: $finding->rule,
             before: ['state' => Finding::STATE_OPEN],
-            after: ['state' => Finding::STATE_ACKNOWLEDGED, 'reason' => $validated['reason']],
+            after: ['state' => Finding::STATE_ACKNOWLEDGED, 'title' => $finding->title, 'reason' => $validated['reason']],
         );
 
         // Recounted, because an acknowledged finding is still outstanding and the site summary has to
@@ -138,7 +138,7 @@ final class FindingController
             actor: $request->user(),
             targetType: 'finding',
             targetId: $finding->rule,
-            after: ['state' => Finding::STATE_OPEN],
+            after: ['state' => Finding::STATE_OPEN, 'title' => $finding->title],
         );
 
         return back()->with('status', 'Acknowledgement withdrawn.');
