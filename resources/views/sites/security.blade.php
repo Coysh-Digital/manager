@@ -637,19 +637,48 @@
         @endif
 
         @if ($resolved->isNotEmpty())
-            <h2 class="mb-2.5 mt-6 text-[13.5px] font-semibold">Recently resolved</h2>
+            <div class="mb-2.5 mt-6 flex flex-wrap items-baseline justify-between gap-4">
+                <h2 class="text-[13.5px] font-semibold">{{ $showHistory ? 'Resolved findings' : 'Recently resolved' }}</h2>
+
+                @if ($showHistory)
+                    <a href="{{ route('sites.security', $site) }}" class="text-[12.5px] text-primary hover:text-primary-hover">
+                        Show recent only
+                    </a>
+                @elseif ($resolvedTotal > $resolved->count())
+                    <a href="{{ route('sites.security', [$site, 'history' => 'all']) }}" class="text-[12.5px] text-primary hover:text-primary-hover">
+                        Show all {{ $resolvedTotal }}
+                    </a>
+                @endif
+            </div>
 
             <div class="overflow-hidden rounded-[10px] border border-border bg-surface">
                 @foreach ($resolved as $finding)
-                    <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-border px-4 py-2.5 text-[12.5px] last:border-b-0">
-                        <x-status-badge tone="ok" label="Resolved" />
-                        <span>{{ $finding->title }}</span>
-                        <span class="ml-auto font-mono text-[11px] text-text-3">
-                            {{ $finding->resolved_at?->diffForHumans(short: true) }}
-                        </span>
+                    <div class="border-b border-border px-4 py-2.5 text-[12.5px] last:border-b-0">
+                        <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                            <x-status-badge tone="ok" label="Resolved" />
+                            <span>{{ $finding->title }}</span>
+                            <x-status-badge :tone="$finding->tone()" :label="Str::title($finding->severity)" />
+                            <span class="ml-auto font-mono text-[11px] text-text-3">
+                                {{ $finding->resolved_at?->diffForHumans(short: true) }}
+                            </span>
+                        </div>
+
+                        {{-- Survives resolution on purpose: it is the answer to "who decided this could
+                             wait, and why" for a problem that has since gone away. --}}
+                        @if ($finding->acknowledged_at !== null && $finding->acknowledgement_reason)
+                            <p class="mt-1 max-w-[80ch] text-text-2">
+                                <span class="font-medium">{{ $finding->acknowledged_label }}</span>
+                                acknowledged this {{ $finding->acknowledged_at->diffForHumans() }}:
+                                {{ $finding->acknowledgement_reason }}
+                            </p>
+                        @endif
                     </div>
                 @endforeach
             </div>
+
+            @if ($showHistory && $resolved->hasPages())
+                <div class="mt-3">{{ $resolved->links() }}</div>
+            @endif
         @endif
     </div>
 @endsection

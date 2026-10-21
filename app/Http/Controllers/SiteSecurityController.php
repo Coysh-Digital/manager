@@ -11,6 +11,8 @@ use App\Models\Finding;
 use App\Models\Membership;
 use App\Models\Site;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Http\Request;
 
 /**
  * One site's security posture: what is wrong with it, and what has not been looked at.
@@ -29,8 +31,12 @@ final class SiteSecurityController
         private readonly SitePosture $posture,
     ) {}
 
-    public function show(Site $site): View
+    public function show(Request $request, Site $site): View
     {
+        $showHistory = $request->query('history') === 'all';
+
+        $resolved = $site->findings()->where('state', Finding::STATE_RESOLVED);
+
         $context = $this->siteContext($site);
         $granted = $site->grantedCapabilities();
 
@@ -65,18 +71,32 @@ final class SiteSecurityController
             // as an all-clear.
             'probe' => $site->probeReports()->latest('probed_at')->first(),
 
-            // A short tail of what has been fixed. Not a history - five rows, so that a screen
-            // showing nothing outstanding still shows evidence that something ever ran.
-            'resolved' => $site->findings()
-                ->where('state', Finding::STATE_RESOLVED)
-                ->latest('resolved_at')
-                ->limit(5)
-                ->get(),
+            // What has been fixed. A short tail by default, so that a screen showing nothing
+            // outstanding still shows evidence that something ever ran; `?history=all` pages through
+            // the lot. The acknowledgement columns survive resolution, which is what lets a closed
+            // finding still say who accepted it and why.
+            'resolved' => $showHistory
+                ? $this->resolvedOrdered($resolved)->paginate(25)->withQueryString()
+                : $this->resolvedOrdered($resolved)->limit(5)->get(),
+            'resolvedTotal' => $resolved->count(),
+            'showHistory' => $showHistory,
             'latestReport' => $this->latestInventoryReport($site),
             'updateReport' => $this->latestUpdateReport($site),
             'unchecked' => $unchecked,
             'loginReport' => $this->latestLoginReport($site),
             'canAcknowledge' => app(Membership::class)->canAdminister(),
         ]);
+    }
+
+    /**
+     * Newest first, with the id breaking ties so a page boundary cannot repeat or drop a finding
+     * resolved in the same second.
+     *
+     * @param  HasMany<Finding, Site>  $resolved
+     * @return HasMany<Finding, Site>
+     */
+    private function resolvedOrdered(HasMany $resolved): HasMany
+    {
+        return (clone $resolved)->latest('resolved_at')->latest('id');
     }
 }
