@@ -227,16 +227,38 @@ it('rates urgency at seven days, or the whole window if that is shorter', functi
 ]);
 
 it('holds the default to the range the settings form allows', function (mixed $env, int $expected): void {
-    $original = getenv('MANAGER_CERTIFICATE_WARN_DAYS');
+    $name = 'MANAGER_CERTIFICATE_WARN_DAYS';
 
-    putenv($env === null ? 'MANAGER_CERTIFICATE_WARN_DAYS' : "MANAGER_CERTIFICATE_WARN_DAYS={$env}");
+    // env() reads $_ENV and $_SERVER before it reads the process environment, and a .env copied
+    // from .env.example puts this key in both of them, blank. Setting putenv() alone is therefore
+    // ignored on exactly the checkouts that have the blank line, which is every CI run.
+    $set = static function (?string $value) use ($name): void {
+        if ($value === null) {
+            putenv($name);
+            unset($_ENV[$name], $_SERVER[$name]);
+
+            return;
+        }
+
+        putenv("{$name}={$value}");
+        $_ENV[$name] = $_SERVER[$name] = $value;
+    };
+
+    $process = getenv($name);
+    $hadEnv = array_key_exists($name, $_ENV);
+    $hadServer = array_key_exists($name, $_SERVER);
+    $inEnv = $_ENV[$name] ?? null;
+    $inServer = $_SERVER[$name] ?? null;
+
+    $set($env);
 
     try {
         $config = require config_path('manager.php');
     } finally {
-        $original === false
-            ? putenv('MANAGER_CERTIFICATE_WARN_DAYS')
-            : putenv("MANAGER_CERTIFICATE_WARN_DAYS={$original}");
+        $set($process === false ? null : $process);
+
+        $hadEnv ? $_ENV[$name] = $inEnv : $_ENV = array_diff_key($_ENV, [$name => true]);
+        $hadServer ? $_SERVER[$name] = $inServer : $_SERVER = array_diff_key($_SERVER, [$name => true]);
     }
 
     expect($config['findings']['certificate_warn_days'])->toBe($expected);
