@@ -8,9 +8,10 @@ here for exactly that reason.
 
 ## 1.8.2 — 2026-10-21
 
-A fix to one screen. No migrations, no configuration, nothing to do on upgrade beyond the usual
-`composer install` after checking out the tag. The stylesheet is rebuilt, so a browser may need a
-hard refresh to pick it up.
+The Activity log now says which site it is filtered to, and the front-end build tools are updated past
+four published advisories. No migrations, no configuration, nothing to do on upgrade beyond the usual
+`composer install` after checking out the tag. The stylesheet and script are rebuilt, so a browser may
+need a hard refresh to pick them up.
 
 ### The activity log now shows which site it is filtered to
 
@@ -23,6 +24,18 @@ The Activity log now has a **Site** filter beside the outcome one, set to the si
 a note beside the filters reading "Showing activity for" that site. Applying either filter keeps the
 other. The list offers only your own organisation's sites, and an address that matches none of them
 says so rather than showing an empty log as though nothing had happened.
+
+### The build tools had known advisories
+
+`npm audit` reported four, two high and two critical, in `vite`, `concurrently`, `shell-quote` and
+`source-map-js`. All four are development tools that build the stylesheet and script: none is part of
+what an installation runs, and `public/build` is committed precisely so that a deployment needs no
+Node. They were still in the tree the project is built from, and the *Supply chain* check on the
+repository had been red for it.
+
+The lockfile now resolves each past its fix, within the version ranges `package.json` already allowed,
+so `package.json` itself is unchanged. Vite's bundler moved with it, which is why the compiled
+stylesheet and script have new file names; their content is the same.
 
 ## 1.8.1 — 2026-10-16
 
