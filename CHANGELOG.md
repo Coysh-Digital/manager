@@ -6,6 +6,24 @@ Entries are written for somebody about to upgrade a running installation. Anythi
 action is under **Before you upgrade** - that section is the one to read, and `docs/upgrade.md` points
 here for exactly that reason.
 
+## 1.8.2 — 2026-10-21
+
+A fix to one screen. No migrations, no configuration, nothing to do on upgrade beyond the usual
+`composer install` after checking out the tag. The stylesheet is rebuilt, so a browser may need a
+hard refresh to pick it up.
+
+### The activity log now shows which site it is filtered to
+
+A site's Audit page links to **Open in the fleet log**, which opens the Activity log for that site
+alone. Nothing on the Activity log said so: the page looked like the whole fleet's history, and the
+only filter it offered was the outcome. Pressing **Apply** on that filter then dropped the site and
+quietly widened the log to every site.
+
+The Activity log now has a **Site** filter beside the outcome one, set to the site you came from, and
+a note beside the filters reading "Showing activity for" that site. Applying either filter keeps the
+other. The list offers only your own organisation's sites, and an address that matches none of them
+says so rather than showing an empty log as though nothing had happened.
+
 ## 1.8.1 — 2026-10-16
 
 A fix to one button. No migrations, no configuration, nothing to do on upgrade beyond the usual

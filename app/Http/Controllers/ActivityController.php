@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Domain\Audit\AuditLogQuery;
 use App\Models\Organisation;
+use App\Models\Site;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 
@@ -31,6 +32,14 @@ final class ActivityController
                 'site' => (string) $request->query('site', ''),
                 'outcome' => (string) $request->query('outcome', ''),
             ],
+
+            // Every site in this organisation, whether or not it has been written about yet: the
+            // fleet log is reached from a site's own page, so the site it was opened for has to be
+            // in the list. Scoped by organisation, so another tenant's site is never offered.
+            'filterSites' => Site::query()
+                ->where('organisation_id', $organisation->id)
+                ->orderBy('name')
+                ->get(['id', 'external_id', 'name']),
         ]);
     }
 }
