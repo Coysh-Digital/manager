@@ -139,6 +139,11 @@
                     'Craft CMS' => $site->craft_version ?? '-',
                     'Edition' => $site->craft_edition ? Str::title($site->craft_edition) : '-',
                     'PHP' => $site->php_version ?? '-',
+
+                    // Only once the site has sent a runtime report at all: without `runtime:read`
+                    // there is nothing to be "not reported" about, and saying the connector needs
+                    // updating would be wrong.
+                    ...($runtimeReport ? ['Node.js (declared)' => $runtimeReport->declaredNodeLabel()] : []),
                     'Database' => $latestReport
                         ? trim(Str::title((string) $latestReport->value('database.engine')).' '.$latestReport->value('database.version'))
                         : '-',
@@ -176,6 +181,14 @@
                 </dd>
             </div>
         </dl>
+
+        @if ($runtimeReport)
+            <p class="mt-2 text-[12px] text-text-3">
+                Node.js is what the project files ask for - <code class="font-mono">.nvmrc</code>,
+                <code class="font-mono">.node-version</code> or <code class="font-mono">package.json</code>
+                - not what is installed on the server. The connector only reads those files; it runs nothing on the site.
+            </p>
+        @endif
 
         @if ($latestReport && $latestReport->value('queue'))
             @php

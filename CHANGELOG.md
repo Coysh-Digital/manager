@@ -9,11 +9,39 @@ here for exactly that reason.
 ## 1.9.0 — 2026-10-21
 
 You can now say how many days before a TLS certificate expires it becomes a finding, an acknowledged
-certificate warning no longer silently covers the next certificate, and closed findings, with the
-reasons given for them, can be read. One migration, adding a nullable column to `organisations`;
-nothing else to do on upgrade beyond the usual `composer install` after checking out the tag, and
-every organisation keeps the 30-day window it had until it chooses otherwise. The stylesheet is
-rebuilt, so a browser may need a hard refresh to pick it up.
+certificate warning no longer silently covers the next certificate, closed findings can be read with
+the reasons given for them, and Manager shows the Node.js version each site's project files ask for.
+One migration, adding a nullable column to `organisations`, and every organisation keeps the 30-day
+certificate window it had until it chooses otherwise. **Before you upgrade:** this release needs
+`coysh-digital/manager-protocol` 1.10, so run `composer install` after checking out the tag; that is
+the usual step, and nothing else is needed. Connectors do nothing different until they are on
+connector 1.16. The stylesheet is rebuilt, so a browser may need a hard refresh to pick it up.
+
+### Node.js version, as declared by the project
+
+A site's `.nvmrc`, `.node-version` or `package.json` (`engines.node`) says which Node.js it needs, and
+nothing in Manager showed it. A connector on 1.16 now sends it, and the **What this site is running**
+panel on the overview, and a **Node.js (declared)** panel on Health, show it with the file it came
+from, such as `20.11.0 (.nvmrc)`.
+
+It is what the project files ask for, **not what is installed on the server**: the connector only
+reads the file and runs nothing. Both screens say so under the figures.
+
+The row has three states, because they mean different things:
+
+- a version and its file;
+- **Not declared**, when the connector looked and none of the three files names a version - nothing
+  to do;
+- **Not reported - connector update needed**, when the site's connector is older than 1.16 and was
+  never asked.
+
+A site that has sent no runtime report at all (`runtime:read` not granted, or nothing arrived yet)
+shows no row, rather than a prompt to update a connector that may be up to date.
+
+The report is `system.v4`, which the platform now advertises first, so a connector on 1.16 starts
+sending it as soon as this release is running. `system.v1` to `system.v3` are still accepted, so
+sites whose plugins have not been updated carry on reporting. The value is stored in the report's
+existing payload; there is no new column.
 
 ### Set the certificate warning window (Settings)
 

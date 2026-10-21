@@ -243,7 +243,7 @@ it('tells the connector which versions it understands', function (): void {
     // Newest first, and the order is load-bearing rather than cosmetic: the connector walks this
     // list and takes the first entry it also implements, so a list in the wrong order would talk
     // every site into sending the oldest version it knows.
-    expect(RuntimeIngestService::SCHEMAS)->toBe(['system.v3', 'system.v2', 'system.v1']);
+    expect(RuntimeIngestService::SCHEMAS)->toBe(['system.v4', 'system.v3', 'system.v2', 'system.v1']);
 });
 
 it('still refuses a bucket, a region or an adapter class under the new version', function (): void {

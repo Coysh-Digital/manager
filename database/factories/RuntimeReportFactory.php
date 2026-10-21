@@ -147,4 +147,33 @@ class RuntimeReportFactory extends Factory
             'payload' => self::craftPayload($overrides),
         ]);
     }
+
+    /**
+     * What a connector sending `system.v4` reports: `system.v3` plus the Node.js version the project
+     * files declare.
+     *
+     * Both members null is a connector that looked and found nothing declared, which is a different
+     * answer from a report with no `node` at all.
+     *
+     * @return array<string, mixed>
+     */
+    public static function nodePayload(?string $declared = '20.11.0', ?string $source = '.nvmrc'): array
+    {
+        return [
+            ...self::craftPayload(),
+            'schema_version' => 'system.v4',
+            'node' => ['declared' => $declared, 'source' => $source],
+        ];
+    }
+
+    /**
+     * A site whose connector reports `system.v4`.
+     */
+    public function declaringNode(?string $declared = '20.11.0', ?string $source = '.nvmrc'): static
+    {
+        return $this->state(fn (): array => [
+            'schema_version' => 'system.v4',
+            'payload' => self::nodePayload($declared, $source),
+        ]);
+    }
 }

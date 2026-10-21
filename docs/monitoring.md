@@ -285,13 +285,21 @@ With `runtime:read`, sites report disk usage, PHP limits, opcache state and - fr
 onwards - what Craft can say about itself: how many deprecation warnings it has recorded, how large
 the database is, whether its writable directories are writable, whether a security key is set,
 whether the control panel is still at the default address, which required PHP extensions are absent,
-and which imaging library is available.
+and which imaging library is available. From connector 1.16 onwards it also says which Node.js
+version the project's own files ask for.
 
 The database size is the one to watch on a growing site. A backup is a dump of it, so it is the
 figure that decides whether one finishes - and until connector 1.15 the report described every asset
 volume and the disk underneath them while saying nothing about it.
 
-Counts and booleans throughout. Never a deprecation message, which names a template and a line of
+The Node.js version is **declared, not detected**. The connector looks in `.nvmrc`, `.node-version`
+and then `engines.node` in `package.json`, and reports the first it finds along with the name of the
+file. It never runs `node`, so a site whose files say `20` and whose server has `18` installed
+shows `20`. The overview and Health screens label it "Node.js (declared)" and say so underneath.
+"Not declared" means the connector looked and none of the three files names a version; "Not
+reported - connector update needed" means the connector is older than 1.16 and was never asked.
+
+Counts and booleans throughout, plus that one declared string. Never a deprecation message, which names a template and a line of
 your code; never the security key; never a per-table breakdown of the database; and never the
 control panel's address if it has been moved, because writing that down in a dashboard would undo
 the point of moving it.

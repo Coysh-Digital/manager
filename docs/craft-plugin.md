@@ -131,7 +131,7 @@ numbers and that is all.
 | Jobs | 5 min | - | Asks whether there is anything to do. |
 | Sign-ins | 30 min | `logins:read` | Counts of failed CP sign-ins. Never usernames or addresses. |
 | Inventory | 1 hour | `inventory:read` | Craft and PHP versions, plugins, Composer packages. |
-| Runtime | 6 hours | `runtime:read` | Disk usage, PHP limits, response timings. |
+| Runtime | 6 hours | `runtime:read` | Disk usage, PHP limits, response timings, and the Node.js version the project files declare. |
 | Updates | 24 hours | `updates:read` | Which updates exist, and whether any are security releases. |
 
 ### What it never sends
