@@ -6,6 +6,30 @@ Entries are written for somebody about to upgrade a running installation. Anythi
 action is under **Before you upgrade** - that section is the one to read, and `docs/upgrade.md` points
 here for exactly that reason.
 
+## 1.9.0 — 2026-10-21
+
+Closed findings, and the reasons given for them, can now be read. No migrations, no configuration,
+nothing to do on upgrade beyond the usual `composer install` after checking out the tag. The
+stylesheet is rebuilt, so a browser may need a hard refresh to pick it up.
+
+### Acknowledgement comments were recorded and shown nowhere
+
+Acknowledging a finding requires a reason, and the reason was saved on the finding and in the audit
+log - and then displayed only while the finding was still open. Once it resolved, the card went with
+it, and the audit log printed `finding.acknowledged` with nothing to say which finding or why.
+
+- **Audit log.** The site's Audit tab and the fleet Activity log now show, under a finding's
+  acknowledged, reopened or resolved entry, which finding it was and, for an acknowledgement, the
+  reason given. Entries written before this release name the rule key instead of the title, because
+  the title was not recorded then and the log cannot be edited. The title is now part of those three
+  events' recorded detail; the chain still verifies, and nothing already written is touched.
+- **Security tab.** "Recently resolved" now shows each finding's severity, and who acknowledged it,
+  when, and why. When there are more than five, **Show all** opens the full list, newest first and
+  paged, at `?history=all` on the same page.
+
+A finding keeps one row per rule, so the Security tab's history is the latest closure of each rule.
+If a rule has opened again, its earlier closure is in the audit log and not on the tab.
+
 ## 1.8.2 — 2026-10-21
 
 The dashboard is easier to read, in dark mode above all, the Activity log says which site it is

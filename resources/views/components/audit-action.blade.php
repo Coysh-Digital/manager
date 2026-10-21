@@ -29,6 +29,14 @@
         && $previous->correlation_id === $event->correlation_id;
 
     $site = $event->site;
+
+    // A finding's own row says which finding and, for an acknowledgement, why - the reason somebody
+    // typed is the only part of the record a later reader cannot work out for themselves. Events
+    // written before the title was recorded fall back to the rule key, which is still the target.
+    $isFindingEvent = $event->target_type === 'finding'
+        && in_array($event->action, ['finding.acknowledged', 'finding.reopened', 'finding.resolved'], true);
+    $findingTitle = $isFindingEvent ? ($event->after['title'] ?? $event->target_id) : null;
+    $findingReason = $isFindingEvent ? ($event->after['reason'] ?? null) : null;
 @endphp
 
 <code class="font-mono text-[12px]">{{ $event->action }}</code>
@@ -49,4 +57,13 @@
        class="ml-2 whitespace-nowrap text-[11.5px] text-primary hover:text-primary-hover">
         View this site's backups
     </a>
+@endif
+
+@if (is_string($findingTitle) && $findingTitle !== '')
+    <p class="mt-0.5 max-w-[60ch] break-words text-[12.5px] text-text-2">
+        {{ $findingTitle }}
+        @if (is_string($findingReason) && $findingReason !== '')
+            <span class="text-text-3">Reason:</span> {{ $findingReason }}
+        @endif
+    </p>
 @endif
