@@ -254,4 +254,57 @@ class RuntimeReport extends Model
 
         return is_array($missing) ? array_values(array_filter($missing, 'is_string')) : null;
     }
+
+    /**
+     * What the site's project files say about Node.js, or null when this report does not carry the
+     * question at all.
+     *
+     * Three answers, and the screens depend on telling them apart. No `node` key is a connector older
+     * than `system.v4`, which was never asked. `declared` null with `source` null is a connector that
+     * looked in all three files and found nothing, which is a fact about the project rather than
+     * about the plugin. Anything else is a version and the file it came from.
+     *
+     * Declared, never observed: the connector reads a file and executes nothing, so this is what the
+     * project asks for and says nothing about what is installed on the server.
+     *
+     * @return array{declared: string|null, source: string|null}|null
+     */
+    public function declaredNode(): ?array
+    {
+        $node = $this->value('node');
+
+        if (! is_array($node)) {
+            return null;
+        }
+
+        return [
+            'declared' => is_string($node['declared'] ?? null) && $node['declared'] !== '' ? $node['declared'] : null,
+            'source' => is_string($node['source'] ?? null) && $node['source'] !== '' ? $node['source'] : null,
+        ];
+    }
+
+    /**
+     * The declared Node.js version as a screen should word it.
+     *
+     * The words for the first two states are chosen to stay apart: "Not reported" blames the plugin
+     * and tells somebody what to do about it, "Not declared" describes the site and needs nothing
+     * doing. Collapsing them into one em-dash is how a fleet looks as though it has no Node.js
+     * requirements when half of it has a connector that cannot say.
+     */
+    public function declaredNodeLabel(): string
+    {
+        $node = $this->declaredNode();
+
+        if ($node === null) {
+            return 'Not reported - connector update needed';
+        }
+
+        if ($node['declared'] === null) {
+            return 'Not declared';
+        }
+
+        return $node['source'] === null
+            ? $node['declared']
+            : $node['declared'].' ('.$node['source'].')';
+    }
 }

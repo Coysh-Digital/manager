@@ -14,7 +14,7 @@ else is granted deliberately, and taking a backup has a confirmation flow of its
 | `licences:read` | No | Craft and plugin licence state. Never the keys themselves |
 | `security:read` | No | Configuration flags: dev mode, admin changes, HTTPS enforcement |
 | `system:read` | No | Queue depth and pending migrations |
-| `runtime:read` | No | Disk usage, PHP limits, sampled response timings |
+| `runtime:read` | No | Disk usage, PHP limits, sampled response timings, the declared Node.js version |
 | `logins:read` | No | Counts of failed control-panel sign-ins |
 | `backups:create` | **Never** | Take an encrypted database backup |
 

@@ -134,6 +134,7 @@ final class SiteController
             'membership' => app(Membership::class),
             'latestReport' => $this->latestInventoryReport($site),
             'updateReport' => $this->latestUpdateReport($site),
+            'runtimeReport' => $this->latestRuntimeReport($site),
             'latestBackup' => BackupArtifact::query()
                 ->where('site_id', $site->id)
                 ->stored()

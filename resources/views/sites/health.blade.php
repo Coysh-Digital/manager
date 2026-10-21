@@ -504,6 +504,28 @@
         @endif
 
         {{--
+            Its own panel rather than a row in the PHP one: a site can report Node.js without a PHP
+            section, and a heading reading "PHP limits" over a Node.js version would be wrong about
+            what it holds.
+        --}}
+        @if ($runtimeReport)
+            <h2 class="mb-2.5 mt-6 text-[13.5px] font-semibold">Node.js (declared)</h2>
+
+            <dl class="grid grid-cols-1 gap-x-10 gap-y-2.5 rounded-[10px] border border-border bg-surface px-4 py-3.5 text-[12.5px]">
+                <div class="flex items-baseline justify-between gap-3">
+                    <dt class="text-text-2">Declared version</dt>
+                    <dd class="font-mono">{{ $runtimeReport->declaredNodeLabel() }}</dd>
+                </div>
+            </dl>
+
+            <p class="mt-2 text-[12px] text-text-3">
+                What the project files ask for - <code class="font-mono">.nvmrc</code>,
+                <code class="font-mono">.node-version</code> or <code class="font-mono">package.json</code>
+                - not what is installed on the server. The connector only reads those files; it runs nothing on the site.
+            </p>
+        @endif
+
+        {{--
             What Craft can say about itself.
 
             Only a connector sending system.v3 reports any of this, so the panel is absent rather
