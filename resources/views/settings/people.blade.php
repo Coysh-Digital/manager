@@ -40,7 +40,7 @@
                                 @endif
 
                                 @if ($member->user_id === auth()->id())
-                                    <span class="rounded-[5px] border border-border px-1.5 py-0.5 font-mono text-[11px] text-text-3">You</span>
+                                    <span class="rounded-[5px] border border-border px-1.5 py-0.5 text-[12px] text-text-3">You</span>
                                 @endif
 
                                 {{-- An account that has never signed in is usually an invitation that
@@ -50,7 +50,7 @@
                                     <x-status-badge tone="warn" label="Password link outstanding" />
                                 @endif
                             </div>
-                            <span class="truncate font-mono text-[11.5px] text-text-3">{{ $member->user->email }}</span>
+                            <span class="truncate text-[11.5px] text-text-3">{{ $member->user->email }}</span>
                         </div>
 
                         @if ($membership->isOwner() && ! $revoked)
@@ -93,7 +93,7 @@
                                 @endif
                             </div>
                         @else
-                            <span class="font-mono text-[11.5px] text-text-3">{{ Str::title($member->role) }}</span>
+                            <span class="text-[11.5px] text-text-3">{{ Str::title($member->role) }}</span>
                         @endif
                     </div>
                 @endforeach

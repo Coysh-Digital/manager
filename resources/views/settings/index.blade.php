@@ -24,12 +24,12 @@
                      implementation rather than from anything written down. --}}
                 <span class="flex flex-wrap items-center gap-x-2.5 gap-y-1">
                     @if ($version !== null)
-                        <span class="font-mono text-[11px] text-text-2">{{ $version }}</span>
+                        <span class="font-mono text-[12px] text-text-2">{{ $version }}</span>
                     @else
                         {{-- Unset is the normal state for a clone or a tarball: `git archive` leaves
                              no .git behind, so an installation genuinely cannot know. Saying so beats
                              printing a number somebody would quote back at us. --}}
-                        <span class="font-mono text-[11px] text-text-3" title="Set MANAGER_VERSION to record which release this is">unreleased build</span>
+                        <span class="text-[12px] text-text-3" title="Set MANAGER_VERSION to record which release this is">unreleased build</span>
                     @endif
 
                     <x-changelog-link :href="\App\Domain\Updates\ChangelogLink::manager()" label="Changelog" />
@@ -37,7 +37,7 @@
                     {{-- The same checks below, from a shell. Worth pointing at when the reader has
                          one; noise when the machine belongs to somebody else. --}}
                     @if (app(App\Contracts\ServerAccess::class)->reachable())
-                        <span class="font-mono text-[11px] text-text-3">php artisan manager:doctor</span>
+                        <span class="font-mono text-[12px] text-text-3">php artisan manager:doctor</span>
                     @endif
                 </span>
             </div>
@@ -58,7 +58,7 @@
                     <div class="flex items-start justify-between gap-4 bg-surface px-4 py-3">
                         <div class="flex min-w-0 flex-col gap-1">
                             <span class="text-[13px] font-medium">{{ $check->name }}</span>
-                            <span class="font-mono text-[11.5px] text-text-3">{{ $check->detail }}</span>
+                            <span class="text-[11.5px] text-text-3">{{ $check->detail }}</span>
                             @if ($check->remedy)
                                 <span class="mt-0.5 text-[12px] text-text-2">{{ $check->remedy }}</span>
                             @endif
@@ -144,11 +144,11 @@
 
             <div class="grid grid-cols-2 gap-px bg-border sm:grid-cols-3">
                 <div class="flex flex-col gap-1 bg-surface-2 px-4 py-3">
-                    <span class="font-mono text-[9.5px] uppercase tracking-[0.07em] text-text-3">Sites</span>
+                    <span class="font-sans text-[11.5px] uppercase tracking-[0.05em] text-text-3">Sites</span>
                     <span class="text-[13px] tabular">{{ $siteCount }}</span>
                 </div>
                 <div class="flex flex-col gap-1 bg-surface-2 px-4 py-3">
-                    <span class="font-mono text-[9.5px] uppercase tracking-[0.07em] text-text-3">Active connectors</span>
+                    <span class="font-sans text-[11.5px] uppercase tracking-[0.05em] text-text-3">Active connectors</span>
                     <span class="text-[13px] tabular">{{ $connectorCount }}</span>
                 </div>
             </div>
@@ -200,7 +200,7 @@
         @if ($membership->isOwner())
             <div class="overflow-hidden rounded-[10px] border border-danger-line bg-surface">
                 <div class="flex items-center gap-2.5 border-b border-danger-line bg-danger-bg px-4 py-3">
-                    <span class="flex h-[18px] w-[18px] items-center justify-center rounded-[5px] border border-danger-line font-mono text-[11px] text-danger">!</span>
+                    <span class="flex h-[18px] w-[18px] items-center justify-center rounded-[5px] border border-danger-line font-mono text-[12px] text-danger">!</span>
                     <span class="text-[13.5px] font-medium text-danger">Actions that cannot be undone</span>
                 </div>
 

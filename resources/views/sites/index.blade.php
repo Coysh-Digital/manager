@@ -291,7 +291,7 @@
                             @foreach ($columns as $heading => [$responsive, $key])
                                 {{-- The checkbox column already carries the left inset when it is
                                      drawn, so Site only takes it when standing first itself. --}}
-                                <th class="whitespace-nowrap border-b border-border px-3 py-2.5 text-left font-mono text-[10px] font-medium uppercase tracking-[0.07em] text-text-3 {{ $loop->first && ! $bulk ? 'pl-3.5' : '' }} {{ $responsive }}"
+                                <th class="whitespace-nowrap border-b border-border px-3 py-2.5 text-left font-sans text-[11.5px] font-medium uppercase tracking-[0.05em] text-text-3 {{ $loop->first && ! $bulk ? 'pl-3.5' : '' }} {{ $responsive }}"
                                     @if ($key && $sort === $key) aria-sort="ascending" @endif>
                                     @if ($key)
                                         {{-- In the query string, like the filters: a fleet somebody
@@ -300,7 +300,7 @@
                                         <a href="{{ route('sites.index', array_filter([...$filters, 'sort' => $sort === $key ? null : $key])) }}"
                                            class="inline-flex items-center gap-1 no-underline {{ $sort === $key ? 'text-primary' : 'text-text-3 hover:text-text' }}">
                                             {{ $heading }}
-                                            <span aria-hidden="true" class="text-[9px]">{{ $sort === $key ? '▼' : '↕' }}</span>
+                                            <span aria-hidden="true" class="text-[11.5px]">{{ $sort === $key ? '▼' : '↕' }}</span>
                                         </a>
                                     @else
                                         {{ $heading }}
@@ -324,8 +324,8 @@
                                                    aria-label="Select every site in {{ $groupName }}"
                                                    class="accent-[var(--primary)]">
                                         @endif
-                                        <span class="font-mono text-[10px] font-medium uppercase tracking-[0.08em] text-text-2">{{ $groupName }}</span>
-                                        <span class="font-mono text-[10.5px] text-text-3">{{ $sites->count() }} {{ Str::plural('site', $sites->count()) }}</span>
+                                        <span class="font-sans text-[11.5px] font-medium uppercase tracking-[0.06em] text-text-2">{{ $groupName }}</span>
+                                        <span class="text-[11.5px] text-text-3">{{ $sites->count() }} {{ Str::plural('site', $sites->count()) }}</span>
                                     </span>
                                 </td>
                             </tr>
@@ -355,17 +355,17 @@
                                     <td class="py-3 pr-3 align-middle {{ $bulk ? 'pl-1' : 'pl-3.5' }}">
                                         <a href="{{ route('sites.show', $site) }}" class="flex flex-col gap-0.5 no-underline">
                                             <span class="text-[13.5px] font-medium text-text">{{ $site->name }}</span>
-                                            <span class="font-mono text-[11px] text-text-3">{{ $site->expected_domain }}</span>
+                                            <span class="font-mono text-[12px] text-text-3">{{ $site->expected_domain }}</span>
                                             {{-- Folded in here rather than dropped: with its own column
                                                  gone on a phone, "when did we last hear from it" is
                                                  still the second thing anybody wants off this row. --}}
-                                            <span class="font-mono text-[11px] text-text-3 sm:hidden">
+                                            <span class="text-[12px] text-text-3 sm:hidden">
                                                 Last seen {{ $site->last_seen_at?->diffForHumans(short: true) ?? 'never' }}
                                             </span>
                                         </a>
                                     </td>
                                     <td class="hidden px-3 py-3 xl:table-cell">
-                                        <span class="whitespace-nowrap rounded-[5px] border border-border bg-surface-2 px-1.5 py-0.5 font-mono text-[11px] text-text-2">
+                                        <span class="whitespace-nowrap rounded-[5px] border border-border bg-surface-2 px-1.5 py-0.5 text-[12px] text-text-2">
                                             {{ Str::title($site->environment) }}
                                         </span>
                                     </td>
@@ -485,7 +485,7 @@
                                         @endif
                                     </td>
 
-                                    <td class="hidden whitespace-nowrap px-3 py-3 font-mono text-[11.5px] text-text-3 sm:table-cell">
+                                    <td class="hidden whitespace-nowrap px-3 py-3 text-[11.5px] text-text-3 sm:table-cell">
                                         {{ $site->last_seen_at?->diffForHumans(short: true) ?? 'never' }}
                                     </td>
                                 </tr>

@@ -90,7 +90,7 @@
                     <div class="mb-4 flex flex-wrap items-start gap-5">
                         <div class="rounded-lg border border-border bg-white p-2">{!! $pendingQrCode !!}</div>
                         <div class="flex flex-col gap-1.5">
-                            <span class="font-mono text-[10px] uppercase tracking-[0.07em] text-text-3">Or enter by hand</span>
+                            <span class="font-sans text-[11.5px] uppercase tracking-[0.05em] text-text-3">Or enter by hand</span>
                             <code class="font-mono text-[13px] tracking-[0.08em]">{{ $pendingManualEntry }}</code>
                         </div>
                     </div>
@@ -139,7 +139,7 @@
                     <div class="flex items-center justify-between gap-4 border-t border-border py-3 text-[12.5px] first:border-t-0">
                         <div class="flex min-w-0 flex-col gap-0.5">
                             <span class="font-medium">{{ $passkey->name ?: 'Passkey' }}</span>
-                            <span class="font-mono text-[11.5px] text-text-3">
+                            <span class="text-[11.5px] text-text-3">
                                 added {{ $passkey->created_at?->diffForHumans() ?? 'recently' }}
                                 {{-- The authenticator model, where it identified itself. Worth showing:
                                      it is how somebody tells two passkeys apart when the labels are
@@ -203,7 +203,7 @@
                 <div class="flex items-center justify-between gap-4 border-b border-border px-4 py-3 text-[12.5px] last:border-b-0">
                     <div class="flex min-w-0 flex-col gap-0.5">
                         <span class="truncate">{{ $session->user_agent ?: 'Unknown device' }}</span>
-                        <span class="font-mono text-[11.5px] text-text-3">
+                        <span class="text-[11.5px] text-text-3">
                             {{ $session->ip_address ?? 'unknown address' }} · active {{ $session->last_active->diffForHumans() }}
                         </span>
                     </div>

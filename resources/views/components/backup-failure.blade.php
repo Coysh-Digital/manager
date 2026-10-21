@@ -26,7 +26,7 @@
             </a>
         @endif
 
-        <span class="ml-auto font-mono text-[11.5px] text-text-3">
+        <span class="ml-auto text-[11.5px] text-text-3">
             {{ $failure->failedAt->diffForHumans(short: true) }}
             @if ($failure->requestedBy)
                 · requested by {{ $failure->requestedBy }}
