@@ -24,7 +24,7 @@
     @else
         <div class="flex flex-wrap items-center gap-x-10 gap-y-4 border-b border-border px-4 py-3.5">
             <div class="flex flex-col gap-1">
-                <span class="font-mono text-[10px] uppercase tracking-[0.07em] text-text-3">
+                <span class="font-sans text-[11.5px] uppercase tracking-[0.05em] text-text-3">
                     Failed attempts · last {{ $loginReport->window_hours }}h
                 </span>
                 <div class="flex items-center gap-2.5">
@@ -53,7 +53,7 @@
 
             @foreach ($signInFigures as $label => $value)
                 <div class="flex flex-col gap-1">
-                    <span class="font-mono text-[10px] uppercase tracking-[0.07em] text-text-3">{{ $label }}</span>
+                    <span class="font-sans text-[11.5px] uppercase tracking-[0.05em] text-text-3">{{ $label }}</span>
                     <span class="font-mono text-[13px] tabular">{{ $value }}</span>
                 </div>
             @endforeach

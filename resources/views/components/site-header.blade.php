@@ -12,7 +12,7 @@
     <div class="flex min-w-0 flex-col gap-2">
         <div class="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
             <h1 class="text-[19px] font-semibold tracking-[-0.015em] sm:text-[22px]">{{ $site->name }}</h1>
-            <span class="rounded-[5px] border border-border bg-surface-2 px-1.5 py-0.5 font-mono text-[11px] text-text-2">
+            <span class="rounded-[5px] border border-border bg-surface-2 px-1.5 py-0.5 text-[12px] text-text-2">
                 {{ Str::title($site->environment) }}
             </span>
             @if ($connector)
@@ -45,7 +45,7 @@
             <a href="https://{{ $site->expected_domain }}" target="_blank" rel="noopener noreferrer"
                class="inline-flex items-baseline gap-1 break-all text-text-2 no-underline hover:text-primary hover:underline">
                 {{ $site->expected_domain }}
-                <span aria-hidden="true" class="text-[10px] leading-none">↗</span>
+                <span aria-hidden="true" class="text-[11.5px] leading-none">↗</span>
                 <span class="sr-only">(opens {{ $site->name }} in a new tab)</span>
             </a>
             <span class="hidden sm:inline">· Read-only access</span> ·

@@ -26,7 +26,7 @@
             @else
                 <div class="flex flex-wrap items-start gap-x-10 gap-y-4 border-b border-border px-4 py-3.5">
                     <div class="flex flex-col gap-1">
-                        <span class="font-mono text-[10px] uppercase tracking-[0.07em] text-text-3">Key fingerprint</span>
+                        <span class="font-sans text-[11.5px] uppercase tracking-[0.05em] text-text-3">Key fingerprint</span>
                         {{-- The full public key is not a secret, but printing it invites pasting it
                              around as though it were meaningful. A fingerprint is for the one thing
                              anybody does with it: checking whether two of them match. --}}
@@ -34,19 +34,19 @@
                     </div>
 
                     <div class="flex flex-col gap-1">
-                        <span class="font-mono text-[10px] uppercase tracking-[0.07em] text-text-3">Key age</span>
+                        <span class="font-sans text-[11.5px] uppercase tracking-[0.05em] text-text-3">Key age</span>
                         <span class="font-mono text-[13px] tabular">
                             {{ $trust['keyAgeDays'] === null ? '-' : $trust['keyAgeDays'].' days' }}
                         </span>
                     </div>
 
                     <div class="flex flex-col gap-1">
-                        <span class="font-mono text-[10px] uppercase tracking-[0.07em] text-text-3">Paired</span>
+                        <span class="font-sans text-[11.5px] uppercase tracking-[0.05em] text-text-3">Paired</span>
                         <span class="text-[13px]">{{ $trust['connector']->paired_at?->diffForHumans() ?? '-' }}</span>
                     </div>
 
                     <div class="flex flex-col gap-1">
-                        <span class="font-mono text-[10px] uppercase tracking-[0.07em] text-text-3">Rotated</span>
+                        <span class="font-sans text-[11.5px] uppercase tracking-[0.05em] text-text-3">Rotated</span>
                         <span class="text-[13px]">{{ $trust['connector']->key_rotated_at?->diffForHumans() ?? 'never' }}</span>
                     </div>
 
@@ -63,7 +63,7 @@
                             <thead>
                                 <tr class="bg-surface-2">
                                     @foreach (['Source address', 'First seen', 'Last seen', 'Check-ins'] as $heading)
-                                        <th class="whitespace-nowrap border-b border-border px-3 py-2 text-left font-mono text-[10px] font-medium uppercase tracking-[0.07em] text-text-3 {{ $loop->first ? 'pl-3.5' : '' }}">
+                                        <th class="whitespace-nowrap border-b border-border px-3 py-2 text-left font-sans text-[11.5px] font-medium uppercase tracking-[0.05em] text-text-3 {{ $loop->first ? 'pl-3.5' : '' }}">
                                             {{ $heading }}
                                         </th>
                                     @endforeach
@@ -345,8 +345,8 @@
                                 <x-status-badge tone="info" label="Acknowledged" />
                             @endif
 
-                            <span class="font-mono text-[11px] text-text-3">first seen {{ $finding->age() }} ago</span>
-                            <span class="ml-auto font-mono text-[11px] text-text-3">{{ $finding->rule }}</span>
+                            <span class="text-[12px] text-text-3">first seen {{ $finding->age() }} ago</span>
+                            <span class="ml-auto font-mono text-[12px] text-text-3">{{ $finding->rule }}</span>
                         </div>
 
                         <p class="max-w-[80ch] px-4 py-3 text-[13px] text-text-2">{{ $finding->detail }}</p>
@@ -644,7 +644,7 @@
                     <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-border px-4 py-2.5 text-[12.5px] last:border-b-0">
                         <x-status-badge tone="ok" label="Resolved" />
                         <span>{{ $finding->title }}</span>
-                        <span class="ml-auto font-mono text-[11px] text-text-3">
+                        <span class="ml-auto text-[12px] text-text-3">
                             {{ $finding->resolved_at?->diffForHumans(short: true) }}
                         </span>
                     </div>

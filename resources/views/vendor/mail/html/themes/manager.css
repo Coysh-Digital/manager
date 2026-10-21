@@ -200,13 +200,13 @@ img {
 }
 
 .footer p {
-    color: #8a847f; /* --text-3 */
+    color: #6f6a65; /* --text-3 */
     font-size: 12px;
     text-align: center;
 }
 
 .footer a {
-    color: #8a847f; /* --text-3 */
+    color: #6f6a65; /* --text-3 */
     text-decoration: underline;
 }
 

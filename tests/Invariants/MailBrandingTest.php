@@ -93,7 +93,7 @@ it('keeps the email theme in step with the interface palette', function (string 
     ['--primary', '#c9331c'],
     ['--text', '#1c1917'],
     ['--text-2', '#5d5854'],
-    ['--text-3', '#8a847f'],
+    ['--text-3', '#6f6a65'],
     ['--bg', '#f7f5f2'],
     ['--surface', '#ffffff'],
     ['--border', '#e5e1db'],

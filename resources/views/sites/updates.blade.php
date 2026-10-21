@@ -29,7 +29,7 @@
 
             <div class="flex items-center gap-3">
                 @if ($updateReport)
-                    <span class="font-mono text-[11.5px] text-text-3">
+                    <span class="text-[11.5px] text-text-3">
                         Checked {{ $updateReport->checked_at->diffForHumans(short: true) }}
                     </span>
                 @endif
@@ -110,7 +110,7 @@
                         @endif
 
                         @if ($row['breaking'])
-                            <span class="rounded-[5px] border border-border px-1.5 py-0.5 font-mono text-[11px] text-text-2">Major version</span>
+                            <span class="rounded-[5px] border border-border px-1.5 py-0.5 text-[12px] text-text-2">Major version</span>
                         @endif
 
                         <x-changelog-link :href="$row['changelog']" />
@@ -160,7 +160,7 @@
                     <thead>
                         <tr class="bg-surface-2">
                             @foreach (['Plugin', 'Installed', 'Latest', 'Status'] as $heading)
-                                <th class="whitespace-nowrap border-b border-border px-3 py-2.5 text-left font-mono text-[10px] font-medium uppercase tracking-[0.07em] text-text-3 {{ $loop->first ? 'pl-3.5' : '' }}">
+                                <th class="whitespace-nowrap border-b border-border px-3 py-2.5 text-left font-sans text-[11.5px] font-medium uppercase tracking-[0.05em] text-text-3 {{ $loop->first ? 'pl-3.5' : '' }}">
                                     {{ $heading }}
                                 </th>
                             @endforeach
@@ -184,7 +184,7 @@
                                     <div class="flex flex-col gap-0.5">
                                         <span class="text-[13px] {{ $plugin['enabled'] ? '' : 'text-text-2' }}">{{ $plugin['name'] }}</span>
                                         @if ($plugin['name'] !== $plugin['handle'])
-                                            <span class="font-mono text-[11px] text-text-3">{{ $plugin['handle'] }}</span>
+                                            <span class="font-mono text-[12px] text-text-3">{{ $plugin['handle'] }}</span>
                                         @endif
                                     </div>
                                 </td>
@@ -220,7 +220,7 @@
                                         @endif
 
                                         @unless ($plugin['enabled'])
-                                            <span class="rounded-[5px] border border-border px-1.5 py-0.5 font-mono text-[11px] text-text-3">Disabled</span>
+                                            <span class="rounded-[5px] border border-border px-1.5 py-0.5 text-[12px] text-text-3">Disabled</span>
                                         @endunless
 
                                         {{-- Only where there is something to read about. A plugin the
