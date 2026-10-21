@@ -6,6 +6,24 @@ Entries are written for somebody about to upgrade a running installation. Anythi
 action is under **Before you upgrade** - that section is the one to read, and `docs/upgrade.md` points
 here for exactly that reason.
 
+## 1.8.2 — 2026-10-21
+
+Front-end build tools updated past four published advisories. No migrations, no configuration, nothing
+to do on upgrade beyond the usual `composer install` after checking out the tag. The stylesheet and
+script are rebuilt, so a browser may need a hard refresh to pick them up.
+
+### The build tools had known advisories
+
+`npm audit` reported four, two high and two critical, in `vite`, `concurrently`, `shell-quote` and
+`source-map-js`. All four are development tools that build the stylesheet and script: none is part of
+what an installation runs, and `public/build` is committed precisely so that a deployment needs no
+Node. They were still in the tree the project is built from, and the *Supply chain* check on the
+repository had been red for it.
+
+The lockfile now resolves each past its fix, within the version ranges `package.json` already allowed,
+so `package.json` itself is unchanged. Vite's bundler moved with it, which is why the compiled
+stylesheet and script have new file names; their content is the same.
+
 ## 1.8.1 — 2026-10-16
 
 A fix to one button. No migrations, no configuration, nothing to do on upgrade beyond the usual
