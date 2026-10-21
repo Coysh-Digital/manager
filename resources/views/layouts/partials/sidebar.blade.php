@@ -24,7 +24,7 @@
     </div>
 
     <div class="flex flex-1 flex-col gap-0.5 overflow-y-auto p-2.5 pt-3.5">
-        <div class="px-2.5 pb-2 pt-1.5 font-mono text-[10px] uppercase tracking-[0.08em] text-text-3">Fleet</div>
+        <div class="px-2.5 pb-2 pt-1.5 font-sans text-[11.5px] uppercase tracking-[0.06em] text-text-3">Fleet</div>
 
         <a href="{{ route('sites.index') }}"
            @class([
@@ -34,7 +34,7 @@
            ])>
             <span>Sites</span>
             @isset($siteCount)
-                <span class="font-mono text-[11px] text-text-3">{{ $siteCount }}</span>
+                <span class="tabular text-[12px] text-text-3">{{ $siteCount }}</span>
             @endisset
         </a>
 
@@ -50,7 +50,7 @@
                     {{-- A security release anywhere in the fleet gets the amber treatment, because it
                          is the one number on this screen that should interrupt somebody. --}}
                     <span @class([
-                        'font-mono text-[11px]',
+                        'tabular text-[12px]',
                         'rounded px-1.5 py-px border border-amber-line bg-amber-bg text-amber' => $securityUpdates ?? false,
                         'text-text-3' => ! ($securityUpdates ?? false),
                     ])>{{ $updateCount }}</span>
@@ -71,7 +71,7 @@
             @isset($securityFindingCount)
                 @if ($securityFindingCount > 0)
                     <span @class([
-                        'font-mono text-[11px]',
+                        'tabular text-[12px]',
                         'rounded px-1.5 py-px border border-danger-line bg-danger-bg text-danger' => $severeSecurityFindings ?? false,
                         'rounded px-1.5 py-px border border-amber-line bg-amber-bg text-amber' => ! ($severeSecurityFindings ?? false),
                     ])>{{ $securityFindingCount }}</span>
@@ -89,7 +89,7 @@
             @isset($findingCount)
                 @if ($findingCount > 0)
                     <span @class([
-                        'font-mono text-[11px]',
+                        'tabular text-[12px]',
                         'rounded px-1.5 py-px border border-danger-line bg-danger-bg text-danger' => $severeFindings ?? false,
                         'rounded px-1.5 py-px border border-amber-line bg-amber-bg text-amber' => ! ($severeFindings ?? false),
                     ])>{{ $findingCount }}</span>
@@ -111,7 +111,7 @@
             <span data-backup-badge>@include('layouts.partials.backup-badge')</span>
         </a>
 
-        <div class="px-2.5 pb-2 pt-[18px] font-mono text-[10px] uppercase tracking-[0.08em] text-text-3">Access</div>
+        <div class="px-2.5 pb-2 pt-[18px] font-sans text-[11.5px] uppercase tracking-[0.06em] text-text-3">Access</div>
 
         <a href="{{ route('activity.index') }}"
            @class([

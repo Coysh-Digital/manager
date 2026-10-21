@@ -100,7 +100,7 @@
                         <span class="text-[12.5px] text-text-2">
                             on {{ $group->count() }} {{ Str::plural('site', $group->count()) }}
                         </span>
-                        <span class="ml-auto font-mono text-[11px] text-text-3">{{ $rule }}</span>
+                        <span class="ml-auto font-mono text-[12px] text-text-3">{{ $rule }}</span>
                     </div>
 
                     @if ($sharedDetail !== null)
@@ -124,7 +124,7 @@
                                     <x-status-badge tone="ok" label="Resolved" />
                                 @endif
 
-                                <span class="font-mono text-[11px] text-text-3">
+                                <span class="text-[12px] text-text-3">
                                     first seen {{ $finding->age() }} ago
                                     @if ($finding->state === App\Models\Finding::STATE_RESOLVED && $finding->resolved_at)
                                         · resolved {{ $finding->resolved_at->diffForHumans(short: true) }}

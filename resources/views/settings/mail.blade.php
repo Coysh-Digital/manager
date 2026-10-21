@@ -55,7 +55,7 @@
         <div class="mb-3.5 overflow-hidden rounded-[10px] border border-border bg-surface shadow-[var(--shadow)]">
             <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-border px-4 py-3">
                 <span class="text-[13.5px] font-medium">In force now</span>
-                <span class="font-mono text-[11px] text-text-3">
+                <span class="text-[12px] text-text-3">
                     {{ $settings ? 'set on this screen' : 'from the environment' }}
                 </span>
             </div>
@@ -63,14 +63,14 @@
             <div class="grid grid-cols-1 gap-px bg-border sm:grid-cols-2">
                 <div class="flex flex-col gap-1 bg-surface px-4 py-3">
                     <span class="text-[13px] font-medium">Transport</span>
-                    <span class="font-mono text-[11.5px] text-text-3">
+                    <span class="text-[11.5px] text-text-3">
                         {{ $labels[$settings->transport ?? $environment['transport']] ?? ($settings->transport ?? $environment['transport']) }}
                     </span>
                 </div>
 
                 <div class="flex flex-col gap-1 bg-surface px-4 py-3">
                     <span class="text-[13px] font-medium">From address</span>
-                    <span class="font-mono text-[11.5px] text-text-3">
+                    <span class="text-[11.5px] text-text-3">
                         {{ $settings->from_address ?? $environment['from_address'] ?? 'not set' }}
                     </span>
                 </div>

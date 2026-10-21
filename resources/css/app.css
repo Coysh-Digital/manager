@@ -51,6 +51,22 @@
  * thing only.
  *
  * Status colours never carry meaning on hue alone - every badge keeps its glyph.
+ *
+ * --text-2, --text-3 and --grey carry the small print: labels, timestamps, counts. They are the
+ * tokens that decide whether the interface can be read at 11.5-12.5px, so their contrast is
+ * written down here rather than left to be judged by eye. Ratios are WCAG 2.x, against --bg /
+ * --surface / --surface-2 (the lowest of the three is --surface-2, which row hovers also use):
+ *
+ *   light  --text-3 #6f6a65   4.92 / 5.35 / 5.09   (was #8a847f, 3.39 / 3.69 / 3.52 - a fail)
+ *   dark   --text-2 #cfc8c3  11.48 / 10.78 / 10.22 (was #a79f9b, 7.30 / 6.86 / 6.50)
+ *   dark   --text-3 #a8a09b   7.38 /  6.93 /  6.57 (was #857d79, 4.70 / 4.42 / 4.19 - a fail)
+ *   dark   --grey   #b0a8a3   8.11 /  7.62 /  7.22 (was #8f8884, 5.44 / 5.11 / 4.84)
+ *
+ * Light --text-3 also clears 4.5:1 on --nav, --pale and --grey-bg (5.14 / 4.63 / 4.54), and dark
+ * --text-3 clears 5.9:1 on the status backgrounds. Light --text-2 and --grey were already above
+ * 4.5:1 and are unchanged. Light --text-3 is manager-cloud's value; the dark one is deliberately
+ * brighter than cloud's #938b86 (5.05:1 on --surface-2), because the people reading this screen
+ * for hours asked for more.
  */
 
 :root,
@@ -63,7 +79,7 @@
     --border-2: #d2cdc6;
     --text: #1c1917;
     --text-2: #5d5854;
-    --text-3: #8a847f;
+    --text-3: #6f6a65;
 
     --primary: #c9331c;
     --primary-hover: #a82814;
@@ -99,8 +115,8 @@
     --border: #2c2725;
     --border-2: #3b3431;
     --text: #efebe8;
-    --text-2: #a79f9b;
-    --text-3: #857d79;
+    --text-2: #cfc8c3;
+    --text-3: #a8a09b;
 
     --primary: #ee5836;
     --primary-hover: #f57154;
@@ -120,7 +136,7 @@
     --info: #7fb2e8;
     --info-bg: #14232f;
     --info-line: #23384a;
-    --grey: #8f8884;
+    --grey: #b0a8a3;
     --grey-bg: #221e1d;
 
     --row-hover: #201c1b;

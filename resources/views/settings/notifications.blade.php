@@ -33,7 +33,7 @@
                             <div class="flex min-w-0 flex-col gap-0.5">
                                 <div class="flex items-center gap-2">
                                     <span class="text-[13px] font-medium">{{ $destination->label }}</span>
-                                    <span class="rounded-[5px] border border-border bg-surface-2 px-1.5 py-0.5 font-mono text-[10.5px] text-text-2">
+                                    <span class="rounded-[5px] border border-border bg-surface-2 px-1.5 py-0.5 text-[11.5px] text-text-2">
                                         {{ $destination->transport }}
                                     </span>
                                     @if ($destination->hasFailedTooOften())
@@ -45,7 +45,7 @@
                                     @endif
                                 </div>
                                 <span class="truncate font-mono text-[11.5px] text-text-3">{{ $destination->target }}</span>
-                                <span class="font-mono text-[11px] text-text-3">
+                                <span class="text-[12px] text-text-3">
                                     {{ implode(', ', $destination->events) }}
                                 </span>
 
@@ -111,7 +111,7 @@
                                 @foreach ($destination->deliveries as $delivery)
                                     {{-- Suppressed is the destination being at its daily limit, not a
                                          fault, so it is not drawn as one. --}}
-                                    <span class="font-mono text-[11px] {{ $delivery->succeeded() || $delivery->wasSuppressed() ? 'text-text-3' : 'text-danger' }}">
+                                    <span class="text-[12px] {{ $delivery->succeeded() || $delivery->wasSuppressed() ? 'text-text-3' : 'text-danger' }}">
                                         {{ $delivery->created_at->diffForHumans(short: true) }} ·
                                         {{ $delivery->event }} ·
                                         @if ($delivery->succeeded())
@@ -164,7 +164,7 @@
                                 <input type="number" name="daily_limit" min="0" max="1000"
                                        placeholder="{{ config('manager.notifications.daily_limit') }}"
                                        class="h-[34px] w-[90px] rounded-[7px] border border-border-2 bg-surface-2 px-2.5 text-[12.5px] placeholder:text-text-3">
-                                <span class="text-[11px] text-text-3">Blank uses the default. 0 is no limit.</span>
+                                <span class="text-[12px] text-text-3">Blank uses the default. 0 is no limit.</span>
                             </label>
                         </div>
 
@@ -220,7 +220,7 @@
                                                    @checked(in_array($site->external_id, (array) old('sites', []), true))
                                                    class="flex-none accent-[var(--primary)]">
                                             <span class="truncate">{{ $site->name }}</span>
-                                            <span class="truncate font-mono text-[11px] text-text-3">{{ $site->expected_domain }}</span>
+                                            <span class="truncate font-mono text-[12px] text-text-3">{{ $site->expected_domain }}</span>
                                         </label>
                                     @endforeach
                                 </div>

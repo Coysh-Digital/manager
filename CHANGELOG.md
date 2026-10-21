@@ -6,6 +6,37 @@ Entries are written for somebody about to upgrade a running installation. Anythi
 action is under **Before you upgrade** - that section is the one to read, and `docs/upgrade.md` points
 here for exactly that reason.
 
+## 1.8.2 — 2026-10-21
+
+The dashboard is easier to read, in dark mode above all. No migrations, no configuration, nothing to do
+on upgrade beyond the usual `composer install` after checking out the tag. The stylesheet is rebuilt,
+so a browser may need a hard refresh to pick it up.
+
+### Dark mode was too dim to read comfortably
+
+The secondary and tertiary text colours - the labels, timestamps, counts and captions that sit under
+and beside the main content - were too close to the background. In dark mode the tertiary text measured
+4.4:1 against a card, short of the 4.5:1 that WCAG sets for small text, and it is the colour most of
+the small print is set in. They are brighter now:
+
+| | Before | After | Contrast on a card, before and after |
+|---|---|---|---|
+| Dark secondary text | `#a79f9b` | `#cfc8c3` | 6.9:1 to 10.8:1 |
+| Dark tertiary text | `#857d79` | `#a8a09b` | 4.4:1 to 6.9:1 |
+| Dark grey (neutral badges) | `#8f8884` | `#b0a8a3` | 5.1:1 to 7.6:1 |
+| Light tertiary text | `#8a847f` | `#6f6a65` | 3.7:1 to 5.4:1 |
+
+The light theme had the same problem on the same colour, at 3.7:1, so it moves too. The alert emails
+use the light value for their footer and take the same change.
+
+### Smaller text is no longer smaller than 11.5px
+
+Labels, captions and counts were set as small as 9px. Nothing is below 11.5px now, and what was 11px is
+12px. Column headings, section labels and meta lines such as "first seen 3 days ago" are set in the
+sans-serif face rather than in monospace, with the letter-spacing eased to suit; monospace stays on
+what is code or an identifier - hashes, IP addresses, versions, domains, rule names and sequence
+numbers.
+
 ## 1.8.1 — 2026-10-16
 
 A fix to one button. No migrations, no configuration, nothing to do on upgrade beyond the usual

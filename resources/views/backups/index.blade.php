@@ -46,7 +46,7 @@
                            'bg-surface hover:bg-row-hover' => ! $active,
                        ])
                        @if ($active) aria-current="true" @endif>
-                        <span class="font-mono text-[10px] uppercase tracking-[0.07em] {{ $active ? 'text-primary' : 'text-text-3' }}">{{ $label }}</span>
+                        <span class="font-sans text-[11.5px] uppercase tracking-[0.05em] {{ $active ? 'text-primary' : 'text-text-3' }}">{{ $label }}</span>
                         <span class="font-mono text-[15px] tabular {{ $active ? 'text-primary' : ($count > 0 && $state === 'failed' ? 'text-danger' : 'text-text') }}">{{ $count }}</span>
                     </a>
                 @endforeach
@@ -54,7 +54,7 @@
                 {{-- No link on this one. There is no such thing as filtering to bytes, and a tile
                      that looked clickable and was not would be worse than one that plainly is not. --}}
                 <div class="flex flex-col gap-1 bg-surface px-4 py-3">
-                    <span class="font-mono text-[10px] uppercase tracking-[0.07em] text-text-3">In storage</span>
+                    <span class="font-sans text-[11.5px] uppercase tracking-[0.05em] text-text-3">In storage</span>
                     <span class="font-mono text-[15px] tabular text-text">{{ number_format($summary['storedBytes'] / 1048576, 1) }} MB</span>
                 </div>
             </div>
@@ -185,7 +185,7 @@
                                 <a href="{{ route('sites.backups', $site) }}" class="text-[13px] font-medium no-underline hover:underline">
                                     {{ $site->name }}
                                 </a>
-                                <span class="font-mono text-[11.5px] text-text-3">
+                                <span class="text-[11.5px] text-text-3">
                                     {{ $site->expected_domain }} ·
                                     {{ $artifacts->where('site_id', $site->id)->where('state', 'stored')->count() }} stored
                                 </span>
@@ -324,13 +324,13 @@
                                                class="align-middle accent-[var(--primary)]">
                                     </th>
                                 @endif
-                                <th class="border-b border-border px-4 py-2.5 text-left font-mono text-[9.5px] uppercase tracking-[0.07em] text-text-3">Site</th>
-                                <th class="border-b border-border px-4 py-2.5 text-left font-mono text-[9.5px] uppercase tracking-[0.07em] text-text-3">Status</th>
-                                <th class="border-b border-border px-4 py-2.5 text-left font-mono text-[9.5px] uppercase tracking-[0.07em] text-text-3">Taken</th>
-                                <th class="border-b border-border px-4 py-2.5 text-right font-mono text-[9.5px] uppercase tracking-[0.07em] text-text-3">Size</th>
-                                <th class="border-b border-border px-4 py-2.5 text-left font-mono text-[9.5px] uppercase tracking-[0.07em] text-text-3">Engine</th>
-                                <th class="border-b border-border px-4 py-2.5 text-left font-mono text-[9.5px] uppercase tracking-[0.07em] text-text-3">Checksum</th>
-                                <th class="border-b border-border px-4 py-2.5 text-left font-mono text-[9.5px] uppercase tracking-[0.07em] text-text-3">Deleted</th>
+                                <th class="border-b border-border px-4 py-2.5 text-left font-sans text-[11.5px] uppercase tracking-[0.05em] text-text-3">Site</th>
+                                <th class="border-b border-border px-4 py-2.5 text-left font-sans text-[11.5px] uppercase tracking-[0.05em] text-text-3">Status</th>
+                                <th class="border-b border-border px-4 py-2.5 text-left font-sans text-[11.5px] uppercase tracking-[0.05em] text-text-3">Taken</th>
+                                <th class="border-b border-border px-4 py-2.5 text-right font-sans text-[11.5px] uppercase tracking-[0.05em] text-text-3">Size</th>
+                                <th class="border-b border-border px-4 py-2.5 text-left font-sans text-[11.5px] uppercase tracking-[0.05em] text-text-3">Engine</th>
+                                <th class="border-b border-border px-4 py-2.5 text-left font-sans text-[11.5px] uppercase tracking-[0.05em] text-text-3">Checksum</th>
+                                <th class="border-b border-border px-4 py-2.5 text-left font-sans text-[11.5px] uppercase tracking-[0.05em] text-text-3">Deleted</th>
                                 <th class="border-b border-border px-4 py-2.5"></th>
                             </tr>
                         </thead>
@@ -518,7 +518,7 @@
 
                 <div class="grid gap-px bg-border sm:grid-cols-2">
                     <div class="bg-surface px-4 py-3">
-                        <p class="mb-2 font-mono text-[10px] uppercase tracking-[0.07em] text-text-3">Upcoming</p>
+                        <p class="mb-2 font-sans text-[11.5px] uppercase tracking-[0.05em] text-text-3">Upcoming</p>
 
                         @if ($upcomingRuns === [])
                             <p class="text-[12.5px] text-text-2">
@@ -537,7 +537,7 @@
                                         <a href="{{ route('sites.backups', $run['site']) }}" class="no-underline hover:underline">
                                             {{ $run['site']->name }}
                                         </a>
-                                        <span class="font-mono text-[11.5px] tabular text-text-2">
+                                        <span class="text-[11.5px] tabular text-text-2">
                                             {{ $run['at']->format('j M, H:i') }}
                                             <span class="text-text-3">({{ $run['at']->diffForHumans(short: true) }})</span>
                                         </span>
@@ -548,7 +548,7 @@
                     </div>
 
                     <div class="bg-surface px-4 py-3">
-                        <p class="mb-2 font-mono text-[10px] uppercase tracking-[0.07em] text-text-3">Past</p>
+                        <p class="mb-2 font-sans text-[11.5px] uppercase tracking-[0.05em] text-text-3">Past</p>
 
                         @if ($pastRuns->isEmpty())
                             <p class="text-[12.5px] text-text-2">No backup has finished yet.</p>
@@ -566,7 +566,7 @@
                                             <x-status-badge :tone="$run->state === 'succeeded' ? 'ok' : 'bad'"
                                                             :label="Str::ucfirst($run->state)" />
                                         </span>
-                                        <span class="font-mono text-[11.5px] tabular text-text-3">
+                                        <span class="text-[11.5px] tabular text-text-3">
                                             {{ $run->updated_at->diffForHumans(short: true) }}
                                         </span>
                                     </li>

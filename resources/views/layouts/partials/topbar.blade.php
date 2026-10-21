@@ -100,7 +100,7 @@
                 class="flex h-[30px] items-center gap-2 rounded-[7px] border border-border bg-surface-2 px-2.5 text-[12.5px] text-text-3 hover:bg-row-hover hover:text-text">
             <span aria-hidden="true">⌕</span>
             <span class="hidden sm:inline">Jump to…</span>
-            <kbd class="hidden rounded-[4px] border border-border-2 px-1 font-mono text-[10px] lg:inline">⌘K</kbd>
+            <kbd class="hidden rounded-[4px] border border-border-2 px-1 font-mono text-[11.5px] lg:inline">⌘K</kbd>
             <span class="sr-only">Search sites and screens</span>
         </button>
 
@@ -125,7 +125,7 @@
         <div class="hidden h-[22px] w-px bg-border sm:block"></div>
 
         <a href="{{ route('settings.account') }}" class="flex items-center gap-2 no-underline">
-            <div class="flex h-6 w-6 flex-none items-center justify-center rounded-full border border-pale-line bg-pale text-[10.5px] font-semibold text-primary">
+            <div class="flex h-6 w-6 flex-none items-center justify-center rounded-full border border-pale-line bg-pale text-[11.5px] font-semibold text-primary">
                 {{ Str::of(auth()->user()->name)->explode(' ')->take(2)->map(fn ($part) => Str::substr($part, 0, 1))->implode('') }}
             </div>
             {{-- The name is the first thing to go: the initials already identify the account. --}}

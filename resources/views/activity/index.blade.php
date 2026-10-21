@@ -40,7 +40,7 @@
                 <thead>
                     <tr class="bg-surface-2">
                         @foreach (['#', 'When', 'Action', 'Site', 'Actor', 'Source', 'Outcome'] as $heading)
-                            <th class="whitespace-nowrap border-b border-border px-3 py-2.5 text-left font-mono text-[10px] font-medium uppercase tracking-[0.07em] text-text-3">
+                            <th class="whitespace-nowrap border-b border-border px-3 py-2.5 text-left font-sans text-[11.5px] font-medium uppercase tracking-[0.05em] text-text-3">
                                 {{ $heading }}
                             </th>
                         @endforeach
@@ -50,7 +50,7 @@
                     @forelse ($events as $event)
                         <tr class="border-b border-border hover:bg-row-hover">
                             <td class="px-3 py-2.5 font-mono text-[11.5px] text-text-3 tabular">{{ $event->seq }}</td>
-                            <td class="whitespace-nowrap px-3 py-2.5 font-mono text-[11.5px] text-text-3"><x-timestamp :at="$event->created_at" format="d M Y H:i" /></td>
+                            <td class="whitespace-nowrap px-3 py-2.5 text-[11.5px] text-text-3"><x-timestamp :at="$event->created_at" format="d M Y H:i" /></td>
                             <td class="px-3 py-2.5">
                                 {{-- The row above, which is the newer one: rows are ordered by sequence,
                                      newest first, so a backup's artifact entry sits above the job

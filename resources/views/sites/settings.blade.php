@@ -108,7 +108,7 @@
         <div class="overflow-hidden rounded-[10px] border border-border">
             <div class="flex flex-wrap items-center gap-x-8 gap-y-4 border-b border-border bg-surface p-4">
                 <div class="flex flex-col gap-1">
-                    <span class="font-mono text-[10px] uppercase tracking-[0.07em] text-text-3">Connector key</span>
+                    <span class="font-sans text-[11.5px] uppercase tracking-[0.05em] text-text-3">Connector key</span>
                     <span class="font-mono text-[13px]">
                         {{-- The tail here, and the whole thing below. This used to be the tail and
                              nothing else, on the reasoning that showing a public key in full invites
@@ -120,15 +120,15 @@
                     </span>
                 </div>
                 <div class="flex flex-col gap-1">
-                    <span class="font-mono text-[10px] uppercase tracking-[0.07em] text-text-3">Paired</span>
+                    <span class="font-sans text-[11.5px] uppercase tracking-[0.05em] text-text-3">Paired</span>
                     <span class="text-[13px]">{{ $connector?->paired_at?->diffForHumans() ?? '-' }}</span>
                 </div>
                 <div class="flex flex-col gap-1">
-                    <span class="font-mono text-[10px] uppercase tracking-[0.07em] text-text-3">Version</span>
+                    <span class="font-sans text-[11.5px] uppercase tracking-[0.05em] text-text-3">Version</span>
                     <span class="font-mono text-[13px]">{{ $connector?->connector_version ?? '-' }}</span>
                 </div>
                 <div class="flex flex-col gap-1">
-                    <span class="font-mono text-[10px] uppercase tracking-[0.07em] text-text-3">Stored credentials</span>
+                    <span class="font-sans text-[11.5px] uppercase tracking-[0.05em] text-text-3">Stored credentials</span>
                     <span class="text-[13px]">No administrator password stored</span>
                 </div>
 

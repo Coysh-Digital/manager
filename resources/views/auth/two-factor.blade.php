@@ -30,7 +30,7 @@
         @if ($hasTotp)
             <div class="mb-4 flex items-center gap-3">
                 <span class="h-px flex-1 bg-border"></span>
-                <span class="font-mono text-[10.5px] uppercase tracking-[0.08em] text-text-3">or</span>
+                <span class="font-sans text-[11.5px] uppercase tracking-[0.06em] text-text-3">or</span>
                 <span class="h-px flex-1 bg-border"></span>
             </div>
         @endif
