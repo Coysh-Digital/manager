@@ -8,10 +8,12 @@ here for exactly that reason.
 
 ## 1.9.0 — 2026-10-21
 
-You can now say how many days before a TLS certificate expires it becomes a finding, and an
-acknowledged certificate warning no longer silently covers the next certificate. One migration,
-adding a nullable column to `organisations`; nothing to do on upgrade, and every organisation keeps
-the 30-day window it had until it chooses otherwise.
+You can now say how many days before a TLS certificate expires it becomes a finding, an acknowledged
+certificate warning no longer silently covers the next certificate, and closed findings, with the
+reasons given for them, can be read. One migration, adding a nullable column to `organisations`;
+nothing else to do on upgrade beyond the usual `composer install` after checking out the tag, and
+every organisation keeps the 30-day window it had until it chooses otherwise. The stylesheet is
+rebuilt, so a browser may need a hard refresh to pick it up.
 
 ### Set the certificate warning window (Settings)
 
@@ -41,6 +43,80 @@ stays open, the acknowledgement is now withdrawn, the finding goes back to open,
 records `finding.reopened` with the reason it had been acknowledged for. Nobody is notified a second
 time: the finding never closed, so a destination has already been told about it. Acknowledging again
 is one click. No other finding is affected.
+
+### Acknowledgement comments were recorded and shown nowhere
+
+Acknowledging a finding requires a reason, and the reason was saved on the finding and in the audit
+log - and then displayed only while the finding was still open. Once it resolved, the card went with
+it, and the audit log printed `finding.acknowledged` with nothing to say which finding or why.
+
+- **Audit log.** The site's Audit tab and the fleet Activity log now show, under a finding's
+  acknowledged, reopened or resolved entry, which finding it was and, for an acknowledgement, the
+  reason given. Entries written before this release name the rule key instead of the title, because
+  the title was not recorded then and the log cannot be edited. The title is now part of those three
+  events' recorded detail; the chain still verifies, and nothing already written is touched.
+- **Security tab.** "Recently resolved" now shows each finding's severity, and who acknowledged it,
+  when, and why. When there are more than five, **Show all** opens the full list, newest first and
+  paged, at `?history=all` on the same page.
+
+A finding keeps one row per rule, so the Security tab's history is the latest closure of each rule.
+If a rule has opened again, its earlier closure is in the audit log and not on the tab.
+
+## 1.8.2 — 2026-10-21
+
+The dashboard is easier to read, in dark mode above all, the Activity log says which site it is
+filtered to, and the front-end build tools are updated past four published advisories. No migrations,
+no configuration, nothing to do on upgrade beyond the usual `composer install` after checking out the
+tag. The stylesheet and script are rebuilt, so a browser may need a hard refresh to pick them up.
+
+### Dark mode was too dim to read comfortably
+
+The secondary and tertiary text colours - the labels, timestamps, counts and captions that sit under
+and beside the main content - were too close to the background. In dark mode the tertiary text measured
+4.4:1 against a card, short of the 4.5:1 that WCAG sets for small text, and it is the colour most of
+the small print is set in. They are brighter now:
+
+| | Before | After | Contrast on a card, before and after |
+|---|---|---|---|
+| Dark secondary text | `#a79f9b` | `#cfc8c3` | 6.9:1 to 10.8:1 |
+| Dark tertiary text | `#857d79` | `#a8a09b` | 4.4:1 to 6.9:1 |
+| Dark grey (neutral badges) | `#8f8884` | `#b0a8a3` | 5.1:1 to 7.6:1 |
+| Light tertiary text | `#8a847f` | `#6f6a65` | 3.7:1 to 5.4:1 |
+
+The light theme had the same problem on the same colour, at 3.7:1, so it moves too. The alert emails
+use the light value for their footer and take the same change.
+
+### Smaller text is no longer smaller than 11.5px
+
+Labels, captions and counts were set as small as 9px. Nothing is below 11.5px now, and what was 11px is
+12px. Column headings, section labels and meta lines such as "first seen 3 days ago" are set in the
+sans-serif face rather than in monospace, with the letter-spacing eased to suit; monospace stays on
+what is code or an identifier - hashes, IP addresses, versions, domains, rule names and sequence
+numbers.
+
+### The activity log now shows which site it is filtered to
+
+A site's Audit page links to **Open in the fleet log**, which opens the Activity log for that site
+alone. Nothing on the Activity log said so: the page looked like the whole fleet's history, and the
+only filter it offered was the outcome. Pressing **Apply** on that filter then dropped the site and
+quietly widened the log to every site.
+
+The Activity log now has a **Site** filter beside the outcome one, set to the site you came from, and
+a note beside the filters reading "Showing activity for" that site. Applying either filter keeps the
+other. The list offers only your own organisation's sites, and an address that matches none of them
+says so rather than showing an empty log as though nothing had happened.
+
+### The build tools had known advisories
+
+`npm audit` reported four, two high and two critical, in `vite`, `concurrently`, `shell-quote` and
+`source-map-js`. All four are development tools that build the stylesheet and script: none is part of
+what an installation runs, and `public/build` is committed precisely so that a deployment needs no
+Node. They were still in the tree the project is built from, and the *Supply chain* check on the
+repository had been red for it.
+
+The lockfile now resolves each past its fix, within the version ranges `package.json` already allowed,
+so `package.json` itself is unchanged. Vite's bundler moved with it, which is why the compiled
+stylesheet and script have new file names; their content is the same.
 
 ## 1.8.1 — 2026-10-16
 

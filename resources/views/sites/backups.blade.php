@@ -42,7 +42,7 @@
             <div class="mb-4 overflow-hidden rounded-[10px] border border-border bg-surface">
                 <div class="flex flex-wrap items-center gap-x-10 gap-y-4 border-b border-border px-4 py-3.5">
                     <div class="flex flex-col gap-1">
-                        <span class="font-mono text-[10px] uppercase tracking-[0.07em] text-text-3">Last backup</span>
+                        <span class="font-sans text-[11.5px] uppercase tracking-[0.05em] text-text-3">Last backup</span>
                         <div class="flex items-center gap-2.5">
                             <span class="text-[15px] font-medium">
                                 {{ $latest?->taken_at->diffForHumans() ?? 'Never' }}
@@ -71,7 +71,7 @@
 
                     @foreach ($figures as $label => $value)
                         <div class="flex flex-col gap-1">
-                            <span class="font-mono text-[10px] uppercase tracking-[0.07em] text-text-3">{{ $label }}</span>
+                            <span class="font-sans text-[11.5px] uppercase tracking-[0.05em] text-text-3">{{ $label }}</span>
                             <span class="font-mono text-[13px] tabular">{{ $value }}</span>
                         </div>
                     @endforeach
@@ -81,7 +81,7 @@
                          screen that lists artifacts without saying whether more are coming answers
                          half the question somebody opened it with. --}}
                     <div class="flex flex-col gap-1">
-                        <span class="font-mono text-[10px] uppercase tracking-[0.07em] text-text-3">Schedule</span>
+                        <span class="font-sans text-[11.5px] uppercase tracking-[0.05em] text-text-3">Schedule</span>
                         <span class="flex items-center gap-2">
                             @if ($site->hasBackupSchedule())
                                 <x-status-badge tone="ok" label="On" />
@@ -168,7 +168,7 @@
 
                             <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
                                 <label class="flex flex-1 flex-col gap-1">
-                                    <span class="font-mono text-[10.5px] uppercase tracking-[0.07em] text-text-3">Back up this site</span>
+                                    <span class="font-sans text-[11.5px] uppercase tracking-[0.05em] text-text-3">Back up this site</span>
                                     <select name="backup_schedule"
                                             data-backup-schedule-frequency
                                             class="h-[34px] rounded-[7px] border border-border bg-surface px-2.5 text-[13px]">
@@ -180,7 +180,7 @@
 
                                 <label class="flex flex-col gap-1 sm:w-[140px]"
                                        data-backup-schedule-field="hour"@if ($schedule === 'off') hidden @endif>
-                                    <span class="font-mono text-[10.5px] uppercase tracking-[0.07em] text-text-3">At</span>
+                                    <span class="font-sans text-[11.5px] uppercase tracking-[0.05em] text-text-3">At</span>
                                     <select name="backup_schedule_hour"
                                             class="h-[34px] rounded-[7px] border border-border bg-surface px-2.5 text-[13px]">
                                         @for ($hour = 0; $hour < 24; $hour++)
@@ -198,7 +198,7 @@
                                      and believes it. --}}
                                 <label class="flex flex-col gap-1 sm:w-[140px]"
                                        data-backup-schedule-field="day"@if ($schedule !== 'weekly') hidden @endif>
-                                    <span class="font-mono text-[10.5px] uppercase tracking-[0.07em] text-text-3">On</span>
+                                    <span class="font-sans text-[11.5px] uppercase tracking-[0.05em] text-text-3">On</span>
                                     <select name="backup_schedule_day"
                                             class="h-[34px] rounded-[7px] border border-border bg-surface px-2.5 text-[13px]">
                                         @foreach (['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] as $index => $day)
@@ -214,7 +214,7 @@
                             </div>
 
                             <label class="flex flex-col gap-1 sm:w-[220px]">
-                                <span class="font-mono text-[10.5px] uppercase tracking-[0.07em] text-text-3">Time zone</span>
+                                <span class="font-sans text-[11.5px] uppercase tracking-[0.05em] text-text-3">Time zone</span>
                                 <select name="timezone"
                                         class="h-[34px] rounded-[7px] border border-border bg-surface px-2.5 text-[13px]">
                                     @foreach ($timezones as $zone)
@@ -261,7 +261,7 @@
 
                                 <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
                                     <label class="flex flex-col gap-1 sm:w-[150px]">
-                                        <span class="font-mono text-[10.5px] uppercase tracking-[0.07em] text-text-3">Keep everything for</span>
+                                        <span class="font-sans text-[11.5px] uppercase tracking-[0.05em] text-text-3">Keep everything for</span>
                                         <div class="flex items-center gap-2">
                                             <input type="number" name="backup_retention_days" min="0" max="3650" required
                                                    value="{{ old('backup_retention_days', $site->backup_retention_days) }}"
@@ -272,7 +272,7 @@
                                     </label>
 
                                     <label class="flex flex-col gap-1 sm:w-[150px]">
-                                        <span class="font-mono text-[10.5px] uppercase tracking-[0.07em] text-text-3">Then one a week for</span>
+                                        <span class="font-sans text-[11.5px] uppercase tracking-[0.05em] text-text-3">Then one a week for</span>
                                         <div class="flex items-center gap-2">
                                             <input type="number" name="backup_retention_weeks" min="0" max="520" required
                                                    value="{{ old('backup_retention_weeks', $site->backup_retention_weeks) }}"
@@ -283,7 +283,7 @@
                                     </label>
 
                                     <label class="flex flex-col gap-1 sm:w-[150px]">
-                                        <span class="font-mono text-[10.5px] uppercase tracking-[0.07em] text-text-3">Then one a month for</span>
+                                        <span class="font-sans text-[11.5px] uppercase tracking-[0.05em] text-text-3">Then one a month for</span>
                                         <div class="flex items-center gap-2">
                                             <input type="number" name="backup_retention_months" min="0" max="120" required
                                                    value="{{ old('backup_retention_months', $site->backup_retention_months) }}"
@@ -394,7 +394,7 @@
                             <thead>
                                 <tr class="bg-surface-2">
                                     @foreach (['Taken', 'Size', 'Engine', 'Verified', 'Checksum', 'Deleted', ''] as $heading)
-                                        <th class="whitespace-nowrap border-b border-border px-3 py-2.5 text-left font-mono text-[10px] font-medium uppercase tracking-[0.07em] text-text-3 {{ $loop->first ? 'pl-3.5' : '' }}">
+                                        <th class="whitespace-nowrap border-b border-border px-3 py-2.5 text-left font-sans text-[11.5px] font-medium uppercase tracking-[0.05em] text-text-3 {{ $loop->first ? 'pl-3.5' : '' }}">
                                             {{ $heading }}
                                         </th>
                                     @endforeach

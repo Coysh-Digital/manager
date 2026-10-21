@@ -12,10 +12,10 @@
     two different rules.
 --}}
 @if (($backupsFailed ?? 0) > 0)
-    <span class="rounded border border-danger-line bg-danger-bg px-1.5 py-px font-mono text-[11px] text-danger">{{ $backupsFailed }}</span>
+    <span class="rounded border border-danger-line bg-danger-bg px-1.5 py-px tabular text-[12px] text-danger">{{ $backupsFailed }}</span>
 @elseif (($backupsRunning ?? 0) > 0)
     {{-- No border and no fill. Work in progress is not a state to interrupt anybody about; it is
          there so pressing "Back up now" and navigating away still shows that something is
          happening. --}}
-    <span class="font-mono text-[11px] text-text-3">{{ $backupsRunning }}</span>
+    <span class="tabular text-[12px] text-text-3">{{ $backupsRunning }}</span>
 @endif

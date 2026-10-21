@@ -378,7 +378,7 @@ final class FindingsEvaluator
             targetType: 'finding',
             targetId: $finding->rule,
             before: ['state' => Finding::STATE_OPEN, 'severity' => $finding->severity],
-            after: ['state' => Finding::STATE_RESOLVED],
+            after: ['state' => Finding::STATE_RESOLVED, 'title' => $finding->title],
         );
     }
 

@@ -295,6 +295,12 @@ it('audits a finding opening and resolving', function (): void {
 
     expect($actions)->toContain('finding.opened')
         ->and($actions)->toContain('finding.resolved');
+
+    // The title rides along so the audit log can say which finding without a join that stops
+    // working once the finding is reopened under a different title.
+    $resolved = AuditEvent::query()->where('action', 'finding.resolved')->firstOrFail();
+
+    expect($resolved->after['title'])->toBe(Finding::query()->where('rule', 'dev_mode_in_production')->value('title'));
 });
 
 it('evaluates automatically when a report arrives', function (): void {

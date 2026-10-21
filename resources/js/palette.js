@@ -43,7 +43,7 @@ function build() {
                    class="h-[52px] w-full flex-none border-b border-border bg-surface px-4 text-[15px] text-text outline-none placeholder:text-text-3">
             <ul id="palette-results" role="listbox" data-palette-results
                 class="m-0 flex list-none flex-col overflow-y-auto p-1.5"></ul>
-            <div class="flex flex-none items-center gap-4 border-t border-border bg-surface-2 px-4 py-2 font-mono text-[10.5px] text-text-3">
+            <div class="flex flex-none items-center gap-4 border-t border-border bg-surface-2 px-4 py-2 text-[11.5px] text-text-3">
                 <span>↑↓ move</span><span>↵ open</span><span>esc close</span>
             </div>
         </div>`;
@@ -178,8 +178,8 @@ function render() {
                     index === active ? 'bg-pale text-primary' : 'text-text'
                 }">
                 <span class="text-[13.5px] font-medium">${escapeHtml(result.label)}</span>
-                ${result.badge ? `<span class="rounded-[4px] border border-border px-1 py-px font-mono text-[10px] text-text-3">${escapeHtml(result.badge)}</span>` : ''}
-                <span class="ml-auto truncate font-mono text-[11px] text-text-3">${escapeHtml(result.hint)}</span>
+                ${result.badge ? `<span class="rounded-[4px] border border-border px-1 py-px text-[11.5px] text-text-3">${escapeHtml(result.badge)}</span>` : ''}
+                <span class="ml-auto truncate font-mono text-[12px] text-text-3">${escapeHtml(result.hint)}</span>
             </li>`,
         )
         .join('');

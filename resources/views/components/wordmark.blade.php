@@ -12,7 +12,7 @@
          aria-hidden="true">M</div>
     <div class="flex flex-col gap-px">
         <span class="text-sm font-semibold tracking-[-0.01em]">Manager for Craft</span>
-        <span class="font-mono text-[9.5px] uppercase tracking-[0.04em] text-text-3">
+        <span class="font-sans text-[11.5px] uppercase tracking-[0.04em] text-text-3">
             {{ app(App\Contracts\ProductLabel::class)->label() }}
         </span>
     </div>

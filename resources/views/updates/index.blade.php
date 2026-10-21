@@ -29,7 +29,7 @@
                 <thead>
                     <tr class="bg-surface-2">
                         @foreach (['Site', 'Craft', 'Plugin updates', 'Checked', ''] as $heading)
-                            <th class="whitespace-nowrap border-b border-border px-3 py-2.5 text-left font-mono text-[10px] font-medium uppercase tracking-[0.07em] text-text-3 {{ $loop->first ? 'pl-3.5' : '' }}">
+                            <th class="whitespace-nowrap border-b border-border px-3 py-2.5 text-left font-sans text-[11.5px] font-medium uppercase tracking-[0.05em] text-text-3 {{ $loop->first ? 'pl-3.5' : '' }}">
                                 {{ $heading }}
                             </th>
                         @endforeach
@@ -50,7 +50,7 @@
                             <td class="py-3 pl-3.5 pr-3 align-middle">
                                 <a href="{{ route('sites.show', $site) }}" class="flex flex-col gap-0.5 no-underline">
                                     <span class="text-[13.5px] font-medium text-text">{{ $site->name }}</span>
-                                    <span class="font-mono text-[11px] text-text-3">{{ $site->expected_domain }}</span>
+                                    <span class="font-mono text-[12px] text-text-3">{{ $site->expected_domain }}</span>
                                 </a>
                             </td>
 
@@ -82,7 +82,7 @@
                                                 · {{ $report->plugin_security_releases }} security
                                             @endif
                                         </span>
-                                        <span class="font-mono text-[11px] text-text-3">
+                                        <span class="font-mono text-[12px] text-text-3">
                                             @foreach (array_slice($report->pluginsNeedingUpdates(), 0, 3) as $plugin)
                                                 {{ $plugin['handle'] }}@if (! $loop->last), @endif
                                             @endforeach
@@ -103,7 +103,7 @@
                                 @endif
                             </td>
 
-                            <td class="whitespace-nowrap px-3 py-3 font-mono text-[11.5px] text-text-3">
+                            <td class="whitespace-nowrap px-3 py-3 text-[11.5px] text-text-3">
                                 {{ $report->checked_at->diffForHumans(short: true) }}
                             </td>
 
@@ -132,8 +132,8 @@
                         <tr>
                             <td colspan="5" class="border-y border-border bg-surface-2 px-3.5 py-2">
                                 <span class="flex items-center gap-2.5">
-                                    <span class="font-mono text-[10px] font-medium uppercase tracking-[0.08em] text-text-2">Not reporting updates</span>
-                                    <span class="font-mono text-[10.5px] text-text-3">{{ $unreported->count() }} {{ Str::plural('site', $unreported->count()) }}</span>
+                                    <span class="font-sans text-[11.5px] font-medium uppercase tracking-[0.06em] text-text-2">Not reporting updates</span>
+                                    <span class="text-[11.5px] text-text-3">{{ $unreported->count() }} {{ Str::plural('site', $unreported->count()) }}</span>
                                 </span>
                             </td>
                         </tr>
@@ -143,7 +143,7 @@
                                 <td class="py-3 pl-3.5 pr-3">
                                     <a href="{{ route('sites.show', $site) }}" class="flex flex-col gap-0.5 no-underline">
                                         <span class="text-[13.5px] font-medium text-text">{{ $site->name }}</span>
-                                        <span class="font-mono text-[11px] text-text-3">{{ $site->expected_domain }}</span>
+                                        <span class="font-mono text-[12px] text-text-3">{{ $site->expected_domain }}</span>
                                     </a>
                                 </td>
                                 <td colspan="3" class="px-3 py-3 text-[12.5px] text-text-2">

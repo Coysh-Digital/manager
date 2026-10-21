@@ -41,7 +41,7 @@
                     {{ $tab['label'] }}
 
                     @if ($tab['count'] > 0)
-                        <span class="rounded-full bg-surface-2 px-1.5 py-px font-mono text-[10.5px] tabular text-text-2">
+                        <span class="rounded-full bg-surface-2 px-1.5 py-px text-[11.5px] tabular text-text-2">
                             {{ $tab['count'] }}
                         </span>
                     @endif

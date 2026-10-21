@@ -20,7 +20,7 @@
 @if ($runs !== [])
     <div class="flex flex-col gap-1">
         @unless ($compact)
-            <span class="font-mono text-[10.5px] uppercase tracking-[0.07em] text-text-3">Next runs</span>
+            <span class="font-sans text-[11.5px] uppercase tracking-[0.05em] text-text-3">Next runs</span>
         @endunless
 
         @foreach ($runs as $run)
