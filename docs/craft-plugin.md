@@ -168,7 +168,32 @@ its interval has elapsed, so a quiet site reports late and a site with no visito
 report until morning. With cron the timing is exact and independent of traffic, which is worth
 having if you care that a heartbeat is genuinely every five minutes rather than roughly.
 
-If you want that, turn off `webTrigger` and add:
+If you want that, one line runs everything:
+
+```cron
+*/5 * * * * cd /path/to/site && php craft manager-connector/run
+```
+
+Every run sends the heartbeat and collects any work Manager has queued. The other reports go out when
+each is due, on the schedule in the table above, so one entry every five minutes is the whole setup.
+Then turn off `webTrigger` in `config/manager-connector.php`, so the schedule comes from one place:
+
+```php
+return [
+    'webTrigger' => false,
+];
+```
+
+Leaving it on is harmless. Cron and web traffic share one set of claims, so they cannot both fire a
+task in the same interval. A task for a capability you have not granted is skipped rather than
+failed, and starts working as soon as you grant it. `php craft manager-connector/run --force` runs
+everything now, whatever is due.
+
+### One schedule per task
+
+If you would rather set each schedule yourself, the per-task commands still work. Schedule all six,
+even for capabilities you have not granted: each one checks before it sends anything, so an ungranted
+task is a no-op.
 
 ```cron
 */5 * * * *  cd /path/to/site && php craft manager-connector/heartbeat
@@ -179,8 +204,8 @@ If you want that, turn off `webTrigger` and add:
 0 3 * * *    cd /path/to/site && php craft manager-connector/updates
 ```
 
-Schedule all six even for capabilities you have not granted. Each one checks before it sends
-anything, so an ungranted task is a no-op - and when you do grant it later, it just starts working.
+Use one or the other on a site, not both: the per-task commands do not share `run`'s claims, so the
+two together would send some reports twice.
 
 ## Backups
 
@@ -213,8 +238,11 @@ different responses, which is why the message names it.
 | `manager-connector/preview` | Print what would be sent, without sending it |
 | `manager-connector/pair <code>` | Pair with Manager for Craft |
 | `manager-connector/disconnect` | Stop reporting and forget the keypair |
+| `manager-connector/run` | Run everything that is due. The one cron entry |
 | `manager-connector/heartbeat` | Send a heartbeat now |
 | `manager-connector/report` | Send inventory now |
+| `manager-connector/system` | Send the runtime report now |
+| `manager-connector/logins` | Send sign-in counts now |
 | `manager-connector/updates` | Check for updates now |
 | `manager-connector/jobs` | Ask Manager for Craft whether there is anything to do |
 
