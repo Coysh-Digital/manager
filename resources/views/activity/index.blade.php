@@ -21,8 +21,25 @@
     </div>
 
     <div class="overflow-hidden rounded-[10px] border border-border bg-surface shadow-[var(--shadow)]">
-        <form method="GET" class="flex flex-wrap items-center gap-2 border-b border-border p-3.5">
-            <select name="outcome" class="h-[30px] rounded-[7px] border border-border bg-surface px-2 text-[12.5px] text-text-2">
+        @php
+            $activeSite = $filters['site'] !== '' ? $filterSites->firstWhere('external_id', $filters['site']) : null;
+        @endphp
+
+        {{-- A GET form, so the result is a URL. Both selects live in it: a form that only carried
+             `outcome` dropped the `site` the page was opened with the moment Apply was pressed. --}}
+        <form method="GET" action="{{ route('activity.index') }}" class="flex flex-wrap items-center gap-2 border-b border-border p-3.5">
+            <label for="filter-site" class="sr-only">Site</label>
+            <select id="filter-site" name="site" class="h-[30px] rounded-[7px] border border-border bg-surface px-2 text-[12.5px] text-text-2">
+                <option value="">Every site</option>
+                @foreach ($filterSites as $filterSite)
+                    <option value="{{ $filterSite->external_id }}" @selected($filters['site'] === $filterSite->external_id)>
+                        {{ $filterSite->name }}
+                    </option>
+                @endforeach
+            </select>
+
+            <label for="filter-outcome" class="sr-only">Outcome</label>
+            <select id="filter-outcome" name="outcome" class="h-[30px] rounded-[7px] border border-border bg-surface px-2 text-[12.5px] text-text-2">
                 <option value="">Any outcome</option>
                 <option value="success" @selected($filters['outcome'] === 'success')>Succeeded</option>
                 <option value="failure" @selected($filters['outcome'] === 'failure')>Failed</option>
@@ -32,6 +49,18 @@
             </button>
             @if ($filters['outcome'] !== '' || $filters['site'] !== '')
                 <a href="{{ route('activity.index') }}" class="text-[12.5px] text-primary hover:text-primary-hover">Clear</a>
+            @endif
+
+            @if ($activeSite)
+                <span class="ml-auto text-[12.5px] text-text-2">
+                    Showing activity for <strong class="font-semibold text-text">{{ $activeSite->name }}</strong> only
+                </span>
+            @elseif ($filters['site'] !== '')
+                {{-- A link from a site that has since been removed, or a mistyped address. The log
+                     is empty for it, and saying why beats a table that reads as "nothing happened". --}}
+                <span class="ml-auto text-[12.5px] text-text-2">
+                    No site in this organisation matches that address, so nothing is shown.
+                </span>
             @endif
         </form>
 

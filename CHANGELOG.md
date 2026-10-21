@@ -8,9 +8,10 @@ here for exactly that reason.
 
 ## 1.8.2 — 2026-10-21
 
-The dashboard is easier to read, in dark mode above all. No migrations, no configuration, nothing to do
-on upgrade beyond the usual `composer install` after checking out the tag. The stylesheet is rebuilt,
-so a browser may need a hard refresh to pick it up.
+The dashboard is easier to read, in dark mode above all, the Activity log says which site it is
+filtered to, and the front-end build tools are updated past four published advisories. No migrations,
+no configuration, nothing to do on upgrade beyond the usual `composer install` after checking out the
+tag. The stylesheet and script are rebuilt, so a browser may need a hard refresh to pick them up.
 
 ### Dark mode was too dim to read comfortably
 
@@ -36,6 +37,30 @@ Labels, captions and counts were set as small as 9px. Nothing is below 11.5px no
 sans-serif face rather than in monospace, with the letter-spacing eased to suit; monospace stays on
 what is code or an identifier - hashes, IP addresses, versions, domains, rule names and sequence
 numbers.
+
+### The activity log now shows which site it is filtered to
+
+A site's Audit page links to **Open in the fleet log**, which opens the Activity log for that site
+alone. Nothing on the Activity log said so: the page looked like the whole fleet's history, and the
+only filter it offered was the outcome. Pressing **Apply** on that filter then dropped the site and
+quietly widened the log to every site.
+
+The Activity log now has a **Site** filter beside the outcome one, set to the site you came from, and
+a note beside the filters reading "Showing activity for" that site. Applying either filter keeps the
+other. The list offers only your own organisation's sites, and an address that matches none of them
+says so rather than showing an empty log as though nothing had happened.
+
+### The build tools had known advisories
+
+`npm audit` reported four, two high and two critical, in `vite`, `concurrently`, `shell-quote` and
+`source-map-js`. All four are development tools that build the stylesheet and script: none is part of
+what an installation runs, and `public/build` is committed precisely so that a deployment needs no
+Node. They were still in the tree the project is built from, and the *Supply chain* check on the
+repository had been red for it.
+
+The lockfile now resolves each past its fix, within the version ranges `package.json` already allowed,
+so `package.json` itself is unchanged. Vite's bundler moved with it, which is why the compiled
+stylesheet and script have new file names; their content is the same.
 
 ## 1.8.1 — 2026-10-16
 
