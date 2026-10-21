@@ -221,6 +221,59 @@ it('shows only this organisation on the activity log', function (): void {
         ->assertDontSee('other.thing');
 });
 
+/*
+ | The fleet log is reached from a site's Audit page with ?site= set, and the filter form used to carry
+ | only `outcome`, so pressing Apply quietly widened the log back to every site.
+ */
+it('preselects the site the activity log was opened for', function (): void {
+    $other = Site::factory()->for($this->organisation)->connected()->create(['name' => 'Second Site']);
+
+    $this->actingAs($this->user)
+        ->get('/activity?site='.$this->site->external_id)
+        ->assertOk()
+        ->assertSee('<option value="">Every site</option>', false)
+        ->assertSee('<option value="'.$this->site->external_id.'" selected>', false)
+        ->assertDontSee('<option value="'.$other->external_id.'" selected>', false)
+        ->assertSee('Showing activity for')
+        ->assertSee('Example Site');
+});
+
+it('lists only this organisation\'s sites in the activity log filter', function (): void {
+    $foreign = Site::factory()->for(Organisation::factory()->create())->connected()->create(['name' => 'Somebody Else Entirely']);
+
+    app(AuditRecorder::class)->record(action: 'site.paired', organisation: $this->organisation, site: $this->site);
+    app(AuditRecorder::class)->record(action: 'foreign.thing', organisation: $foreign->organisation, site: $foreign);
+
+    $this->actingAs($this->user)
+        ->get('/activity?site='.$foreign->external_id)
+        ->assertOk()
+        ->assertDontSee('Somebody Else Entirely')
+        ->assertDontSee($foreign->external_id)
+        ->assertDontSee('foreign.thing')
+        ->assertSee('No site in this organisation matches that address');
+});
+
+it('keeps the chosen site when the outcome filter is applied', function (): void {
+    $this->actingAs($this->user)
+        ->get('/activity?site='.$this->site->external_id.'&outcome=failure')
+        ->assertOk()
+        ->assertSee('<option value="'.$this->site->external_id.'" selected>', false)
+        ->assertSee('<option value="failure" selected>', false);
+});
+
+it('filters the activity log to one site', function (): void {
+    $other = Site::factory()->for($this->organisation)->connected()->create(['name' => 'Second Site']);
+
+    app(AuditRecorder::class)->record(action: 'site.paired', organisation: $this->organisation, site: $this->site);
+    app(AuditRecorder::class)->record(action: 'backup.requested', organisation: $this->organisation, site: $other);
+
+    $this->actingAs($this->user)
+        ->get('/activity?site='.$this->site->external_id)
+        ->assertOk()
+        ->assertSee('site.paired')
+        ->assertDontSee('backup.requested');
+});
+
 it('offers both kinds of second factor on the security screen', function (): void {
     $this->actingAs($this->user)
         ->get('/settings/security')
