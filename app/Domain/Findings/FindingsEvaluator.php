@@ -23,6 +23,7 @@ use App\Domain\Findings\Rules\InvalidLicence;
 use App\Domain\Findings\Rules\OpcacheDisabledInProduction;
 use App\Domain\Findings\Rules\PendingMigrations;
 use App\Domain\Findings\Rules\PhpEndOfLife;
+use App\Domain\Findings\Rules\PhpKnownVulnerability;
 use App\Domain\Findings\Rules\PluginSecurityRelease;
 use App\Domain\Findings\Rules\RepeatedFailedLogins;
 use App\Domain\Findings\Rules\RequiredExtensionMissing;
@@ -81,6 +82,7 @@ final class FindingsEvaluator
         return [
             new CraftSecurityRelease,
             new PluginSecurityRelease,
+            new PhpKnownVulnerability,
             new SecurityKeyMissing,
             new PhpEndOfLife,
             new DiskAlmostFull,
@@ -338,7 +340,7 @@ final class FindingsEvaluator
             after: [
                 'state' => Finding::STATE_OPEN,
                 'title' => $finding->title,
-                'reason' => 'The certificate was renewed, so the earlier acknowledgement no longer applies.',
+                'reason' => 'What this finding is about changed, so the earlier acknowledgement no longer applies.',
                 'cause' => 'subject_changed',
             ],
         );

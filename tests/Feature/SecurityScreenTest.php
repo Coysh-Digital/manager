@@ -154,3 +154,97 @@ it('hides resolved security findings unless asked for', function (): void {
     $this->actingAs($this->owner)->get('/security')->assertOk()->assertDontSee('Certificate was renewed');
     $this->actingAs($this->owner)->get('/security?resolved=1')->assertOk()->assertSee('Certificate was renewed');
 });
+
+/*
+ * Filtering to one rule: "which of my sites have this".
+ *
+ * Asked when a vulnerability has just been published, so the answer is a list to work through. The
+ * tests that matter are the ones about what the filter refuses to do - match nothing silently, or
+ * let a short list read as a short fleet.
+ */
+describe('filtered to one rule', function (): void {
+    beforeEach(function (): void {
+        $this->other = Site::factory()->for($this->organisation)->connected()->create(['name' => 'Unaffected Site']);
+        Connector::factory()->for($this->other)->create();
+
+        Finding::factory()->for($this->site)->rule('php_known_vulnerability')->severity(Severity::CRITICAL)->create([
+            'title' => 'PHP is vulnerable to PHP2Shell',
+        ]);
+
+        Finding::factory()->for($this->other)->rule('dev_mode_in_production')->create([
+            'title' => 'Development mode is on in production',
+        ]);
+    });
+
+    it('lists only the sites that have the finding, and says how many of the fleet', function (): void {
+        $this->actingAs($this->owner)
+            ->get('/security?rule=php_known_vulnerability')
+            ->assertOk()
+            ->assertSee('Example Site')
+            ->assertSee('PHP is vulnerable to PHP2Shell')
+            ->assertSee('1 of 2 sites')
+            ->assertSee('php_known_vulnerability')
+            ->assertDontSee('Unaffected Site')
+            ->assertDontSee('Development mode is on in production')
+            ->assertSee('Show every site');
+    });
+
+    it('shows the whole fleet with a link into the filter on each finding when it is not filtered', function (): void {
+        $this->actingAs($this->owner)
+            ->get('/security')
+            ->assertOk()
+            ->assertSee('Example Site')
+            ->assertSee('Unaffected Site')
+            ->assertSee('Every site with this')
+            ->assertSee('security?rule=php_known_vulnerability', false);
+    });
+
+    it('ignores a key that is not a security rule rather than matching nothing', function (string $rule): void {
+        // A filter that quietly matched nothing would read as a clean fleet.
+        $this->actingAs($this->owner)
+            ->get('/security?rule='.$rule)
+            ->assertOk()
+            ->assertSee('Example Site')
+            ->assertSee('Unaffected Site')
+            ->assertDontSee('Show every site');
+    })->with(['a typo' => 'php_known_vulnerabilty', 'a maintenance rule' => 'pending_migrations', 'nothing' => '']);
+
+    it('ignores an array where a key is expected', function (): void {
+        $this->actingAs($this->owner)
+            ->get('/security?rule[]=php_known_vulnerability')
+            ->assertOk()
+            ->assertSee('Unaffected Site');
+    });
+
+    it('says so in words when no site has the finding', function (): void {
+        Finding::query()->where('rule', 'php_known_vulnerability')->delete();
+
+        $this->actingAs($this->owner)
+            ->get('/security?rule=php_known_vulnerability')
+            ->assertOk()
+            ->assertSee('No site has this finding.')
+            ->assertDontSee('No sites yet.')
+            ->assertDontSee('Unaffected Site');
+    });
+
+    it('carries the filter through the resolved toggle', function (): void {
+        $this->actingAs($this->owner)
+            ->get('/security?rule=php_known_vulnerability')
+            ->assertOk()
+            ->assertSee('rule=php_known_vulnerability&amp;resolved=1', false);
+    });
+
+    it('filters resolved findings as well', function (): void {
+        Finding::query()->where('rule', 'php_known_vulnerability')->update([
+            'state' => Finding::STATE_RESOLVED,
+            'resolved_at' => now(),
+        ]);
+
+        $this->actingAs($this->owner)
+            ->get('/security?rule=php_known_vulnerability&resolved=1')
+            ->assertOk()
+            ->assertSee('Example Site')
+            ->assertSee('1 of 2 sites')
+            ->assertDontSee('Unaffected Site');
+    });
+});
