@@ -34,7 +34,7 @@ it('accepts a report containing only permitted operational metadata', function (
 
     expect(InventoryReport::query()->count())->toBe(1)
         ->and($this->site->fresh()->craft_version)->toBe('5.10.8.1')
-        ->and($this->site->fresh()->php_version)->toBe('8.3.14');
+        ->and($this->site->fresh()->php_version)->toBe('8.5.12');
 });
 
 it('rejects a report carrying site content or user records', function (string $field, mixed $value): void {

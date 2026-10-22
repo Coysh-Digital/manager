@@ -46,7 +46,11 @@ class InventoryReportFactory extends Factory
             'collected_at' => now()->getTimestamp(),
             'connector' => ['version' => '1.0.0'],
             'craft' => ['version' => '5.10.8.1', 'edition' => 'pro'],
-            'php' => ['version' => '8.3.14'],
+            // A release that every entry in PhpAdvisories counts as fixed, so a default site is a clean
+            // one. When an advisory is added that this is still below, every test that evaluates a
+            // default site gains a critical finding and a notification - raise this, do not
+            // special-case the tests.
+            'php' => ['version' => '8.5.12'],
             'database' => ['engine' => 'mysql', 'version' => '8.0.36'],
             'environment' => 'production',
         ];

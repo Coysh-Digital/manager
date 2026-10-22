@@ -57,7 +57,7 @@ class RuntimeReportFactory extends Factory
                 'disk_total_bytes' => 107_374_182_400,
             ],
             'php' => [
-                'version' => '8.3.14',
+                'version' => '8.5.12',
                 'sapi' => 'fpm-fcgi',
                 'memory_limit_bytes' => 268_435_456,
                 'max_execution_time' => 120,

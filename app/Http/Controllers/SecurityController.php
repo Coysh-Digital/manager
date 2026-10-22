@@ -26,6 +26,11 @@ use Illuminate\Http\Request;
  * cannot distinguish "nothing is wrong here" from "nothing has been checked here", and those are the
  * two answers an operator most needs to tell apart - a rule whose capability is not granted is
  * skipped, not passed. A site with no findings says which of the two it is.
+ *
+ * **Except when filtered to one rule, which asks a different question.** `?rule=` is "which sites
+ * have this", asked when a vulnerability has just been published and the answer is a list to work
+ * through. There the clean sites are the noise, and the screen says how many were left out rather
+ * than letting a short list read as a short fleet.
  */
 final class SecurityController
 {
@@ -34,6 +39,14 @@ final class SecurityController
     public function index(Request $request, Organisation $organisation): View
     {
         $showResolved = $request->boolean('resolved');
+
+        // Only a security rule's key is honoured. Anything else - a typo, a maintenance rule, a key
+        // from a rule since removed - is ignored and the whole screen is shown, which is the safe
+        // failure: a filter that silently matched nothing would read as a clean fleet.
+        $rule = $request->query('rule');
+        $rule = is_string($rule) && in_array($rule, RuleCategory::keysFor(RuleCategory::SECURITY), true)
+            ? $rule
+            : null;
 
         $sites = Site::query()
             ->where('organisation_id', $organisation->id)
@@ -45,7 +58,7 @@ final class SecurityController
         $findings = Finding::query()
             ->with('site')
             ->whereIn('site_id', $sites->pluck('id'))
-            ->whereIn('rule', RuleCategory::keysFor(RuleCategory::SECURITY))
+            ->whereIn('rule', $rule === null ? RuleCategory::keysFor(RuleCategory::SECURITY) : [$rule])
             ->when(
                 ! $showResolved,
                 fn ($query) => $query->whereIn('state', [Finding::STATE_OPEN, Finding::STATE_ACKNOWLEDGED]),
@@ -80,6 +93,12 @@ final class SecurityController
 
         $rank = static fn (Site $site): int => $worst[$site->id] ?? count(Severity::ordered());
 
+        $total = $sites->count();
+
+        if ($rule !== null) {
+            $sites = $sites->filter(fn (Site $site): bool => $findings->has($site->id));
+        }
+
         return view('security.index', [
             /*
              | Worst first, then by name.
@@ -93,6 +112,9 @@ final class SecurityController
             ])->values(),
             'findings' => $findings,
             'showResolved' => $showResolved,
+            'rule' => $rule,
+            'ruleSites' => $sites->count(),
+            'fleetSites' => $total,
             'counts' => $counts,
 
             // How many security rules could not run per site, so an empty list is never allowed to

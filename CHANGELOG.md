@@ -6,6 +6,55 @@ Entries are written for somebody about to upgrade a running installation. Anythi
 action is under **Before you upgrade** - that section is the one to read, and `docs/upgrade.md` points
 here for exactly that reason.
 
+## 1.10.0 — 2026-10-22
+
+Manager now raises a finding on every site running a PHP release with a published security
+vulnerability, starting with PHP2Shell, and the Security screen can be filtered to the sites that have
+a given finding. No migrations, no configuration, nothing to do on upgrade. The finding appears on the
+next hourly pass, or when a site next reports.
+
+### PHP releases with a published vulnerability
+
+On 21 October the PHP project fixed two critical remote code execution vulnerabilities, CVE-2026-109618
+and CVE-2026-109619, in PHP 8.2.35, 8.3.36, 8.4.27 and 8.5.12. Any site below those on its branch now
+has a **critical** `php_known_vulnerability` finding on the Security screen, which goes out as an alert
+to every notification destination that wants findings. A site on PHP 8.1 or older, which has no fixed
+release, is always affected and is told to move to a supported branch.
+
+It needs no permission to be granted: the version comes from the inventory every site already sends.
+The advisories are a list in Manager, so the next one is a Manager release and nothing a site's owner
+has to update.
+
+The finding is careful about what a version number cannot prove:
+
+- A Debian, Ubuntu or Sury package such as `8.3.6-1ubuntu1.2` may already carry the fix under the
+  older number, so it is raised as **high**, asks you to check your vendor's advisory, and says to
+  acknowledge it if the package is patched. A Red Hat package is also backported but carries no suffix
+  and reads as critical; acknowledge it too.
+- On a site whose queue runs from cron the version is the command line's, which can differ from the
+  web server's. The finding says so, and says when the runtime report shows mod_php, which the PHP
+  project rates the highest risk.
+- The advisory's interim mitigations are listed, and never lower the severity: Manager does not
+  report the two settings they turn on, so it cannot tell a mitigated site from an exposed one.
+
+An acknowledgement covers the advisories the finding named when it was made, and reopens if a later
+advisory applies to the same site.
+
+### Which sites have this finding
+
+Beside every finding on the Security screen there is now **Every site with this**, which lists only the
+sites that have it and says how many of the fleet that is, worst first. The address is
+`/security?rule=<rule>`, so it can be linked or bookmarked, and it works for every security rule. A key
+that is not a security rule is ignored and the whole fleet is shown, so a mistyped one cannot read as
+a clean fleet.
+
+### Smaller
+
+- The audit entry written when an acknowledgement is withdrawn because a finding changed subject no
+  longer says "the certificate was renewed" whatever the rule was.
+- Documentation: the monitoring page describes the new rule and the filter, and the rule count is
+  thirty.
+
 ## 1.9.1 — 2026-10-21
 
 Documentation only. No code, no migrations, no configuration, nothing to do on upgrade.

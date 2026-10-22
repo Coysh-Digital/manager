@@ -44,12 +44,12 @@ direction and sit behind a password confirmation because they destroy encryption
 Findings are conclusions, not raw data. Manager for Craft applies a set of rules to what a site
 reported and tells you what it thinks is wrong.
 
-Currently twenty-nine rules, and every one of them declares a category. The category decides which
+Currently thirty rules, and every one of them declares a category. The category decides which
 screen it appears on, so nothing is ever on both and nothing is on neither:
 
 **Security** - dev mode on in production, HTTPS not enforced, plain HTTP served without a redirect,
 admin changes allowed in production, updates allowed in production, security releases available for
-Craft or a plugin, repeated failed sign-ins, accounts locked out, TLS certificates expiring, TLS
+Craft or a plugin, a PHP release with a published vulnerability, repeated failed sign-ins, accounts locked out, TLS certificates expiring, TLS
 certificates a browser would refuse, missing security headers, a Content-Security-Policy that is not
 enforced, a disclosed software version, files reachable over the web that should not be, and a site
 with no security key set. These are on the **Security** screen.
@@ -65,6 +65,42 @@ Maintenance and operational findings are on the **Findings** screen, grouped by 
 misconfigured deploy template is a single heading with twelve sites under it rather than twelve
 identical cards. When any security findings are outstanding, Findings says how many and links to
 them, so nothing disappears by being filed elsewhere.
+
+### PHP vulnerabilities
+
+When the PHP project publishes a security release, Manager raises a finding on every site still
+running an older one - **critical** for the project's own build, within the hour, and as an alert to
+every destination that wants findings. The first was PHP2Shell (CVE-2026-109618 and CVE-2026-109619),
+fixed in PHP 8.2.35, 8.3.36, 8.4.27 and 8.5.12. A branch the project no longer patches has no fixed
+release, so a site on PHP 8.1 or older is always affected and the finding says to move to a supported
+branch.
+
+The list of advisories lives in Manager itself, not in the connector, so a new one reaches every site
+on the next hourly pass without anyone updating a plugin.
+
+Three things the finding cannot know, and says so:
+
+- **A distribution's package may already be fixed.** Debian, Ubuntu and the Sury repository backport
+  security fixes without changing PHP's version number, and mark the package with a suffix such as
+  `8.3.6-1ubuntu1.2`. That is raised as **high**, titled *check your vendor's package*, and asks you
+  to check the vendor's advisory. Red Hat's packages are backported too and carry no suffix, so one
+  of those reads as critical whether or not it is fixed - acknowledge the finding and say which
+  advisory covers it.
+- **The version is the one the connector runs under.** A site whose queue runs from cron reports the
+  command-line PHP, which can differ from the one your web server uses. When the latest runtime report
+  says so, the finding says to check the web server's as well, and when it says `apache2handler`
+  (mod_php) it says so too, because the PHP project rates that the highest risk.
+- **Mitigations are not reported, so they do not lower the severity.** The advisory's interim
+  settings are listed in the finding, with the PHP project's own caveat that they reduce exposure to
+  particular attack paths and do not fix anything.
+
+An acknowledgement is a statement about the advisories the finding named at the time. When a later
+advisory applies to the same site, the finding reopens.
+
+To see every site a finding affects, use **Every site with this** beside it on the **Security**
+screen, or open `/security?rule=php_known_vulnerability`. Filtered, the screen lists only the sites
+that have it and says how many of the fleet that is; any key that is not a security rule is ignored,
+and the whole fleet is shown.
 
 Several rules only fire in production, which is why setting a site's environment correctly matters.
 "Dev mode is on" is a finding on a live site and completely normal on a staging one.

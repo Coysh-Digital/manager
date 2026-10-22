@@ -20,18 +20,40 @@
                         <span class="font-medium text-text">{{ $tally->join(' · ') }}</span> outstanding.
                     @endif
                 @endunless
-                Every site, worst first. Anything that is work rather than exposure - updates, licences,
-                disk, queues - is on <a href="{{ route('findings.index') }}" class="text-primary no-underline hover:underline">Findings</a>.
+                @if ($rule !== null)
+                    <span class="font-medium text-text">{{ $ruleSites }} of {{ $fleetSites }} {{ Str::plural('site', $fleetSites) }}</span> {{ $showResolved ? 'had' : 'have' }} <span class="font-mono text-[12px]">{{ $rule }}</span>, worst first.
+                    <a href="{{ route('security.index', ['resolved' => $showResolved ? 1 : null]) }}"
+                       class="text-primary no-underline hover:underline">Show every site</a>.
+                @else
+                    Every site, worst first. Anything that is work rather than exposure - updates, licences,
+                    disk, queues - is on <a href="{{ route('findings.index') }}" class="text-primary no-underline hover:underline">Findings</a>.
+                @endif
             </p>
         </div>
 
-        <a href="{{ route('security.index', ['resolved' => $showResolved ? null : 1]) }}"
+        <a href="{{ route('security.index', ['rule' => $rule, 'resolved' => $showResolved ? null : 1]) }}"
            class="inline-flex h-[34px] items-center rounded-[7px] border border-border-2 bg-surface px-3.5 text-[13px] text-text no-underline hover:bg-row-hover">
             {{ $showResolved ? 'Show outstanding' : 'Show resolved' }}
         </a>
     </div>
 
-    @if ($sites->isEmpty())
+    @if ($sites->isEmpty() && $rule !== null)
+        {{-- Filtered to nothing is an answer, and one worth giving in words: an empty list under a
+             heading that says "0 of 12" is easy to read as the screen failing to load. --}}
+        <div class="rounded-[10px] border border-border bg-surface p-10 text-center shadow-[var(--shadow)]">
+            <p class="text-[13.5px] font-medium">
+                {{ $showResolved ? 'No site has had this finding resolved.' : 'No site has this finding.' }}
+            </p>
+            <p class="mt-1.5 text-[13px] text-text-2">
+                @unless ($showResolved)
+                    It is evaluated every hour, so a site that has just reported may take until the next
+                    sweep.
+                @endunless
+                <a href="{{ route('security.index', ['resolved' => $showResolved ? 1 : null]) }}"
+                   class="text-primary no-underline hover:underline">Show every site</a>
+            </p>
+        </div>
+    @elseif ($sites->isEmpty())
         <div class="rounded-[10px] border border-border bg-surface p-10 text-center shadow-[var(--shadow)]">
             <p class="text-[13.5px] font-medium">No sites yet.</p>
             <p class="mt-1.5 text-[13px] text-text-2">
@@ -110,6 +132,10 @@
                                     {{ $finding->rule }} · first seen {{ $finding->age() }} ago
                                     @if ($finding->state === App\Models\Finding::STATE_RESOLVED && $finding->resolved_at)
                                         · resolved {{ $finding->resolved_at->diffForHumans(short: true) }}
+                                    @endif
+                                    @if ($rule === null)
+                                        · <a href="{{ route('security.index', ['rule' => $finding->rule, 'resolved' => $showResolved ? 1 : null]) }}"
+                                             class="text-primary no-underline hover:underline">Every site with this</a>
                                     @endif
                                 </span>
 

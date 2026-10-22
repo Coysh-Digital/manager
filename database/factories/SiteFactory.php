@@ -37,7 +37,7 @@ class SiteFactory extends Factory
             'status' => Site::STATUS_CONNECTED,
             'craft_version' => '5.10.8.1',
             'craft_edition' => 'pro',
-            'php_version' => '8.3.14',
+            'php_version' => '8.5.12',
             'connector_version' => '1.0.0',
             'last_seen_at' => now(),
         ]);
