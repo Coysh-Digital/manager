@@ -44,12 +44,12 @@ direction and sit behind a password confirmation because they destroy encryption
 Findings are conclusions, not raw data. Manager for Craft applies a set of rules to what a site
 reported and tells you what it thinks is wrong.
 
-Currently thirty rules, and every one of them declares a category. The category decides which
+Currently thirty-one rules, and every one of them declares a category. The category decides which
 screen it appears on, so nothing is ever on both and nothing is on neither:
 
 **Security** - dev mode on in production, HTTPS not enforced, plain HTTP served without a redirect,
 admin changes allowed in production, updates allowed in production, security releases available for
-Craft or a plugin, a PHP release with a published vulnerability, repeated failed sign-ins, accounts locked out, TLS certificates expiring, TLS
+Craft or a plugin, a Craft or PHP release with a published vulnerability, repeated failed sign-ins, accounts locked out, TLS certificates expiring, TLS
 certificates a browser would refuse, missing security headers, a Content-Security-Policy that is not
 enforced, a disclosed software version, files reachable over the web that should not be, and a site
 with no security key set. These are on the **Security** screen.
@@ -65,6 +65,42 @@ Maintenance and operational findings are on the **Findings** screen, grouped by 
 misconfigured deploy template is a single heading with twelve sites under it rather than twelve
 identical cards. When any security findings are outstanding, Findings says how many and links to
 them, so nothing disappears by being filed elsewhere.
+
+### Craft vulnerabilities
+
+Manager checks each site's Craft version against published security advisories, as well as relying on
+Craft's own update feed. The two are different, and a site can have either, both or neither:
+
+- **An outstanding security release** (`craft_security_release`) repeats what Craft's update feed
+  says: some release between the version the site runs and the latest is flagged critical. It is only
+  as good as that feed, and only as current as the site's copy of it.
+- **A known vulnerability** (`craft_known_vulnerability`) is Manager's own comparison of the version
+  against the advisories in Packagist's public security-advisories feed, which carries GitHub's
+  advisory database. It does not wait for Craft to flag anything, and it covers every release a site
+  might be running, not just the ones since its last update.
+
+The second finding names the advisories by their GitHub identifier with the severity the feed gives
+each, says which release takes the site out of the range of all of them, and is as serious as the
+worst advisory that applies. It needs no permission to be granted: the version comes from the
+inventory every site sends. It resolves itself when the site updates, and an acknowledgement reopens
+if a later advisory also applies.
+
+Things worth knowing about it:
+
+- **It proves a version, not an exposure.** Whether a particular site can be attacked often depends on
+  settings Manager is not told about. The finding links each advisory so you can read what it affects
+  and what to do in the meantime. Manager does not retrieve or store advisory descriptions.
+- **The advisory list is fetched hourly** by `manager:advisories:sync`, one request to
+  `packagist.org` that names the package and nothing else - not a site, not a version, nothing that
+  identifies the installation. A failed fetch leaves the stored list as it was, and an empty answer is
+  never read as "there are no advisories". Set `MANAGER_ADVISORIES=false` if this installation must
+  make no outbound request to anywhere but the sites it manages; the finding then only knows the
+  advisories Manager ships with.
+- **Packagist can lag the announcement.** An advisory Craft has announced but GitHub has not yet
+  published is not in the feed. Manager ships a short list of those, so the gap is not a
+  window with no finding, and drops one as soon as the feed carries it.
+- **Plugins are not covered by it yet.** The feed is keyed by Composer package and the inventory
+  reports plugin handles. Plugins keep the existing *outstanding security release* check.
 
 ### PHP vulnerabilities
 

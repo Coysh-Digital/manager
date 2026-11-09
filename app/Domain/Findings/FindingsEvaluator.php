@@ -11,6 +11,7 @@ use App\Domain\Findings\Rules\AdminChangesInProduction;
 use App\Domain\Findings\Rules\CertificateExpiring;
 use App\Domain\Findings\Rules\CertificateUntrusted;
 use App\Domain\Findings\Rules\ContentSecurityPolicyNotEnforced;
+use App\Domain\Findings\Rules\CraftKnownVulnerability;
 use App\Domain\Findings\Rules\CraftSecurityRelease;
 use App\Domain\Findings\Rules\DeprecationWarnings;
 use App\Domain\Findings\Rules\DevModeInProduction;
@@ -81,6 +82,7 @@ final class FindingsEvaluator
     {
         return [
             new CraftSecurityRelease,
+            new CraftKnownVulnerability,
             new PluginSecurityRelease,
             new PhpKnownVulnerability,
             new SecurityKeyMissing,

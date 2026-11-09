@@ -502,4 +502,27 @@ return [
         'endpoint' => env('MANAGER_DIAGNOSTICS_ENDPOINT'),
     ],
 
+    /*
+    |---------------------------------------------------------------------------------------------
+    | Security advisories
+    |---------------------------------------------------------------------------------------------
+    |
+    | Whether this installation fetches published security advisories for Craft from Packagist's
+    | public API, so a site can be flagged for a vulnerability Craft's own update feed has not (yet)
+    | marked critical.
+    |
+    | On by default. It is a request to a third party, rather than to a site this installation
+    | manages, so an operator who must keep outbound traffic to a short list can turn it off. The
+    | request names a package and nothing else: no site, no version and nothing identifying this
+    | installation.
+    |
+    | Deliberately absent from `.env.example`, for the reason `nudge` is: a blank value reads as
+    | false, and a copied-but-unfilled line would turn the feature off without anybody meaning to.
+    |
+    */
+
+    'advisories' => [
+        'enabled' => filter_var(env('MANAGER_ADVISORIES', true), FILTER_VALIDATE_BOOLEAN),
+    ],
+
 ];

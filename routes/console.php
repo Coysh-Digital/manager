@@ -82,6 +82,17 @@ Schedule::command('manager:web:check')
     ->withoutOverlapping();
 
 /*
+ | Published security advisories.
+ |
+ | Hourly, at ten to the hour so that it lands just before the findings sweep below: an advisory
+ | fetched here is raised against the sites it affects ten minutes later, not a day later. One request to a public API
+ | for the whole list. A failure leaves what is stored untouched and exits non-zero; see AdvisorySync.
+ */
+Schedule::command('manager:advisories:sync')
+    ->hourlyAt(50)
+    ->withoutOverlapping();
+
+/*
  | Findings, on a clock rather than on a report.
  |
  | The rule that matters here is `site_not_reporting`, and the reason it needs a schedule is the

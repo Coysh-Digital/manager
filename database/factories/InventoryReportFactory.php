@@ -45,7 +45,7 @@ class InventoryReportFactory extends Factory
             'schema_version' => 'inventory.v1',
             'collected_at' => now()->getTimestamp(),
             'connector' => ['version' => '1.0.0'],
-            'craft' => ['version' => '5.10.8.1', 'edition' => 'pro'],
+            'craft' => ['version' => '5.11.2', 'edition' => 'pro'],
             // A release that every entry in PhpAdvisories counts as fixed, so a default site is a clean
             // one. When an advisory is added that this is still below, every test that evaluates a
             // default site gains a critical finding and a notification - raise this, do not

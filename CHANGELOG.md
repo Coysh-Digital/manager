@@ -6,6 +6,51 @@ Entries are written for somebody about to upgrade a running installation. Anythi
 action is under **Before you upgrade** - that section is the one to read, and `docs/upgrade.md` points
 here for exactly that reason.
 
+## 1.11.0 — 2026-11-09
+
+Manager now flags a site running a Craft release that a published security advisory says is
+vulnerable, by comparing its version against the advisories rather than relying on Craft's update feed
+to have marked something critical. One migration, no configuration. Run `php artisan migrate` after
+upgrading, as `docs/upgrade.md` describes; the first advisory fetch happens within the hour, or
+immediately with `php artisan manager:advisories:sync`.
+
+**Expect new findings on sites that are behind.** A site on an old Craft release can be inside the
+range of several advisories at once, and each such site gets one `craft_known_vulnerability` finding
+as serious as the worst of them. Critical and high findings go out as alerts to every notification
+destination that wants findings, so a fleet with sites well behind will hear about them on the first
+pass. That is the feature working; it is also why this is a minor release.
+
+### Craft vulnerabilities by version number
+
+This week Craft's security team said that an SQL injection through the element search endpoint,
+fixed in 4.18.9 and 5.11.2, had an unauthenticated route to it and that exploit attempts were being seen in the wild. A site on 5.7.5
+was not flagged, because Manager's only Craft security signal was whether Craft's own update feed had
+marked a release critical, and that feed is cached by each site for 24 hours and is where the flag
+arrives late or not at all.
+
+- **A new finding, `craft_known_vulnerability`.** Raised from the version the site reports against the
+  advisories in Packagist's public security-advisories feed, which carries GitHub's advisory database.
+  It names the advisories by identifier and severity, says which release takes the site out of all of
+  them, and needs no permission to be granted. It resolves itself on update, and an acknowledgement
+  reopens if a later advisory also applies.
+- **It proves a version, not an exposure.** Many of these depend on configuration Manager is not told
+  about, so the finding links the advisories and says to read them. It never softens its severity on a
+  guess, and Manager does not retrieve or store advisory descriptions.
+- **The element search injection is built in.** The advisory had not reached the feed when this was
+  written, so Manager ships it directly - Craft 4 below 4.18.9 and Craft 5 below 5.11.2 - and drops its
+  own copy the moment the feed carries it. The start of the Craft 5 range is assumed to be every 5.x
+  release rather than stated by Craft; the Craft 4 range is as VulnCheck gives it.
+- **`manager:advisories:sync`, hourly.** One request to `packagist.org` naming the package `craftcms/cms`
+  and nothing else. A failed or malformed answer leaves what is stored untouched and exits non-zero, and
+  an empty answer is never read as "there are no advisories". Set `MANAGER_ADVISORIES=false` to turn
+  the fetch off; the finding then knows only the advisories Manager ships with.
+- **Craft core only.** The feed is keyed by Composer package and the inventory reports plugin
+  handles, so plugins keep the existing outstanding-security-release check until the two can be mapped.
+
+Connector 1.16.2 closes the other half of this: the daily update report now asks Craft for a fresh
+answer instead of reading its 24-hour cache, so the existing *outstanding security release* finding
+arrives sooner as well. Nothing here depends on it.
+
 ## 1.10.1 — 2026-11-09
 
 Security updates to the Symfony components Manager is built on. No migrations, no configuration, nothing

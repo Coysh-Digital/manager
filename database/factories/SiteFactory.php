@@ -35,7 +35,7 @@ class SiteFactory extends Factory
     {
         return $this->state(fn (): array => [
             'status' => Site::STATUS_CONNECTED,
-            'craft_version' => '5.10.8.1',
+            'craft_version' => '5.11.2',
             'craft_edition' => 'pro',
             'php_version' => '8.5.12',
             'connector_version' => '1.0.0',
