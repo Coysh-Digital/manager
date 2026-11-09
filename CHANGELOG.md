@@ -6,6 +6,29 @@ Entries are written for somebody about to upgrade a running installation. Anythi
 action is under **Before you upgrade** - that section is the one to read, and `docs/upgrade.md` points
 here for exactly that reason.
 
+## 1.10.1 — 2026-11-09
+
+Security updates to the Symfony components Manager is built on. No migrations, no configuration, nothing
+to change in your `.env`. Rebuild the image to pick them up: `docker compose up -d --build`.
+
+### Symfony components updated for fourteen published advisories
+
+Between 28 October and 4 November the Symfony project published fourteen security advisories against
+seven components Manager depends on: `filesystem`, `html-sanitizer`, `http-foundation`, `http-kernel`,
+`mime`, `routing` and `serializer`. Every one is fixed in a patch release of the 8.1 line, and
+`composer.lock` now pins those releases (8.1.10 for `mime`, 8.1.11 for the rest). Two further packages
+moved with them, `league/uri` and a few Symfony contracts and polyfills, because the new releases
+require it.
+
+Manager's own exposure looks small, and this is why the update is not urgent: it sets no link or media
+host allow-lists on the HTML sanitizer that renders release notes, it declares no host-based routes,
+it does not use the serializer's file or data-URI normalizers, and it trusts an explicit list of
+proxies (`MANAGER_TRUSTED_PROXIES`) rather than the `private_ranges` shortcut. That is a reading of
+Manager's code, not a test of each advisory, so update anyway.
+
+The weekly dependency check had been failing since 2 November, first on `symfony/mime` alone and then on
+all of the above. It passes again with this lockfile.
+
 ## 1.10.0 — 2026-10-22
 
 Manager now raises a finding on every site running a PHP release with a published security
