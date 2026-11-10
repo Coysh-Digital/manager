@@ -33,7 +33,7 @@ it('accepts a report containing only permitted operational metadata', function (
         ->assertJson(['received' => true, 'schema_version' => 'inventory.v1']);
 
     expect(InventoryReport::query()->count())->toBe(1)
-        ->and($this->site->fresh()->craft_version)->toBe('5.10.8.1')
+        ->and($this->site->fresh()->craft_version)->toBe('5.11.2')
         ->and($this->site->fresh()->php_version)->toBe('8.5.12');
 });
 
